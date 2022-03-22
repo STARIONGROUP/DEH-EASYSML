@@ -24,15 +24,15 @@
 
 namespace DEHEASysML.Services.Dispatcher
 {
+    using System;
+
     using DEHPCommon.Services.NavigationService;
     using DEHPCommon.UserInterfaces.Views;
-
-    using ReactiveUI;
 
     /// <summary>
     /// Handles the behavior for each EA Events
     /// </summary>
-    public class Dispatcher : ReactiveObject, IDispatcher
+    public class Dispatcher : IDispatcher
     {
         /// <summary>
         /// The <see cref="INavigationService" />

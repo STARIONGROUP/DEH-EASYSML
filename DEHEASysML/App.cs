@@ -26,6 +26,7 @@ namespace DEHEASysML
 {
     using System;
     using System.Diagnostics.CodeAnalysis;
+    using System.IO;
     using System.Reflection;
 
     using Autofac;
@@ -37,6 +38,8 @@ namespace DEHEASysML
     using EA;
 
     using NLog;
+
+    using File = System.IO.File;
 
     /// <summary>
     /// The entry point of the EA AddIn
@@ -65,12 +68,12 @@ namespace DEHEASysML
         private const string RibbonCategoryName = "Publish";
 
         /// <summary>
-        /// The <see cref="NLog"/> logger
+        /// The <see cref="NLog" /> logger
         /// </summary>
         private readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         /// <summary>
-        /// The <see cref="IDispatcher"/>
+        /// The <see cref="IDispatcher" />
         /// </summary>
         private IDispatcher dispatcher;
 
@@ -79,6 +82,10 @@ namespace DEHEASysML
         /// </summary>
         public App()
         {
+            Directory.SetCurrentDirectory(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!);
+            AppDomain.CurrentDomain.AssemblyResolve += this.CurrentDomainOnAssemblyResolve;
+            LogManager.LoadConfiguration(Path.Combine(Directory.GetCurrentDirectory(), "NLog.config"));
+            LogManager.Configuration.Variables["basedir"] = Directory.GetCurrentDirectory();
             this.LogAppStart();
             var containerBuilder = new ContainerBuilder();
             this.RegisterTypes(containerBuilder);
@@ -162,8 +169,29 @@ namespace DEHEASysML
         /// </summary>
         public void EA_Disconnect()
         {
+            AppDomain.CurrentDomain.AssemblyResolve -= this.CurrentDomainOnAssemblyResolve;
             GC.Collect();
             GC.WaitForPendingFinalizers();
+        }
+
+        /// <summary>
+        /// Occures when <see cref="AppDomain.AssemblyResolve" /> event is called
+        /// </summary>
+        /// <param name="sender">The event sender</param>
+        /// <param name="args">The event args</param>
+        /// <returns>The assembly</returns>
+        private Assembly CurrentDomainOnAssemblyResolve(object sender, ResolveEventArgs args)
+        {
+            var folderPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+
+            if (string.IsNullOrEmpty(folderPath))
+            {
+                return null;
+            }
+
+            var assemblyPath = Path.Combine(folderPath, new AssemblyName(args.Name).Name + ".dll");
+
+            return !File.Exists(assemblyPath) ? null : Assembly.LoadFrom(assemblyPath);
         }
 
         /// <summary>

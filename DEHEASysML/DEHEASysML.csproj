@@ -1,10 +1,9 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
 	<PropertyGroup>
 		<OutputType>Library</OutputType>
 		<TargetFramework>net472</TargetFramework>
 		<RootNamespace>DEHEASysML</RootNamespace>
 		<UseWPF>true</UseWPF>
-		<UseWindowsForms>true</UseWindowsForms>
 		<AssemblyTitle>DEHEASysML</AssemblyTitle>
 		<AppDesignerFolder>Properties</AppDesignerFolder>
 		<Company>RHEA System S.A.</Company>
@@ -17,9 +16,6 @@
 		<ApplicationIcon>icon.ico</ApplicationIcon>
 		<RegisterForComInterop>true</RegisterForComInterop>
 		<ProjectGuid>{5507BC7E-3E2C-4568-AAC8-FCDEE7914CDA}</ProjectGuid>
-		<CreateCodeBase>true</CreateCodeBase>
-		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-		<OutputPath>C:\Program Files (x86)\Sparx Systems\EA</OutputPath>
 	</PropertyGroup>
 
 	<ItemGroup>
