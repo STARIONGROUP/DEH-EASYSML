@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "DEHEASysML": {
+      "commandName": "Executable",
+      "executablePath": "C:\\Program Files (x86)\\Sparx Systems\\EA\\EA.exe"
+    }
+  }
+}
