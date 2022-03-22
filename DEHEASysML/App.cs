@@ -214,8 +214,9 @@ namespace DEHEASysML
         }
 
         /// <summary>
-        /// Add a header to the log file
+        /// Registers the view models types that can be resolved by the <see cref="IContainer" />
         /// </summary>
+        /// <param name="containerBuilder">The <see cref="ContainerBuilder" /></param>
         private void RegisterViewModels(ContainerBuilder containerBuilder)
         {
         }
