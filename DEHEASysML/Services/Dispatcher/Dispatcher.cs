@@ -24,10 +24,13 @@
 
 namespace DEHEASysML.Services.Dispatcher
 {
-    using System;
+    using DEHEASysML.Forms;
+    using DEHEASysML.ViewModel;
 
-    using DEHPCommon.Services.NavigationService;
-    using DEHPCommon.UserInterfaces.Views;
+    using DEHPCommon.HubController.Interfaces;
+    using DEHPCommon.UserInterfaces.ViewModels.Interfaces;
+
+    using EA;
 
     /// <summary>
     /// Handles the behavior for each EA Events
@@ -35,17 +38,50 @@ namespace DEHEASysML.Services.Dispatcher
     public class Dispatcher : IDispatcher
     {
         /// <summary>
-        /// The <see cref="INavigationService" />
+        /// The name of the <see cref="HubPanelControl" /> inside EA
         /// </summary>
-        private readonly INavigationService navigationService;
+        private const string HubPanelName = "Hub Panel";
+
+        /// <summary>
+        /// The <see cref="IHubController" />
+        /// </summary>
+        private readonly IHubController hubController;
+
+        /// <summary>
+        /// The <see cref="Repository" />
+        /// </summary>
+        private Repository currentRepository;
+
+        /// <summary>
+        /// Asserts if the <see cref="HubPanelControl" /> has been created
+        /// </summary>
+        private bool hubPanelControlCreated;
 
         /// <summary>
         /// Initializes a new <see cref="Dispatcher" />
         /// </summary>
-        /// <param name="navigationService">The <see cref="INavigationService" /></param>
-        public Dispatcher(INavigationService navigationService)
+        /// <param name="hubController">The <see cref="IHubController" /></param>
+        /// <param name="statusBar">The <see cref="IStatusBarControlViewModel" /></param>
+        public Dispatcher(IHubController hubController, IStatusBarControlViewModel statusBar)
         {
-            this.navigationService = navigationService;
+            this.hubController = hubController;
+            this.StatusBar = statusBar;
+        }
+
+        /// <summary>
+        /// The <see cref="IStatusBarControlViewModel" />
+        /// </summary>
+        public IStatusBarControlViewModel StatusBar { get; set; }
+
+        /// <summary>
+        /// Handle the connection to EA
+        /// </summary>
+        /// <param name="repository">The current <see cref="Repository" /></param>
+        public void Connect(Repository repository)
+        {
+            this.currentRepository = repository;
+            this.currentRepository.HideAddinWindow();
+            this.currentRepository.RemoveWindow(HubPanelName);
         }
 
         /// <summary>
@@ -53,7 +89,34 @@ namespace DEHEASysML.Services.Dispatcher
         /// </summary>
         public void ShowHubPanel()
         {
-            this.navigationService.ShowDialog<Login>();
+            if (this.StatusBar is EnterpriseArchitectStatusBarControlViewModel enterpriseArchitectStatusBar)
+            {
+                enterpriseArchitectStatusBar.Initialize(this.currentRepository);
+            }
+
+            if (!this.hubPanelControlCreated)
+            {
+                this.currentRepository.AddWindow(HubPanelName, typeof(HubPanelControl).ToString());
+                this.hubPanelControlCreated = true;
+            }
+
+            this.currentRepository.ShowAddinWindow(HubPanelName);
+        }
+
+        /// <summary>
+        /// Handle the disconnection to EA
+        /// </summary>
+        public void Disconnect()
+        {
+            this.currentRepository.RemoveWindow(HubPanelName);
+            this.currentRepository.HideAddinWindow();
+
+            if (this.StatusBar is EnterpriseArchitectStatusBarControlViewModel enterpriseArchitectStatusBar)
+            {
+                enterpriseArchitectStatusBar.Clear();
+            }
+
+            this.hubController.Close();
         }
     }
 }

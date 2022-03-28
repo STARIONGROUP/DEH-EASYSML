@@ -32,8 +32,11 @@ namespace DEHEASysML
     using Autofac;
 
     using DEHEASysML.Services.Dispatcher;
+    using DEHEASysML.ViewModel;
+    using DEHEASysML.ViewModel.Interfaces;
 
     using DEHPCommon;
+    using DEHPCommon.UserInterfaces.ViewModels.Interfaces;
 
     using EA;
 
@@ -55,7 +58,7 @@ namespace DEHEASysML
         /// <summary>
         /// The name of the Hub Panel Menu
         /// </summary>
-        private const string HubPanelMenu = "&Hub Panel";
+        private const string HubPanelMenu = "&Open/Close Hub Panel";
 
         /// <summary>
         /// The name of the Impact Panel Menu
@@ -101,6 +104,7 @@ namespace DEHEASysML
         {
             using var scope = AppContainer.Container.BeginLifetimeScope();
             this.dispatcher = scope.Resolve<IDispatcher>();
+            this.dispatcher.Connect(repository);
         }
 
         /// <summary>
@@ -128,6 +132,11 @@ namespace DEHEASysML
         /// <returns>The definition of the menu option</returns>
         public object EA_GetMenuItems(Repository repository, string location, string menuName)
         {
+            if (location != "MainMenu")
+            {
+                return null;
+            }
+
             switch (menuName)
             {
                 case "":
@@ -137,7 +146,7 @@ namespace DEHEASysML
                     return subMenuItems;
             }
 
-            return "";
+            return null;
         }
 
         /// <summary>
@@ -169,6 +178,7 @@ namespace DEHEASysML
         /// </summary>
         public void EA_Disconnect()
         {
+            this.dispatcher.Disconnect();
             AppDomain.CurrentDomain.AssemblyResolve -= this.CurrentDomainOnAssemblyResolve;
             GC.Collect();
             GC.WaitForPendingFinalizers();
@@ -219,6 +229,8 @@ namespace DEHEASysML
         /// <param name="containerBuilder">The <see cref="ContainerBuilder" /></param>
         private void RegisterViewModels(ContainerBuilder containerBuilder)
         {
+            containerBuilder.RegisterType<HubPanelViewModel>().As<IHubPanelViewModel>().SingleInstance();
+            containerBuilder.RegisterType<EnterpriseArchitectStatusBarControlViewModel>().As<IStatusBarControlViewModel>().SingleInstance();
         }
     }
 }
