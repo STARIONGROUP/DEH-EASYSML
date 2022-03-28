@@ -1,0 +1,54 @@
+﻿<UserControl
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
+             xmlns:publicationBrowser="clr-namespace:DEHPCommon.UserInterfaces.Views.PublicationBrowser;assembly=DEHPCommon"
+             xmlns:objectBrowser="clr-namespace:DEHPCommon.UserInterfaces.Views.ObjectBrowser;assembly=DEHPCommon"
+             xmlns:views="clr-namespace:DEHPCommon.UserInterfaces.Views;assembly=DEHPCommon"
+             x:Class="DEHEASysML.Views.HubPanel"
+             mc:Ignorable="d" 
+             d:DesignHeight="550"  d:DesignWidth="500">
+    <Grid>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition/>
+            </Grid.RowDefinitions>
+            <StackPanel Grid.Row="0" HorizontalAlignment="Center" Orientation="Horizontal" Margin="0,0,0,10">
+                <Button Width="150" Height="40" HorizontalAlignment="Right"
+                                    Command="{Binding ConnectCommand}"
+                                    Content="{Binding ConnectButtonText}"
+                                    ToolTip="Connect or disconnect from a Hub data source"/>
+                <views:HubSessionControl DataContext="{Binding SessionControl}"/>
+            </StackPanel>
+            <Grid Grid.Row="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <views:HubBrowserHeader Grid.Row="1" DataContext="{Binding HubBrowserHeader}"/>
+                <dx:DXTabControl Grid.Row="2">
+                    <dx:DXTabItem>
+                        <dx:DXTabItem.Header>
+                            <TextBlock Text="Engineering Model" />
+                        </dx:DXTabItem.Header>
+                        <objectBrowser:ObjectBrowser >
+                            <objectBrowser:ObjectBrowser DataContext="{Binding ObjectBrowser}"/>
+                        </objectBrowser:ObjectBrowser>
+                    </dx:DXTabItem>
+                    <dx:DXTabItem>
+                        <dx:DXTabItem.Header>
+                            <TextBlock Text="Publications" />
+                        </dx:DXTabItem.Header>
+                        <publicationBrowser:PublicationBrowser >
+                            <publicationBrowser:PublicationBrowser DataContext="{Binding PublicationBrowser}"/>
+                        </publicationBrowser:PublicationBrowser>
+                    </dx:DXTabItem>
+                </dx:DXTabControl>
+            </Grid>
+        </Grid>
+    </Grid>
+</UserControl>

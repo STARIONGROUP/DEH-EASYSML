@@ -1,9 +1,10 @@
-<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<OutputType>Library</OutputType>
 		<TargetFramework>net472</TargetFramework>
 		<RootNamespace>DEHEASysML</RootNamespace>
 		<UseWPF>true</UseWPF>
+		<UseWindowsForms>true</UseWindowsForms>
 		<AssemblyTitle>DEHEASysML</AssemblyTitle>
 		<AppDesignerFolder>Properties</AppDesignerFolder>
 		<Company>RHEA System S.A.</Company>
@@ -29,7 +30,7 @@
 
 	<ItemGroup>
 		<Reference Include="Interop.EA">
-			<HintPath>C:\Program Files (x86)\Sparx Systems\EA\Interop.EA.dll</HintPath>
+		  <HintPath>..\lib\Interop.EA.dll</HintPath>
 		</Reference>
 		<Reference Include="System.Web" />
 	</ItemGroup>
@@ -39,4 +40,11 @@
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</None>
 	</ItemGroup>
+
+	<Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
+	<Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
+
+	<Target Name="AfterBuild">
+		<Exec Command="C:\Windows\Microsoft.NET\Framework\v4.0.30319\RegAsm.exe DEHEASysML.dll /codebase" ConsoleToMSBuild="true" WorkingDirectory="$(OutputPath)" />
+	</Target>
 </Project>

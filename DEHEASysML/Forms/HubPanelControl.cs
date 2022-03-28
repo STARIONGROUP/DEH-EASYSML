@@ -1,5 +1,5 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
-// <copyright file="IDispatcher.cs" company="RHEA System S.A.">
+// <copyright file="HubPanelControl.cs" company="RHEA System S.A.">
 // Copyright (c) 2020-2022 RHEA System S.A.
 // 
 // Author: Sam Gerené, Alex Vorobiev, Alexander van Delft, Nathanael Smiechowski, Antoine Théate.
@@ -22,29 +22,23 @@
 // </copyright>
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace DEHEASysML.Services.Dispatcher
+namespace DEHEASysML.Forms
 {
-    using EA;
+    using System.Diagnostics.CodeAnalysis;
+    using System.Windows.Forms;
 
     /// <summary>
-    /// Interface definition for <see cref="Dispatcher" />
+    /// Interaction logic for HubPanelControl
     /// </summary>
-    public interface IDispatcher
+    public partial class HubPanelControl : UserControl
     {
         /// <summary>
-        /// Handle the connection to EA
+        /// Initialize a new <see cref="HubPanelControl" />
         /// </summary>
-        /// <param name="repository">The current <see cref="Repository" /></param>
-        void Connect(Repository repository);
-
-        /// <summary>
-        /// Show the Hub Panel to the user
-        /// </summary>
-        void ShowHubPanel();
-
-        /// <summary>
-        /// Handle the disconnetion to EA
-        /// </summary>
-        void Disconnect();
+        [ExcludeFromCodeCoverage]
+        public HubPanelControl()
+        {
+            this.InitializeComponent();
+        }
     }
 }

@@ -25,9 +25,14 @@
 namespace DEHEASysML.Tests.Services.Dispatcher
 {
     using DEHEASysML.Services.Dispatcher;
+    using DEHEASysML.ViewModel;
 
+    using DEHPCommon.HubController.Interfaces;
     using DEHPCommon.Services.NavigationService;
-    using DEHPCommon.UserInterfaces.Views;
+    using DEHPCommon.UserInterfaces.ViewModels.Interfaces;
+
+    using EA;
+
     using Moq;
 
     using NUnit.Framework;
@@ -36,21 +41,53 @@ namespace DEHEASysML.Tests.Services.Dispatcher
     public class DispatcherTestFixture
     {
         private Dispatcher dispatcher;
-        private Mock<INavigationService> navigationService;
+        private Mock<Repository> repository;
+        private Mock<IHubController> hubController;
+        private Mock<IStatusBarControlViewModel> statusBar;
 
         [SetUp]
         public void Setup()
         {
-            this.navigationService = new Mock<INavigationService>();
-            this.dispatcher = new Dispatcher(this.navigationService.Object);
+            this.repository = new Mock<Repository>();
+            this.repository.Setup(x => x.AddWindow(It.IsAny<string>(), It.IsAny<string>()));
+            this.repository.Setup(x => x.ShowAddinWindow(It.IsAny<string>()));
+            this.repository.Setup(x => x.RemoveWindow(It.IsAny<string>()));
+
+            this.hubController = new Mock<IHubController>();
+            this.hubController.Setup(x => x.Close());
+
+            this.statusBar = new Mock<IStatusBarControlViewModel>();
+
+            this.dispatcher = new Dispatcher(this.hubController.Object, this.statusBar.Object);
         }
 
         [Test]
         public void VerifyShowHubPanel()
         {
-            this.navigationService.Setup(x => x.ShowDialog<Login>());
-            this.dispatcher.ShowHubPanel();
-            this.navigationService.Verify(x => x.ShowDialog<Login>(), Times.Once);
+            this.dispatcher.Connect(this.repository.Object);
+            Assert.DoesNotThrow(() => this.dispatcher.ShowHubPanel());
+            Assert.DoesNotThrow(() => this.dispatcher.ShowHubPanel());
+            this.repository.Verify(x => x.AddWindow(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+            this.repository.Verify(x => x.ShowAddinWindow(It.IsAny<string>()), Times.Exactly(2));
+
+            this.dispatcher.StatusBar = new EnterpriseArchitectStatusBarControlViewModel(new Mock<INavigationService>().Object);
+            Assert.DoesNotThrow(() => this.dispatcher.ShowHubPanel());
+            this.repository.Verify(x => x.ShowAddinWindow(It.IsAny<string>()), Times.Exactly(3));
+        }
+
+        [Test]
+        public void VerifyConnectAndDisconnect()
+        {
+            Assert.DoesNotThrow(() => this.dispatcher.Connect(this.repository.Object));
+            Assert.DoesNotThrow(() => this.dispatcher.Disconnect());
+
+            var enterpriseArchitectStatusBarControlViewModel = new EnterpriseArchitectStatusBarControlViewModel(new Mock<INavigationService>().Object);
+            enterpriseArchitectStatusBarControlViewModel.Initialize(this.repository.Object);
+            this.dispatcher.StatusBar = enterpriseArchitectStatusBarControlViewModel; 
+            Assert.DoesNotThrow(() => this.dispatcher.Disconnect());
+
+            this.repository.Verify(x => x.RemoveWindow(It.IsAny<string>()), Times.Exactly(3));
+            this.hubController.Verify(x => x.Close(), Times.Exactly(2));
         }
     }
 }
