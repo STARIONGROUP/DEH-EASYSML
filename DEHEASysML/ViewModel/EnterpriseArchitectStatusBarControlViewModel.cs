@@ -88,7 +88,10 @@ namespace DEHEASysML.ViewModel
         /// </summary>
         public void Clear()
         {
-            this.repository.RemoveOutputTab(TabName);
+            if (this.repository != null && this.repository.IsTabOpen(TabName) != 0)
+            {
+                this.repository.RemoveOutputTab(TabName);
+            }
         }
 
         /// <summary>
