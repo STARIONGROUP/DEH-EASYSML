@@ -24,10 +24,12 @@
 
 namespace DEHEASysML.Tests.Services.Dispatcher
 {
+    using System;
+
+    using DEHEASysML.DstController;
     using DEHEASysML.Services.Dispatcher;
     using DEHEASysML.ViewModel;
 
-    using DEHPCommon.HubController.Interfaces;
     using DEHPCommon.Services.NavigationService;
     using DEHPCommon.UserInterfaces.ViewModels.Interfaces;
 
@@ -42,7 +44,7 @@ namespace DEHEASysML.Tests.Services.Dispatcher
     {
         private Dispatcher dispatcher;
         private Mock<Repository> repository;
-        private Mock<IHubController> hubController;
+        private Mock<IDstController> dstController;
         private Mock<IStatusBarControlViewModel> statusBar;
 
         [SetUp]
@@ -53,12 +55,15 @@ namespace DEHEASysML.Tests.Services.Dispatcher
             this.repository.Setup(x => x.ShowAddinWindow(It.IsAny<string>()));
             this.repository.Setup(x => x.RemoveWindow(It.IsAny<string>()));
 
-            this.hubController = new Mock<IHubController>();
-            this.hubController.Setup(x => x.Close());
+            this.dstController = new Mock<IDstController>();
+            this.dstController.Setup(x => x.OnFileClose(this.repository.Object));
+            this.dstController.Setup(x => x.OnFileNew(this.repository.Object));
+            this.dstController.Setup(x => x.OnFileOpen(this.repository.Object));
+            this.dstController.Setup(x => x.OnNotifyContextItemModified(this.repository.Object, It.IsAny<string>(),It.IsAny<ObjectType>()));
 
             this.statusBar = new Mock<IStatusBarControlViewModel>();
 
-            this.dispatcher = new Dispatcher(this.hubController.Object, this.statusBar.Object);
+            this.dispatcher = new Dispatcher(this.dstController.Object, this.statusBar.Object);
         }
 
         [Test]
@@ -82,12 +87,33 @@ namespace DEHEASysML.Tests.Services.Dispatcher
             Assert.DoesNotThrow(() => this.dispatcher.Disconnect());
 
             var enterpriseArchitectStatusBarControlViewModel = new EnterpriseArchitectStatusBarControlViewModel(new Mock<INavigationService>().Object);
-            enterpriseArchitectStatusBarControlViewModel.Initialize(this.repository.Object);
-            this.dispatcher.StatusBar = enterpriseArchitectStatusBarControlViewModel; 
             Assert.DoesNotThrow(() => this.dispatcher.Disconnect());
 
-            this.repository.Verify(x => x.RemoveWindow(It.IsAny<string>()), Times.Exactly(3));
-            this.hubController.Verify(x => x.Close(), Times.Exactly(2));
+            enterpriseArchitectStatusBarControlViewModel.Initialize(this.repository.Object);
+            this.dispatcher.StatusBar = enterpriseArchitectStatusBarControlViewModel;
+            Assert.DoesNotThrow(() => this.dispatcher.Disconnect());
+
+            this.repository.Setup(x => x.IsTabOpen("DEHP")).Returns(0);
+            Assert.DoesNotThrow(() => this.dispatcher.Disconnect());
+
+            this.repository.Setup(x => x.IsTabOpen("DEHP")).Returns(2);
+            Assert.DoesNotThrow(() => this.dispatcher.Disconnect());
+
+            this.repository.Verify(x => x.RemoveWindow(It.IsAny<string>()), Times.Exactly(6));
+        }
+
+        [Test]
+        public void VerifyFileEvents()
+        {
+            Assert.DoesNotThrow(() => this.dispatcher.OnFileNew(this.repository.Object));
+            Assert.DoesNotThrow(() => this.dispatcher.OnFileClose(this.repository.Object));
+            Assert.DoesNotThrow(() => this.dispatcher.OnFileOpen(this.repository.Object));
+            Assert.DoesNotThrow(() => this.dispatcher.OnNotifyContextItemModified(this.repository.Object, Guid.NewGuid().ToString(), ObjectType.otDiagram));
+
+            this.dstController.Verify(x => x.OnFileNew(this.repository.Object), Times.Once);
+            this.dstController.Verify(x => x.OnFileClose(this.repository.Object), Times.Once);
+            this.dstController.Verify(x => x.OnFileOpen(this.repository.Object), Times.Once);
+            this.dstController.Verify(x => x.OnNotifyContextItemModified(this.repository.Object, It.IsAny<string>(), It.IsAny<ObjectType>()), Times.Once);
         }
     }
 }

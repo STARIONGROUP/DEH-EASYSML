@@ -24,10 +24,10 @@
 
 namespace DEHEASysML.Services.Dispatcher
 {
+    using DEHEASysML.DstController;
     using DEHEASysML.Forms;
     using DEHEASysML.ViewModel;
 
-    using DEHPCommon.HubController.Interfaces;
     using DEHPCommon.UserInterfaces.ViewModels.Interfaces;
 
     using EA;
@@ -43,9 +43,9 @@ namespace DEHEASysML.Services.Dispatcher
         private const string HubPanelName = "Hub Panel";
 
         /// <summary>
-        /// The <see cref="IHubController" />
+        /// The <see cref="IDstController" />
         /// </summary>
-        private readonly IHubController hubController;
+        private readonly IDstController dstController;
 
         /// <summary>
         /// The <see cref="Repository" />
@@ -60,11 +60,11 @@ namespace DEHEASysML.Services.Dispatcher
         /// <summary>
         /// Initializes a new <see cref="Dispatcher" />
         /// </summary>
-        /// <param name="hubController">The <see cref="IHubController" /></param>
+        /// <param name="dstController">The <see cref="IDstController" /></param>
         /// <param name="statusBar">The <see cref="IStatusBarControlViewModel" /></param>
-        public Dispatcher(IHubController hubController, IStatusBarControlViewModel statusBar)
+        public Dispatcher(IDstController dstController, IStatusBarControlViewModel statusBar)
         {
-            this.hubController = hubController;
+            this.dstController = dstController;
             this.StatusBar = statusBar;
         }
 
@@ -82,6 +82,7 @@ namespace DEHEASysML.Services.Dispatcher
             this.currentRepository = repository;
             this.currentRepository.HideAddinWindow();
             this.currentRepository.RemoveWindow(HubPanelName);
+            this.dstController.Connect(repository);
         }
 
         /// <summary>
@@ -116,7 +117,45 @@ namespace DEHEASysML.Services.Dispatcher
                 enterpriseArchitectStatusBar.Clear();
             }
 
-            this.hubController.Close();
+            this.dstController.Disconnect();
+        }
+
+        /// <summary>
+        /// Handle the FileOpen event from EA
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        public void OnFileOpen(Repository repository)
+        {
+            this.dstController.OnFileOpen(repository);
+        }
+
+        /// <summary>
+        /// Handle the FileClose event from EA
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        public void OnFileClose(Repository repository)
+        {
+            this.dstController.OnFileClose(repository);
+        }
+
+        /// <summary>
+        /// Handle the FileNew event from EA
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        public void OnFileNew(Repository repository)
+        {
+            this.dstController.OnFileNew(repository);
+        }
+
+        /// <summary>
+        /// Handle the OnNotifyContextItemModified event from EA
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        /// <param name="guid">The guid of the Item</param>
+        /// <param name="objectType">The <see cref="ObjectType" /> of the item</param>
+        public void OnNotifyContextItemModified(Repository repository, string guid, ObjectType objectType)
+        {
+            this.dstController.OnNotifyContextItemModified(repository, guid, objectType);
         }
     }
 }

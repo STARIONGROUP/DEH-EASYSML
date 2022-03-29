@@ -26,11 +26,14 @@ namespace DEHEASysML
 {
     using System;
     using System.Diagnostics.CodeAnalysis;
+    using System.Globalization;
     using System.IO;
     using System.Reflection;
+    using System.Threading;
 
     using Autofac;
 
+    using DEHEASysML.DstController;
     using DEHEASysML.Services.Dispatcher;
     using DEHEASysML.ViewModel;
     using DEHEASysML.ViewModel.Interfaces;
@@ -85,6 +88,8 @@ namespace DEHEASysML
         /// </summary>
         public App()
         {
+            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
+            Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
             Directory.SetCurrentDirectory(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!);
             AppDomain.CurrentDomain.AssemblyResolve += this.CurrentDomainOnAssemblyResolve;
             LogManager.LoadConfiguration(Path.Combine(Directory.GetCurrentDirectory(), "NLog.config"));
@@ -153,10 +158,10 @@ namespace DEHEASysML
         /// EA_MenuClick events are received by an Add-In in response to user selection of a menu option.
         /// The event is raised when the user clicks on a particular menu option. When a user clicks on one of your non-parent menu
         /// options, your Add-In receives a <c>MenuClick</c> event.
-        /// Notice that your code can directly access Enterprise Architect data and UI elements using Repository methods.
+        /// Notice that your code can directly access Enterprise Architect data and UI elements using CurrentRepository methods.
         /// </summary>
         /// <param name="repository">
-        /// An EA.Repository object representing the currently open Enterprise Architect model. Poll its
+        /// An EA.CurrentRepository object representing the currently open Enterprise Architect model. Poll its
         /// members to retrieve model data and user interface status information.
         /// </param>
         /// <param name="location">Not used</param>
@@ -182,6 +187,49 @@ namespace DEHEASysML
             AppDomain.CurrentDomain.AssemblyResolve -= this.CurrentDomainOnAssemblyResolve;
             GC.Collect();
             GC.WaitForPendingFinalizers();
+        }
+
+        /// <summary>
+        /// The event occurs when the model being viewed by the Enterprise Architect user changes, for whatever reason (through
+        /// user interaction or Add-In activity).
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        public void EA_FileOpen(Repository repository)
+        {
+            this.dispatcher.OnFileOpen(repository);
+        }
+
+        /// <summary>
+        /// This event occurs when the model currently opened within Enterprise Architect is about to be closed (when another model
+        /// is about to be opened
+        /// or when Enterprise Architect is about to shutdown).
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        public void EA_FileClose(Repository repository)
+        {
+            this.dispatcher.OnFileClose(repository);
+        }
+
+        /// <summary>
+        /// The event occurs when the model being viewed by the Enterprise Architect user changes, for whatever reason (through
+        /// user interaction or Add-In activity).
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        public void EA_FileNew(Repository repository)
+        {
+            this.dispatcher.OnFileNew(repository);
+        }
+
+        /// <summary>
+        /// This event occurs when a user has modified the context item. Add-Ins that require knowledge of when an item has been
+        /// modified can subscribe to this broadcast function.
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        /// <param name="guid">The guid of the Item</param>
+        /// <param name="objectType">The <see cref="ObjectType" /> of the item</param>
+        public void EA_OnNotifyContextItemModified(Repository repository, string guid, ObjectType objectType)
+        {
+            this.dispatcher.OnNotifyContextItemModified(repository, guid, objectType);
         }
 
         /// <summary>
@@ -221,6 +269,7 @@ namespace DEHEASysML
         private void RegisterTypes(ContainerBuilder containerBuilder)
         {
             containerBuilder.RegisterType<Dispatcher>().As<IDispatcher>().SingleInstance();
+            containerBuilder.RegisterType<DstController.DstController>().As<IDstController>().SingleInstance();
         }
 
         /// <summary>

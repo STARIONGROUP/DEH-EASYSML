@@ -1,5 +1,5 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
-// <copyright file="IDispatcher.cs" company="RHEA System S.A.">
+// <copyright file="IDstController.cs" company="RHEA System S.A.">
 // Copyright (c) 2020-2022 RHEA System S.A.
 // 
 // Author: Sam Gerené, Alex Vorobiev, Alexander van Delft, Nathanael Smiechowski, Antoine Théate.
@@ -22,30 +22,32 @@
 // </copyright>
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace DEHEASysML.Services.Dispatcher
+namespace DEHEASysML.DstController
 {
+    using System.Collections.Generic;
+
     using EA;
 
     /// <summary>
-    /// Interface definition for <see cref="Dispatcher" />
+    /// Interface definition for <see cref="DstController" />
     /// </summary>
-    public interface IDispatcher
+    public interface IDstController
     {
         /// <summary>
-        /// Handle the connection to EA
+        /// The <see cref="Repository" />
         /// </summary>
-        /// <param name="repository">The current <see cref="Repository" /></param>
-        void Connect(Repository repository);
+        Repository CurrentRepository { get; }
 
         /// <summary>
-        /// Show the Hub Panel to the user
-        /// </summary>
-        void ShowHubPanel();
-
-        /// <summary>
-        /// Handle the disconnetion to EA
+        /// Handle to clear everything when Enterprise Architect close
         /// </summary>
         void Disconnect();
+
+        /// <summary>
+        /// Handle the initialization when Enterprise Architect connects the AddIn
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        void Connect(Repository repository);
 
         /// <summary>
         /// Handle the FileOpen event from EA
@@ -72,5 +74,26 @@ namespace DEHEASysML.Services.Dispatcher
         /// <param name="guid">The guid of the Item</param>
         /// <param name="objectType">The <see cref="ObjectType" /> of the item</param>
         void OnNotifyContextItemModified(Repository repository, string guid, ObjectType objectType);
+
+        /// <summary>
+        /// Gets all requirements present inside a model
+        /// </summary>
+        /// <param name="model">The model</param>
+        /// <returns>A collection of <see cref="Element" /> representing requirement</returns>
+        List<Element> GetAllRequirements(IDualPackage model);
+
+        /// <summary>
+        /// Gets all blocks present inside a model
+        /// </summary>
+        /// <param name="model">The model</param>
+        /// <returns>A collection of <see cref="Element" /> representing block</returns>
+        List<Element> GetAllBlocks(IDualPackage model);
+
+        /// <summary>
+        /// Gets all ValueTypes present inside a model
+        /// </summary>
+        /// <param name="model">The model</param>
+        /// <returns>A collection of <see cref="Element" /> representing ValueType</returns>
+        List<Element> GetAllValueTypes(IDualPackage model);
     }
 }
