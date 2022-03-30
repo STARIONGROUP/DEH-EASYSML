@@ -1,5 +1,5 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
-// <copyright file="HubPanel.xaml.cs" company="RHEA System S.A.">
+// <copyright file="RequirementsBrowser.xaml.cs" company="RHEA System S.A.">
 // Copyright (c) 2020-2022 RHEA System S.A.
 // 
 // Author: Sam Gerené, Alex Vorobiev, Alexander van Delft, Nathanael Smiechowski, Antoine Théate.
@@ -22,20 +22,20 @@
 // </copyright>
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace DEHEASysML.Views
+namespace DEHEASysML.Views.RequirementsBrowser
 {
     using System.Diagnostics.CodeAnalysis;
 
     /// <summary>
-    /// Interaction logic for HubPanel.xaml
+    /// Interaction logic for RequirementsBrowser.xaml
     /// </summary>
-    public partial class HubPanel
+    public partial class RequirementsBrowser
     {
         /// <summary>
-        /// Initialize a new <see cref="HubPanel" />
+        /// Initializes a new <see cref="RequirementsBrowser" />
         /// </summary>
         [ExcludeFromCodeCoverage]
-        public HubPanel()
+        public RequirementsBrowser()
         {
             this.InitializeComponent();
         }

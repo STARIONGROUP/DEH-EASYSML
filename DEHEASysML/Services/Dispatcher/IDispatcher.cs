@@ -72,5 +72,11 @@ namespace DEHEASysML.Services.Dispatcher
         /// <param name="guid">The guid of the Item</param>
         /// <param name="objectType">The <see cref="ObjectType" /> of the item</param>
         void OnNotifyContextItemModified(Repository repository, string guid, ObjectType objectType);
+
+        /// <summary>
+        /// Handle the OnPostInitialized event from EA
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        void OnPostInitiliazed(Repository repository);
     }
 }
