@@ -36,6 +36,7 @@ namespace DEHEASysML.Tests.ViewModel
     using CDP4Dal.Permission;
 
     using DEHEASysML.ViewModel;
+    using DEHEASysML.ViewModel.RequirementsBrowser;
 
     using DEHPCommon.Enumerators;
     using DEHPCommon.HubController.Interfaces;
@@ -63,6 +64,7 @@ namespace DEHEASysML.Tests.ViewModel
         private Mock<IObjectBrowserViewModel> objectBrowser;
         private Mock<IStatusBarControlViewModel> statusBar;
         private Mock<ISession> session;
+        private Mock<IRequirementsBrowserViewModel> requirementsBrowser;
         private DomainOfExpertise domain;
         private Person person;
         private Participant participant;
@@ -140,10 +142,11 @@ namespace DEHEASysML.Tests.ViewModel
             this.hubBrowserHeader = new Mock<IHubBrowserHeaderViewModel>();
             this.sessionControl = new Mock<IHubSessionControlViewModel>();
             this.statusBar = new Mock<IStatusBarControlViewModel>();
+            this.requirementsBrowser = new Mock<IRequirementsBrowserViewModel>();
 
             this.viewModel = new HubPanelViewModel(this.navigationService.Object, this.hubController.Object,
                 this.sessionControl.Object, this.hubBrowserHeader.Object, this.publicationBrowser.Object,
-                this.objectBrowser.Object, this.statusBar.Object);
+                this.objectBrowser.Object, this.statusBar.Object, this.requirementsBrowser.Object);
         }
 
         [Test]
@@ -155,6 +158,7 @@ namespace DEHEASysML.Tests.ViewModel
             Assert.IsNotNull(this.viewModel.ConnectCommand);
             Assert.IsNotNull(this.viewModel.PublicationBrowser);
             Assert.IsNotNull(this.viewModel.StatusBar);
+            Assert.IsNotNull(this.viewModel.RequirementsBrowser);
             Assert.AreEqual("Connect", this.viewModel.ConnectButtonText);
         }
 

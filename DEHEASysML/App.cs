@@ -33,12 +33,16 @@ namespace DEHEASysML
 
     using Autofac;
 
+    using CDP4Common.EngineeringModelData;
+
     using DEHEASysML.DstController;
     using DEHEASysML.Services.Dispatcher;
     using DEHEASysML.ViewModel;
     using DEHEASysML.ViewModel.Interfaces;
+    using DEHEASysML.ViewModel.RequirementsBrowser;
 
     using DEHPCommon;
+    using DEHPCommon.Services.ObjectBrowserTreeSelectorService;
     using DEHPCommon.UserInterfaces.ViewModels.Interfaces;
 
     using EA;
@@ -61,7 +65,7 @@ namespace DEHEASysML
         /// <summary>
         /// The name of the Hub Panel Menu
         /// </summary>
-        private const string HubPanelMenu = "&Open/Close Hub Panel";
+        private const string HubPanelMenu = "&Open Hub Panel";
 
         /// <summary>
         /// The name of the Impact Panel Menu
@@ -110,6 +114,7 @@ namespace DEHEASysML
             using var scope = AppContainer.Container.BeginLifetimeScope();
             this.dispatcher = scope.Resolve<IDispatcher>();
             this.dispatcher.Connect(repository);
+            scope.Resolve<IObjectBrowserTreeSelectorService>().Add<RequirementsSpecification>();
         }
 
         /// <summary>
@@ -176,6 +181,15 @@ namespace DEHEASysML
             {
                 this.dispatcher.ShowHubPanel();
             }
+        }
+
+        /// <summary>
+        /// EA_OnPostInitialized notifies Add-Ins that the Repository object has finished loading and any necessary initialization steps can now be performed on the object. 
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        public void EA_OnPostInitialized(Repository repository)
+        {
+            this.dispatcher.OnPostInitiliazed(repository);
         }
 
         /// <summary>
@@ -280,6 +294,7 @@ namespace DEHEASysML
         {
             containerBuilder.RegisterType<HubPanelViewModel>().As<IHubPanelViewModel>().SingleInstance();
             containerBuilder.RegisterType<EnterpriseArchitectStatusBarControlViewModel>().As<IStatusBarControlViewModel>().SingleInstance();
+            containerBuilder.RegisterType<RequirementsBrowserViewModel>().As<IRequirementsBrowserViewModel>();
         }
     }
 }

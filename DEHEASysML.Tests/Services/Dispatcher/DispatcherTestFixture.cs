@@ -54,6 +54,7 @@ namespace DEHEASysML.Tests.Services.Dispatcher
             this.repository.Setup(x => x.AddWindow(It.IsAny<string>(), It.IsAny<string>()));
             this.repository.Setup(x => x.ShowAddinWindow(It.IsAny<string>()));
             this.repository.Setup(x => x.RemoveWindow(It.IsAny<string>()));
+            this.repository.Setup(x => x.HideAddinWindow());
 
             this.dstController = new Mock<IDstController>();
             this.dstController.Setup(x => x.OnFileClose(this.repository.Object));
@@ -77,7 +78,9 @@ namespace DEHEASysML.Tests.Services.Dispatcher
 
             this.dispatcher.StatusBar = new EnterpriseArchitectStatusBarControlViewModel(new Mock<INavigationService>().Object);
             Assert.DoesNotThrow(() => this.dispatcher.ShowHubPanel());
+            Assert.DoesNotThrow(() => this.dispatcher.OnPostInitiliazed(this.repository.Object));
             this.repository.Verify(x => x.ShowAddinWindow(It.IsAny<string>()), Times.Exactly(3));
+            this.repository.Verify(x => x.HideAddinWindow(), Times.Exactly(2));
         }
 
         [Test]

@@ -105,18 +105,21 @@ namespace DEHEASysML.Services.Dispatcher
         }
 
         /// <summary>
+        /// Handle the OnPostInitialized event from EA
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        public void OnPostInitiliazed(Repository repository)
+        {
+            this.currentRepository.HideAddinWindow();
+        }
+
+        /// <summary>
         /// Handle the disconnection to EA
         /// </summary>
         public void Disconnect()
         {
-            this.currentRepository.RemoveWindow(HubPanelName);
             this.currentRepository.HideAddinWindow();
-
-            if (this.StatusBar is EnterpriseArchitectStatusBarControlViewModel enterpriseArchitectStatusBar)
-            {
-                enterpriseArchitectStatusBar.Clear();
-            }
-
+            this.currentRepository.RemoveWindow(HubPanelName);
             this.dstController.Disconnect();
         }
 

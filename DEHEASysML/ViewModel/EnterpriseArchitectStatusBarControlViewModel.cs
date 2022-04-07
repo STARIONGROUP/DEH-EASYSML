@@ -84,17 +84,6 @@ namespace DEHEASysML.ViewModel
         }
 
         /// <summary>
-        /// Clear the output tab
-        /// </summary>
-        public void Clear()
-        {
-            if (this.repository != null && this.repository.IsTabOpen(TabName) != 0)
-            {
-                this.repository.RemoveOutputTab(TabName);
-            }
-        }
-
-        /// <summary>
         /// Execute the <see cref="StatusBarControlViewModel.UserSettingCommand" />
         /// </summary>
         protected override void ExecuteUserSettingCommand()

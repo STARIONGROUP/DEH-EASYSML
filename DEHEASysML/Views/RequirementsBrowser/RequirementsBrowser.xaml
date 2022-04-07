@@ -1,0 +1,166 @@
+﻿<UserControl x:Class="DEHEASysML.Views.RequirementsBrowser.RequirementsBrowser"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
+             xmlns:dxmvvm="http://schemas.devexpress.com/winfx/2008/xaml/mvvm"
+             xmlns:behaviors="clr-namespace:DEHPCommon.UserInterfaces.Behaviors;assembly=DEHPCommon"
+             xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
+             xmlns:converters="clr-namespace:DEHPCommon.Converters;assembly=DEHPCommon"
+             xmlns:viewModels="clr-namespace:DEHEASysML.ViewModel.RequirementsBrowser"
+             xmlns:viewModels1="clr-namespace:DEHPCommon.UserInterfaces.ViewModels;assembly=DEHPCommon"
+             mc:Ignorable="d" 
+             MinWidth="400" d:DesignWidth="400">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/DEHPCommon;component/UserInterfaces/Views/ContextMenu/ContextMenuStyle.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <converters:ThingToIconUriConverter x:Key="ThingToIconUriConverter" />
+
+            <Style x:Key="ThingIcon" TargetType="{x:Type Image}">
+                <Setter Property="Width" Value="28" />
+                <Setter Property="Height" Value="16" />
+                <Setter Property="Margin" Value="1" />
+                <Setter Property="HorizontalAlignment" Value="Center" />
+            </Style>
+
+            <HierarchicalDataTemplate DataType="{x:Type viewModels1:BrowserViewModelBase}" ItemsSource="{Binding ContainedRows, UpdateSourceTrigger=PropertyChanged}">
+                <dx:MeasurePixelSnapper>
+                    <StackPanel Orientation="Horizontal">
+                        <dx:PixelSnapper>
+                            <Image Style="{StaticResource ThingIcon}" Source="{dx:DXImage 'SvgImages/XAF/ModelEditor_Class_Object.svg'}"/>
+                        </dx:PixelSnapper>
+
+                        <ContentPresenter x:Name="defaultRowPresenter"
+                                          Content="{Binding}"
+                                          ContentTemplate="{Binding View.DefaultDataRowTemplate}"/>
+                    </StackPanel>
+                </dx:MeasurePixelSnapper>
+            </HierarchicalDataTemplate>
+            <HierarchicalDataTemplate DataType="{x:Type viewModels:RequirementsSpecificationRowViewModel}" ItemsSource="{Binding ContainedRows}">
+                <dx:MeasurePixelSnapper>
+                    <StackPanel Orientation="Horizontal">
+                        <dx:PixelSnapper>
+                            <Image Style="{StaticResource ThingIcon}">
+                                <Image.Source>
+                                    <MultiBinding Converter="{StaticResource ThingToIconUriConverter}" Mode="OneWay">
+                                        <Binding Path="DataContext.Row.ThingStatus" RelativeSource="{RelativeSource AncestorType={x:Type dxg:RowControl}}" />
+                                    </MultiBinding>
+                                </Image.Source>
+                            </Image>
+                        </dx:PixelSnapper>
+                        <ContentPresenter x:Name="defaultRowPresenter"
+                                          Content="{Binding}"
+                                          ContentTemplate="{Binding View.DefaultDataRowTemplate}" />
+                    </StackPanel>
+                </dx:MeasurePixelSnapper>
+            </HierarchicalDataTemplate>
+
+            <HierarchicalDataTemplate DataType="{x:Type viewModels:RequirementsGroupRowViewModel}" ItemsSource="{Binding ContainedRows}">
+                <dx:MeasurePixelSnapper>
+                    <StackPanel Orientation="Horizontal">
+                        <dx:PixelSnapper>
+                            <Image Style="{StaticResource ThingIcon}">
+                                <Image.Source>
+                                    <MultiBinding Converter="{StaticResource ThingToIconUriConverter}" Mode="OneWay">
+                                        <Binding Path="DataContext.Row.ThingStatus" RelativeSource="{RelativeSource AncestorType={x:Type dxg:RowControl}}" />
+                                    </MultiBinding>
+                                </Image.Source>
+                            </Image>
+                        </dx:PixelSnapper>
+                        <ContentPresenter x:Name="defaultRowPresenter"
+                                          Content="{Binding}"
+                                          ContentTemplate="{Binding View.DefaultDataRowTemplate}" />
+                    </StackPanel>
+                </dx:MeasurePixelSnapper>
+            </HierarchicalDataTemplate>
+
+            <HierarchicalDataTemplate DataType="{x:Type viewModels:RequirementRowViewModel}" ItemsSource="{Binding ContainedRows}">
+                <dx:MeasurePixelSnapper>
+                    <StackPanel Orientation="Horizontal">
+                        <dx:PixelSnapper>
+                            <Image Style="{StaticResource ThingIcon}">
+                                <Image.Source>
+                                    <MultiBinding Converter="{StaticResource ThingToIconUriConverter}" Mode="OneWay">
+                                        <Binding Path="DataContext.Row.ThingStatus" RelativeSource="{RelativeSource AncestorType={x:Type dxg:RowControl}}" />
+                                    </MultiBinding>
+                                </Image.Source>
+                            </Image>
+                        </dx:PixelSnapper>
+                        <ContentPresenter x:Name="defaultRowPresenter"
+                                          Content="{Binding}"
+                                          ContentTemplate="{Binding View.DefaultDataRowTemplate}" />
+                    </StackPanel>
+                </dx:MeasurePixelSnapper>
+            </HierarchicalDataTemplate>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <dx:LoadingDecorator IsSplashScreenShown="{Binding IsBusy}"
+                         OwnerLock="LoadingContent"
+                         BorderEffect="Default"
+                         BorderEffectColor="Blue">
+        <Grid>
+            <dxg:TreeListControl ItemsSource="{Binding Things}"
+                                 SelectedItem="{Binding SelectedThing}"
+                                 SelectedItems="{Binding SelectedThings}"
+                                 SelectionMode="MultipleRow">
+                <dxmvvm:Interaction.Behaviors>
+                    <behaviors:ContextMenuBehavior/>
+                </dxmvvm:Interaction.Behaviors>
+                <dxg:TreeListControl.View>
+                    <dxg:TreeListView Name="View"
+                                          AllowEditing="False"
+                                          AutoWidth="False"
+                                          EditorShowMode="MouseUpFocused"
+                                          ExpandCollapseNodesOnNavigation="True"
+                                          ExpandStateFieldName="IsExpanded"
+                                          FixedLineWidth="0"
+                                          HorizontalScrollbarVisibility="Auto"
+                                          NavigationStyle="Cell"
+                                          ShowHorizontalLines="False"
+                                          ShowIndicator="False"
+                                          ShowNodeImages="False"
+                                          ShowVerticalLines="False"
+                                          TreeDerivationMode="HierarchicalDataTemplate"
+                                          TreeLineStyle="Solid"
+                                          VerticalScrollbarVisibility="Auto">
+                    <dxg:TreeListView.RowStyle>
+                        <Style TargetType="{x:Type dxg:RowControl}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Row.IsPublishable, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}" Value="True">
+                                    <Setter Property="FontWeight" Value="Bold" />
+                                    <Setter Property="Foreground" Value="Blue" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Path=Row.IsHighlighted}" Value="True">
+                                    <Setter Property="Background" Value="Yellow"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Path=Row.IsSelectedForTransfer}" Value="True">
+                                    <Setter Property="Background" Value="LightGreen"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Row.IsDefault, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}" Value="True">
+                                    <Setter Property="FontWeight" Value="Bold" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Row.IsDefault, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}" Value="False">
+                                    <Setter Property="FontWeight" Value="Normal" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                            <Setter Property="ToolTip" Value="{Binding Row.Tooltip}" />
+                        </Style>
+                    </dxg:TreeListView.RowStyle>
+                    <dxg:TreeListView.ContextMenu>
+                        <ContextMenu />
+                    </dxg:TreeListView.ContextMenu>
+                </dxg:TreeListView>
+                </dxg:TreeListControl.View>
+                <dxg:TreeListControl.Columns>
+                    <dxg:TreeListColumn FieldName="ShortName" Fixed="Left"/>
+                    <dxg:TreeListColumn FieldName="Name" />
+                    <dxg:TreeListColumn FieldName="Definition" />
+                    <dxg:TreeListColumn FieldName="OwnerName" />
+                </dxg:TreeListControl.Columns>
+            </dxg:TreeListControl>
+        </Grid>
+    </dx:LoadingDecorator>
+</UserControl>

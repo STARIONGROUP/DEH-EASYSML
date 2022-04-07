@@ -7,6 +7,7 @@
              xmlns:publicationBrowser="clr-namespace:DEHPCommon.UserInterfaces.Views.PublicationBrowser;assembly=DEHPCommon"
              xmlns:objectBrowser="clr-namespace:DEHPCommon.UserInterfaces.Views.ObjectBrowser;assembly=DEHPCommon"
              xmlns:views="clr-namespace:DEHPCommon.UserInterfaces.Views;assembly=DEHPCommon"
+             xmlns:requirementsBrowser="clr-namespace:DEHEASysML.Views.RequirementsBrowser"
              x:Class="DEHEASysML.Views.HubPanel"
              mc:Ignorable="d" 
              d:DesignHeight="550"  d:DesignWidth="500">
@@ -39,6 +40,14 @@
                             <objectBrowser:ObjectBrowser DataContext="{Binding ObjectBrowser}"/>
                         </objectBrowser:ObjectBrowser>
                     </dx:DXTabItem>
+                    <dx:DXTabItem>
+                        <dx:DXTabItem.Header>
+                            <TextBlock Text="Requirements" />
+                        </dx:DXTabItem.Header>
+                        <requirementsBrowser:RequirementsBrowser >
+                            <requirementsBrowser:RequirementsBrowser DataContext="{Binding RequirementsBrowser}"/>
+                        </requirementsBrowser:RequirementsBrowser>
+                        </dx:DXTabItem>
                     <dx:DXTabItem>
                         <dx:DXTabItem.Header>
                             <TextBlock Text="Publications" />

@@ -27,6 +27,7 @@ namespace DEHEASysML.ViewModel
     using System;
 
     using DEHEASysML.ViewModel.Interfaces;
+    using DEHEASysML.ViewModel.RequirementsBrowser;
     using DEHEASysML.Views;
 
     using DEHPCommon.HubController.Interfaces;
@@ -83,9 +84,10 @@ namespace DEHEASysML.ViewModel
         /// <param name="publicationBrowser">The <see cref="IPublicationBrowserViewModel" /></param>
         /// <param name="objectBrowser">The <see cref="IObjectBrowserViewModel" /></param>
         /// <param name="statusBar">The <see cref="IStatusBarControlViewModel" /></param>
+        /// <param name="requirementsBrowser">The <see cref="IRequirementsBrowserViewModel" /></param>
         public HubPanelViewModel(INavigationService navigationService, IHubController hubController, IHubSessionControlViewModel sessionControl,
             IHubBrowserHeaderViewModel hubBrowserHeader, IPublicationBrowserViewModel publicationBrowser,
-            IObjectBrowserViewModel objectBrowser, IStatusBarControlViewModel statusBar)
+            IObjectBrowserViewModel objectBrowser, IStatusBarControlViewModel statusBar, IRequirementsBrowserViewModel requirementsBrowser)
         {
             this.NavigationService = navigationService;
             this.hubController = hubController;
@@ -94,6 +96,7 @@ namespace DEHEASysML.ViewModel
             this.PublicationBrowser = publicationBrowser;
             this.ObjectBrowser = objectBrowser;
             this.StatusBar = statusBar;
+            this.RequirementsBrowser = requirementsBrowser;
             this.InitializeCommands();
         }
 
@@ -135,6 +138,11 @@ namespace DEHEASysML.ViewModel
         /// Gets the <see cref="IHubSessionControlViewModel" />
         /// </summary>
         public IHubSessionControlViewModel SessionControl { get; set; }
+
+        /// <summary>
+        /// Gets or set the <see cref="RequirementsBrowser" />
+        /// </summary>
+        public IRequirementsBrowserViewModel RequirementsBrowser { get; set; }
 
         /// <summary>
         /// Append the connection status to the status bar
