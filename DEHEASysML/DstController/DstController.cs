@@ -24,8 +24,12 @@
 
 namespace DEHEASysML.DstController
 {
+    using System;
     using System.Collections.Generic;
     using System.Linq;
+
+    using DEHEASysML.Enumerators;
+    using DEHEASysML.Extensions;
 
     using DEHPCommon.HubController.Interfaces;
 
@@ -137,7 +141,7 @@ namespace DEHEASysML.DstController
         /// <returns>A collection of <see cref="Element" /> representing requirement</returns>
         public List<Element> GetAllRequirements(IDualPackage model)
         {
-            return this.GetElementsFromPackage(model, "Requirement");
+            return this.GetElementsFromPackage(model, StereotypeKind.Requirement);
         }
 
         /// <summary>
@@ -147,7 +151,7 @@ namespace DEHEASysML.DstController
         /// <returns>A collection of <see cref="Element" /> representing block</returns>
         public List<Element> GetAllBlocks(IDualPackage model)
         {
-            return this.GetElementsFromPackage(model, "block");
+            return this.GetElementsFromPackage(model, StereotypeKind.Block);
         }
 
         /// <summary>
@@ -157,7 +161,33 @@ namespace DEHEASysML.DstController
         /// <returns>A collection of <see cref="Element" /> representing ValueType</returns>
         public List<Element> GetAllValueTypes(IDualPackage model)
         {
-            return this.GetElementsFromPackage(model, "ValueType");
+            return this.GetElementsFromPackage(model, StereotypeKind.ValueType);
+        }
+
+        /// <summary>
+        /// Gets the port <see cref="Element" /> and the interface <see cref="Element" /> of a port
+        /// </summary>
+        /// <param name="port">The port</param>
+        /// <returns>A <see cref="Tuple{T1}" /> to represents the connection of the port</returns>
+        public (Element port, Element interfaceElement) ResolvePort(Element port)
+        {
+            var propertyTypeElement = this.CurrentRepository.GetElementByID(port.PropertyType);
+            var connector = propertyTypeElement.Connectors.OfType<Connector>().FirstOrDefault();
+
+            return connector == null ? (null, propertyTypeElement) : this.ResolveConnector(connector);
+        }
+
+        /// <summary>
+        /// Gets the source and the target <see cref="Element"/>s of a <see cref="Connector"/>
+        /// </summary>
+        /// <param name="connector">The <see cref="Connector"/></param>
+        /// <returns>a <see cref="Tuple{T}"/> containing source and target</returns>
+        public (Element source, Element target) ResolveConnector(Connector connector)
+        {
+            var source = this.CurrentRepository.GetElementByID(connector.ClientID);
+            var target = this.CurrentRepository.GetElementByID(connector.SupplierID);
+
+            return (source, target);
         }
 
         /// <summary>
@@ -166,17 +196,17 @@ namespace DEHEASysML.DstController
         /// <param name="package">The <see cref="IDualPackage" /></param>
         /// <param name="stereotype">The stereotype of the <see cref="Element" /></param>
         /// <returns>A collection of <see cref="Element" /></returns>
-        private List<Element> GetElementsFromPackage(IDualPackage package, string stereotype)
+        private List<Element> GetElementsFromPackage(IDualPackage package, StereotypeKind stereotype)
         {
-            var requirements = new List<Element>();
-            requirements.AddRange(package.Elements.OfType<Element>().Where(x => x.Stereotype == stereotype));
+            var elements = new List<Element>();
+            elements.AddRange(package.Elements.OfType<Element>().Where(x => x.Stereotype.AreEquals(stereotype)));
 
             foreach (var subPackage in package.Packages.OfType<Package>())
             {
-                requirements.AddRange(this.GetElementsFromPackage(subPackage, stereotype));
+                elements.AddRange(this.GetElementsFromPackage(subPackage, stereotype));
             }
 
-            return requirements;
+            return elements;
         }
     }
 }

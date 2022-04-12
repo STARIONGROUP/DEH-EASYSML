@@ -20,12 +20,7 @@
 	  <Reference Include="Interop.EA">
 		  <HintPath>..\lib\Interop.EA.dll</HintPath>
 	  </Reference>
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="Resources\TestProject.eapx">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+	  <Reference Include="PresentationFramework" />
   </ItemGroup>
 
 </Project>

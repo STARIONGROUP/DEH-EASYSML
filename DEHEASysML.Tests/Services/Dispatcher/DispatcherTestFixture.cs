@@ -102,7 +102,7 @@ namespace DEHEASysML.Tests.Services.Dispatcher
             this.repository.Setup(x => x.IsTabOpen("DEHP")).Returns(2);
             Assert.DoesNotThrow(() => this.dispatcher.Disconnect());
 
-            this.repository.Verify(x => x.RemoveWindow(It.IsAny<string>()), Times.Exactly(6));
+            this.repository.Verify(x => x.RemoveWindow(It.IsAny<string>()), Times.Exactly(1));
         }
 
         [Test]
