@@ -25,9 +25,10 @@
 namespace DEHEASysML.Tests.DstController
 {
     using System;
-    using System.IO;
 
     using DEHEASysML.DstController;
+    using DEHEASysML.Enumerators;
+    using DEHEASysML.Tests.Utils.Stereotypes;
 
     using DEHPCommon.HubController.Interfaces;
 
@@ -43,6 +44,7 @@ namespace DEHEASysML.Tests.DstController
         private DstController dstController;
         private Mock<IHubController> hubController;
         private Mock<Repository> repository;
+        private Mock<Package> package;
 
         [SetUp]
         public void Setup()
@@ -51,6 +53,28 @@ namespace DEHEASysML.Tests.DstController
             this.hubController.Setup(x => x.Close());
 
             this.repository = new Mock<Repository>();
+            this.package = new Mock<Package>();
+            this.package.Setup(x => x.Elements).Returns(new EnterpriseArchitectCollection());
+
+            var requirementPackage = new Mock<Package>();
+            var blocPackage = new Mock<Package>();
+            var valueTypePackage = new Mock<Package>();
+            blocPackage.Setup(x => x.Packages).Returns(new EnterpriseArchitectCollection() { valueTypePackage.Object });
+            requirementPackage.Setup(x => x.Packages).Returns(new EnterpriseArchitectCollection());
+
+            var valueTypeElement = new Mock<Element>();
+            valueTypeElement.Setup(x => x.Stereotype).Returns(StereotypeKind.ValueType.ToString());
+            valueTypePackage.Setup(x => x.Elements).Returns(new EnterpriseArchitectCollection() {valueTypeElement.Object });
+            valueTypePackage.Setup(x => x.Packages).Returns(new EnterpriseArchitectCollection());
+
+            var blockElement = new Mock<Element>();
+            blockElement.Setup(x => x.Stereotype).Returns(StereotypeKind.Block.ToString());
+            blocPackage.Setup(x => x.Elements).Returns(new EnterpriseArchitectCollection() { blockElement.Object });
+
+            var requirement = new Mock<Element>();
+            requirement.Setup(x => x.Stereotype).Returns(StereotypeKind.Requirement.ToString());
+            requirementPackage.Setup(x => x.Elements).Returns(new EnterpriseArchitectCollection() { requirement.Object });
+            this.package.Setup(x => x.Packages).Returns(new EnterpriseArchitectCollection() { requirementPackage.Object, blocPackage.Object });
 
             this.dstController = new DstController(this.hubController.Object);
         }
@@ -93,17 +117,46 @@ namespace DEHEASysML.Tests.DstController
         [Test]
         public void VerifyGetElementsFromModel()
         {
-            var realRepository = new RepositoryClass();
-            realRepository.OpenFile(Path.Combine(TestContext.CurrentContext.TestDirectory, "Resources", "TestProject.eapx"));
-
-            var model = realRepository.Models.GetAt(0) as Package;
+            var model = this.package.Object;
             var requirements = this.dstController.GetAllRequirements(model);
             var valueTypes = this.dstController.GetAllValueTypes(model);
             var blocks = this.dstController.GetAllBlocks(model);
 
-            Assert.AreEqual(79, requirements.Count);
-            Assert.AreEqual(8, valueTypes.Count);
-            Assert.AreEqual(93, blocks.Count);
+            Assert.AreEqual(1, requirements.Count);
+            Assert.AreEqual(1, valueTypes.Count);
+            Assert.AreEqual(1, blocks.Count);
+        }
+
+        [Test]
+        public void VerifyRetrievePort()
+        {
+            this.dstController.CurrentRepository = this.repository.Object;
+
+            var port = new Mock<Element>();
+            port.Setup(x => x.PropertyType).Returns(322);
+
+            var propertyType = new Mock<Element>();
+            propertyType.Setup(x => x.Connectors).Returns(new EnterpriseArchitectCollection());
+
+            this.repository.Setup(x => x.GetElementByID(port.Object.PropertyType)).Returns(propertyType.Object);
+            var (elementPort, interfacePort) = this.dstController.ResolvePort(port.Object);
+            Assert.IsNull(elementPort);
+            Assert.AreEqual(propertyType.Object, interfacePort);
+
+            var connector = new Mock<Connector>();
+            connector.Setup(x => x.ClientID).Returns(52);
+            connector.Setup(x => x.SupplierID).Returns(152);
+
+            var interfaceBlock = new Mock<Element>();
+            var portblock = new Mock<Element>();
+
+            this.repository.Setup(x => x.GetElementByID(connector.Object.ClientID)).Returns(portblock.Object);
+            this.repository.Setup(x => x.GetElementByID(connector.Object.SupplierID)).Returns(interfaceBlock.Object);
+            propertyType.Setup(x => x.Connectors).Returns(new EnterpriseArchitectCollection(){connector.Object});
+
+            (elementPort, interfacePort) = this.dstController.ResolvePort(port.Object);
+            Assert.AreEqual(elementPort, portblock.Object);
+            Assert.AreEqual(interfacePort, interfaceBlock.Object);
         }
     }
 }

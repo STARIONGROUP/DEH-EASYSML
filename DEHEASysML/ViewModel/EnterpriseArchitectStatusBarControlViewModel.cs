@@ -42,7 +42,7 @@ namespace DEHEASysML.ViewModel
         /// <summary>
         /// The name of the Output Tab
         /// </summary>
-        private const string TabName = "DEHP";
+        private const string TabName = "COMET";
 
         /// <summary>
         /// The <see cref="Repository" />

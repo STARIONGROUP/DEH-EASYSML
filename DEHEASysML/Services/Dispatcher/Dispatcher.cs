@@ -118,8 +118,6 @@ namespace DEHEASysML.Services.Dispatcher
         /// </summary>
         public void Disconnect()
         {
-            this.currentRepository.HideAddinWindow();
-            this.currentRepository.RemoveWindow(HubPanelName);
             this.dstController.Disconnect();
         }
 

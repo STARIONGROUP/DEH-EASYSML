@@ -42,6 +42,7 @@ namespace DEHEASysML
     using DEHEASysML.ViewModel.RequirementsBrowser;
 
     using DEHPCommon;
+    using DEHPCommon.MappingEngine;
     using DEHPCommon.Services.ObjectBrowserTreeSelectorService;
     using DEHPCommon.UserInterfaces.ViewModels.Interfaces;
 
@@ -60,7 +61,7 @@ namespace DEHEASysML
         /// <summary>
         /// The name of the Menu Header
         /// </summary>
-        private const string MenuHeader = "-&DEHP";
+        private const string MenuHeader = "-&COMET";
 
         /// <summary>
         /// The name of the Hub Panel Menu
@@ -284,6 +285,7 @@ namespace DEHEASysML
         {
             containerBuilder.RegisterType<Dispatcher>().As<IDispatcher>().SingleInstance();
             containerBuilder.RegisterType<DstController.DstController>().As<IDstController>().SingleInstance();
+            containerBuilder.RegisterType<MappingEngine>().As<IMappingEngine>().WithParameter(MappingEngine.ParameterName, Assembly.GetExecutingAssembly());
         }
 
         /// <summary>

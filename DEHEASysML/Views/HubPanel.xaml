@@ -10,20 +10,24 @@
              xmlns:requirementsBrowser="clr-namespace:DEHEASysML.Views.RequirementsBrowser"
              x:Class="DEHEASysML.Views.HubPanel"
              mc:Ignorable="d" 
-             d:DesignHeight="550"  d:DesignWidth="500">
+             d:DesignHeight="550"  d:DesignWidth="300">
     <Grid>
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition/>
             </Grid.RowDefinitions>
-            <StackPanel Grid.Row="0" HorizontalAlignment="Center" Orientation="Horizontal" Margin="0,0,0,10">
-                <Button Width="150" Height="40" HorizontalAlignment="Right"
-                                    Command="{Binding ConnectCommand}"
-                                    Content="{Binding ConnectButtonText}"
-                                    ToolTip="Connect or disconnect from a Hub data source"/>
-                <views:HubSessionControl DataContext="{Binding SessionControl}"/>
-            </StackPanel>
+            <Grid Grid.Row="0" Margin="10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Button MinWidth="80" MaxWidth="150" Height="40" HorizontalAlignment="Left" 
+                        Command="{Binding ConnectCommand}"
+                        Content="{Binding ConnectButtonText}"
+                        ToolTip="Connect or disconnect from a Hub data source"/>
+                <views:HubSessionControl Grid.Column="1" HorizontalAlignment="Left" DataContext="{Binding SessionControl}" />
+            </Grid>
             <Grid Grid.Row="1">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -37,7 +41,7 @@
                             <TextBlock Text="Engineering Model" />
                         </dx:DXTabItem.Header>
                         <objectBrowser:ObjectBrowser >
-                            <objectBrowser:ObjectBrowser DataContext="{Binding ObjectBrowser}"/>
+                            <objectBrowser:ObjectBrowser DataContext="{Binding ObjectBrowser}"/> 
                         </objectBrowser:ObjectBrowser>
                     </dx:DXTabItem>
                     <dx:DXTabItem>

@@ -24,6 +24,7 @@
 
 namespace DEHEASysML.DstController
 {
+    using System;
     using System.Collections.Generic;
 
     using EA;
@@ -95,5 +96,19 @@ namespace DEHEASysML.DstController
         /// <param name="model">The model</param>
         /// <returns>A collection of <see cref="Element" /> representing ValueType</returns>
         List<Element> GetAllValueTypes(IDualPackage model);
+
+        /// <summary>
+        /// Gets the port <see cref="Element" /> and the interface <see cref="Element" /> of a port
+        /// </summary>
+        /// <param name="port">The port</param>
+        /// <returns>A <see cref="Tuple{T1}"/> to represents the connection of the port</returns>
+        (Element port, Element interfaceElement) ResolvePort(Element port);
+
+        /// <summary>
+        /// Gets the source and the target <see cref="Element"/>s of a <see cref="Connector"/>
+        /// </summary>
+        /// <param name="connector">The <see cref="Connector"/></param>
+        /// <returns>a <see cref="Tuple{T}"/> containing source and target</returns>
+        (Element source, Element target) ResolveConnector(Connector connector);
     }
 }
