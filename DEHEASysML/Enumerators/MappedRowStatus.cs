@@ -1,5 +1,5 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
-// <copyright file="MappedElementDefinitionRowViewModel.cs" company="RHEA System S.A.">
+// <copyright file="MappedRowStatus.cs" company="RHEA System S.A.">
 // Copyright (c) 2020-2022 RHEA System S.A.
 // 
 // Author: Sam Gerené, Alex Vorobiev, Alexander van Delft, Nathanael Smiechowski, Antoine Théate.
@@ -22,29 +22,33 @@
 // </copyright>
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace DEHEASysML.ViewModel.Rows
+namespace DEHEASysML.Enumerators
 {
-    using CDP4Common.EngineeringModelData;
-
-    using DEHPCommon.Enumerators;
-
-    using EA;
+    using DEHEASysML.ViewModel.Rows;
 
     /// <summary>
-    /// The <see cref="MappedElementDefinitionRowViewModel" /> is the row view model that represents a mapping between
-    /// an <see cref="ElementDefinition" /> and an <see cref="Element" />
+    /// Represents the status of the <see cref="IMappedElementRowViewModel"/>
     /// </summary>
-    public class MappedElementDefinitionRowViewModel : MappedElementRowViewModel<ElementDefinition>
+    public enum MappedRowStatus
     {
         /// <summary>
-        /// Initializes a new <see cref="MappedElementDefinitionRowViewModel" />
+        /// Default Value
         /// </summary>
-        /// <param name="thing">The <see cref="ElementDefinition" /></param>
-        /// <param name="dstElement">The <see cref="Element" /></param>
-        /// <param name="mappingDirection">The <see cref="MappingDirection" /></param>
-        public MappedElementDefinitionRowViewModel(ElementDefinition thing, Element dstElement, MappingDirection mappingDirection)
-            : base(thing, dstElement, mappingDirection)
-        {
-        }
+        None,
+
+        /// <summary>
+        /// Used when the <see cref="IMappedElementRowViewModel" /> was already mapped
+        /// </summary>
+        ExistingMapping,
+
+        /// <summary>
+        /// Used when the <see cref="IMappedElementRowViewModel" /> will create a new Element
+        /// </summary>
+        NewElement,
+
+        /// <summary>
+        /// Used when the <see cref="IMappedElementRowViewModel" /> will be mapped to an existing Element
+        /// </summary>
+        ExistingElement
     }
 }

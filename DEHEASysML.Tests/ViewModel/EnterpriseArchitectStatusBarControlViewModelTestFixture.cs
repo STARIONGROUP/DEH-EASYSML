@@ -24,6 +24,8 @@
 
 namespace DEHEASysML.Tests.ViewModel
 {
+    using System.Reactive.Concurrency;
+
     using DEHEASysML.ViewModel;
 
     using DEHPCommon.Services.NavigationService;
@@ -33,6 +35,8 @@ namespace DEHEASysML.Tests.ViewModel
     using Moq;
 
     using NUnit.Framework;
+
+    using ReactiveUI;
 
     [TestFixture]
     public class EnterpriseArchitectStatusBarControlViewModelTestFixture
@@ -44,6 +48,8 @@ namespace DEHEASysML.Tests.ViewModel
         [SetUp]
         public void Setup()
         {
+            RxApp.MainThreadScheduler = Scheduler.CurrentThread;
+
             this.navigationService = new Mock<INavigationService>();
 
             this.repository = new Mock<Repository>();

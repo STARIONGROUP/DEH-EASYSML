@@ -27,7 +27,11 @@ namespace DEHEASysML.DstController
     using System;
     using System.Collections.Generic;
 
+    using DEHEASysML.ViewModel.Rows;
+
     using EA;
+
+    using ReactiveUI;
 
     /// <summary>
     /// Interface definition for <see cref="DstController" />
@@ -38,6 +42,16 @@ namespace DEHEASysML.DstController
         /// The <see cref="Repository" />
         /// </summary>
         Repository CurrentRepository { get; }
+
+        /// <summary>
+        /// Asserts if the mapping is available
+        /// </summary>
+        bool CanMap { get; set; }
+
+        /// <summary>
+        /// A collection of <see cref="IMappedElementRowViewModel" />
+        /// </summary>
+        ReactiveList<IMappedElementRowViewModel> DstMapResult { get; }
 
         /// <summary>
         /// Handle to clear everything when Enterprise Architect close
@@ -77,6 +91,12 @@ namespace DEHEASysML.DstController
         void OnNotifyContextItemModified(Repository repository, string guid, ObjectType objectType);
 
         /// <summary>
+        /// Map all <see cref="IMappedElementRowViewModel" />
+        /// </summary>
+        /// <param name="elements">The collection of <see cref="IMappedElementRowViewModel" /></param>
+        void Map(List<IMappedElementRowViewModel> elements);
+
+        /// <summary>
         /// Gets all requirements present inside a model
         /// </summary>
         /// <param name="model">The model</param>
@@ -101,14 +121,43 @@ namespace DEHEASysML.DstController
         /// Gets the port <see cref="Element" /> and the interface <see cref="Element" /> of a port
         /// </summary>
         /// <param name="port">The port</param>
-        /// <returns>A <see cref="Tuple{T1}"/> to represents the connection of the port</returns>
+        /// <returns>A <see cref="Tuple{T1}" /> to represents the connection of the port</returns>
         (Element port, Element interfaceElement) ResolvePort(Element port);
 
         /// <summary>
-        /// Gets the source and the target <see cref="Element"/>s of a <see cref="Connector"/>
+        /// Gets the source and the target <see cref="Element" />s of a <see cref="Connector" />
         /// </summary>
-        /// <param name="connector">The <see cref="Connector"/></param>
-        /// <returns>a <see cref="Tuple{T}"/> containing source and target</returns>
+        /// <param name="connector">The <see cref="Connector" /></param>
+        /// <returns>a <see cref="Tuple{T}" /> containing source and target</returns>
         (Element source, Element target) ResolveConnector(Connector connector);
+
+        /// <summary>
+        /// Retrieves all selected <see cref="Element" />
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        /// <returns>A collection of selected  <see cref="Element" /></returns>
+        IEnumerable<Element> GetAllSelectedElements(Repository repository);
+
+        /// <summary>
+        /// Retrieves all <see cref="Element" /> from the selected <see cref="Package" />
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        /// <returns>A collection of <see cref="Element" /></returns>
+        IEnumerable<Element> GetAllElementsInsidePackage(Repository repository);
+
+        /// <summary>
+        /// Retrieve all Id of <see cref="Package" /> and its parent hierarchy that contains  <see cref="Element" /> inside the
+        /// given collection
+        /// </summary>
+        /// <param name="elements">The collection of <see cref="Element" /></param>
+        /// <returns>A collection of Id</returns>
+        IEnumerable<int> RetrieveAllParentsIdPackage(IEnumerable<Element> elements);
+
+        /// <summary>
+        /// Premaps all <see cref="IMappedElementRowViewModel" />
+        /// </summary>
+        /// <param name="elements"></param>
+        /// <returns>The collection of premapped <see cref="IMappedElementRowViewModel" /></returns>
+        List<IMappedElementRowViewModel> PreMap(List<IMappedElementRowViewModel> elements);
     }
 }

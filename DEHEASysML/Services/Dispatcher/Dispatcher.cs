@@ -24,18 +24,30 @@
 
 namespace DEHEASysML.Services.Dispatcher
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+
+    using Autofac;
+
     using DEHEASysML.DstController;
     using DEHEASysML.Forms;
     using DEHEASysML.ViewModel;
+    using DEHEASysML.ViewModel.Dialogs.Interfaces;
+    using DEHEASysML.Views.Dialogs;
 
+    using DEHPCommon;
+    using DEHPCommon.Services.NavigationService;
     using DEHPCommon.UserInterfaces.ViewModels.Interfaces;
 
     using EA;
 
+    using ReactiveUI;
+
     /// <summary>
     /// Handles the behavior for each EA Events
     /// </summary>
-    public class Dispatcher : IDispatcher
+    public class Dispatcher : ReactiveObject, IDispatcher
     {
         /// <summary>
         /// The name of the <see cref="HubPanelControl" /> inside EA
@@ -48,6 +60,11 @@ namespace DEHEASysML.Services.Dispatcher
         private readonly IDstController dstController;
 
         /// <summary>
+        /// The <see cref="INavigationService" />
+        /// </summary>
+        private readonly INavigationService navigationService;
+
+        /// <summary>
         /// The <see cref="Repository" />
         /// </summary>
         private Repository currentRepository;
@@ -58,20 +75,38 @@ namespace DEHEASysML.Services.Dispatcher
         private bool hubPanelControlCreated;
 
         /// <summary>
+        /// Backing field for <see cref="CanMap" />
+        /// </summary>
+        private bool canMap;
+
+        /// <summary>
         /// Initializes a new <see cref="Dispatcher" />
         /// </summary>
         /// <param name="dstController">The <see cref="IDstController" /></param>
         /// <param name="statusBar">The <see cref="IStatusBarControlViewModel" /></param>
-        public Dispatcher(IDstController dstController, IStatusBarControlViewModel statusBar)
+        /// <param name="navigationService">The <see cref="INavigationService" /></param>
+        public Dispatcher(IDstController dstController, IStatusBarControlViewModel statusBar, INavigationService navigationService)
         {
             this.dstController = dstController;
             this.StatusBar = statusBar;
+            this.navigationService = navigationService;
+
+            this.dstController.WhenAnyValue(x => x.CanMap).Subscribe(this.UpdateCanMap);
         }
 
         /// <summary>
         /// The <see cref="IStatusBarControlViewModel" />
         /// </summary>
         public IStatusBarControlViewModel StatusBar { get; set; }
+
+        /// <summary>
+        /// Asserts that the mapping is available
+        /// </summary>
+        public bool CanMap
+        {
+            get => this.canMap;
+            set => this.RaiseAndSetIfChanged(ref this.canMap, value);
+        }
 
         /// <summary>
         /// Handle the connection to EA
@@ -157,6 +192,47 @@ namespace DEHEASysML.Services.Dispatcher
         public void OnNotifyContextItemModified(Repository repository, string guid, ObjectType objectType)
         {
             this.dstController.OnNotifyContextItemModified(repository, guid, objectType);
+        }
+
+        /// <summary>
+        /// Handle the execution of the map selected <see cref="Element" />s command
+        /// </summary>
+        /// <param name="repository">The working <see cref="Repository" /></param>
+        public void MapSelectedElementsCommand(Repository repository)
+        {
+            var elements = this.dstController.GetAllSelectedElements(repository);
+            this.OpenMappingDialog(elements);
+        }
+
+        /// <summary>
+        /// Handle the execution of the map selected package command
+        /// </summary>
+        /// <param name="repository">The working <see cref="Repository" /></param>
+        public void MapSelectedPackageCommand(Repository repository)
+        {
+            var elements = this.dstController.GetAllElementsInsidePackage(repository);
+            this.OpenMappingDialog(elements);
+        }
+
+        /// <summary>
+        /// Opens the <see cref="DstMappingConfigurationDialog" /> and initializes it
+        /// </summary>
+        /// <param name="elements">The <see cref="Element" /> to display</param>
+        private void OpenMappingDialog(IEnumerable<Element> elements)
+        {
+            var elementsList = elements.ToList();
+            var viewModel = AppContainer.Container.Resolve<IDstMappingConfigurationDialogViewModel>();
+            viewModel.Initialize(elementsList, this.dstController.RetrieveAllParentsIdPackage(elementsList));
+            this.navigationService.ShowDialog<DstMappingConfigurationDialog, IDstMappingConfigurationDialogViewModel>(viewModel);
+        }
+
+        /// <summary>
+        /// Updates the value of <see cref="CanMap" />
+        /// </summary>
+        /// <param name="newCanMapValue">The new value</param>
+        private void UpdateCanMap(bool newCanMapValue)
+        {
+            this.CanMap = newCanMapValue;
         }
     }
 }

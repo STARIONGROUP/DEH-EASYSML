@@ -1,5 +1,5 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
-// <copyright file="MappedElementDefinitionRowViewModel.cs" company="RHEA System S.A.">
+// <copyright file="IDstMappingConfigurationDialogViewModel.cs" company="RHEA System S.A.">
 // Copyright (c) 2020-2022 RHEA System S.A.
 // 
 // Author: Sam Gerené, Alex Vorobiev, Alexander van Delft, Nathanael Smiechowski, Antoine Théate.
@@ -22,29 +22,22 @@
 // </copyright>
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace DEHEASysML.ViewModel.Rows
+namespace DEHEASysML.ViewModel.Dialogs.Interfaces
 {
-    using CDP4Common.EngineeringModelData;
-
-    using DEHPCommon.Enumerators;
+    using System.Collections.Generic;
 
     using EA;
 
     /// <summary>
-    /// The <see cref="MappedElementDefinitionRowViewModel" /> is the row view model that represents a mapping between
-    /// an <see cref="ElementDefinition" /> and an <see cref="Element" />
+    /// Interface definition for <see cref="DstMappingConfigurationDialogViewModel"/>
     /// </summary>
-    public class MappedElementDefinitionRowViewModel : MappedElementRowViewModel<ElementDefinition>
+    public interface IDstMappingConfigurationDialogViewModel
     {
         /// <summary>
-        /// Initializes a new <see cref="MappedElementDefinitionRowViewModel" />
+        /// Initializes this view model properties
         /// </summary>
-        /// <param name="thing">The <see cref="ElementDefinition" /></param>
-        /// <param name="dstElement">The <see cref="Element" /></param>
-        /// <param name="mappingDirection">The <see cref="MappingDirection" /></param>
-        public MappedElementDefinitionRowViewModel(ElementDefinition thing, Element dstElement, MappingDirection mappingDirection)
-            : base(thing, dstElement, mappingDirection)
-        {
-        }
+        /// <param name="selectedElements">The collection of <see cref="Element"/> to display</param>
+        /// <param name="packageIds">The collection of <see cref="Package"/> to display</param>
+        void Initialize(IEnumerable<Element> selectedElements, IEnumerable<int> packageIds);
     }
 }

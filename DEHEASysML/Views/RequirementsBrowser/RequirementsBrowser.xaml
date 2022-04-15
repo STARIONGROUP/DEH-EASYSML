@@ -105,7 +105,8 @@
             <dxg:TreeListControl ItemsSource="{Binding Things}"
                                  SelectedItem="{Binding SelectedThing}"
                                  SelectedItems="{Binding SelectedThings}"
-                                 SelectionMode="MultipleRow">
+                                 SelectionMode="MultipleRow"
+                                 ToolTip="Displays all Requirements defined in this iteration">
                 <dxmvvm:Interaction.Behaviors>
                     <behaviors:ContextMenuBehavior/>
                 </dxmvvm:Interaction.Behaviors>

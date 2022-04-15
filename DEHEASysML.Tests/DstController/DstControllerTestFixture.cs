@@ -25,12 +25,19 @@
 namespace DEHEASysML.Tests.DstController
 {
     using System;
+    using System.Collections.Generic;
+    using System.Linq;
 
     using DEHEASysML.DstController;
     using DEHEASysML.Enumerators;
     using DEHEASysML.Tests.Utils.Stereotypes;
+    using DEHEASysML.Utils.Stereotypes;
+    using DEHEASysML.ViewModel.Rows;
 
+    using DEHPCommon.Enumerators;
     using DEHPCommon.HubController.Interfaces;
+    using DEHPCommon.MappingEngine;
+    using DEHPCommon.UserInterfaces.ViewModels.Interfaces;
 
     using EA;
 
@@ -45,6 +52,8 @@ namespace DEHEASysML.Tests.DstController
         private Mock<IHubController> hubController;
         private Mock<Repository> repository;
         private Mock<Package> package;
+        private Mock<IMappingEngine> mappingEngine;
+        private Mock<IStatusBarControlViewModel> statusBarControlViewModel;
 
         [SetUp]
         public void Setup()
@@ -76,13 +85,29 @@ namespace DEHEASysML.Tests.DstController
             requirementPackage.Setup(x => x.Elements).Returns(new EnterpriseArchitectCollection() { requirement.Object });
             this.package.Setup(x => x.Packages).Returns(new EnterpriseArchitectCollection() { requirementPackage.Object, blocPackage.Object });
 
-            this.dstController = new DstController(this.hubController.Object);
+            this.mappingEngine = new Mock<IMappingEngine>();
+            this.statusBarControlViewModel = new Mock<IStatusBarControlViewModel>();
+
+            this.statusBarControlViewModel.Setup(x => 
+                x.Append(It.IsAny<string>(), It.IsAny<StatusBarMessageSeverity>()));
+
+            this.dstController = new DstController(this.hubController.Object, this.mappingEngine.Object, this.statusBarControlViewModel.Object);
+        }
+
+        public Mock<Package> CreatePackage(int id, int parentId)
+        {
+            var createdPackage = new Mock<Package>();
+            createdPackage.Setup(x => x.PackageID).Returns(id);
+            createdPackage.Setup(x => x.ParentID).Returns(parentId);
+            this.repository.Setup(x => x.GetPackageByID(createdPackage.Object.PackageID)).Returns(createdPackage.Object);
+            return createdPackage;
         }
 
         [Test]
         public void VerifyProperties()
         {
             Assert.IsNull(this.dstController.CurrentRepository);
+            Assert.IsFalse(this.dstController.CanMap);
         }
 
         [Test]
@@ -157,6 +182,119 @@ namespace DEHEASysML.Tests.DstController
             (elementPort, interfacePort) = this.dstController.ResolvePort(port.Object);
             Assert.AreEqual(elementPort, portblock.Object);
             Assert.AreEqual(interfacePort, interfaceBlock.Object);
+        }
+
+        [Test]
+        public void VerifyRetrieveAllParentsIdPackage()
+        {
+            this.dstController.CurrentRepository = this.repository.Object;
+
+            var element = new Mock<Element>();
+            element.Setup(x => x.PackageID).Returns(5);
+            this.CreatePackage(6, 2);
+            this.CreatePackage(5, 4);
+            this.CreatePackage(4, 3);
+            this.CreatePackage(3, 1);
+            this.CreatePackage(1, 0);
+
+            Assert.DoesNotThrow(() => this.dstController.RetrieveAllParentsIdPackage(new List<Element>()));
+
+            Assert.DoesNotThrow(() => this.dstController.RetrieveAllParentsIdPackage(new List<Element>(){element.Object}));
+            var packagesId = this.dstController.RetrieveAllParentsIdPackage(new List<Element>() { element.Object }).ToList();
+            Assert.AreEqual(4, packagesId.Count);
+            Assert.IsFalse(packagesId.Contains(0));
+            Assert.IsFalse(packagesId.Contains(6));
+        }
+
+        [Test]
+        public void VerifyGetAllSelectedElements()
+        {
+            var collection = new EnterpriseArchitectCollection();
+            this.repository.Setup(x => x.GetTreeSelectedElements()).Returns(collection);
+            this.dstController.CurrentRepository = this.repository.Object;
+
+            Assert.IsEmpty(this.dstController.GetAllSelectedElements(this.repository.Object));
+            var valueProperty = new Mock<Element>();
+            valueProperty.Setup(x => x.Stereotype).Returns(StereotypeKind.ValueProperty.ToString());
+            collection.Add(valueProperty.Object);
+            Assert.IsEmpty(this.dstController.GetAllSelectedElements(this.repository.Object));
+
+            var block = new Mock<Element>();
+            block.Setup(x => x.Stereotype).Returns(StereotypeKind.Block.ToString());
+            collection.Add(block.Object);
+            Assert.AreEqual(1,this.dstController.GetAllSelectedElements(this.repository.Object).Count());
+
+            var requirement = new Mock<Element>();
+            requirement.Setup(x => x.Stereotype).Returns(StereotypeKind.Block.ToString());
+            collection.Add(requirement.Object);
+            Assert.AreEqual(2, this.dstController.GetAllSelectedElements(this.repository.Object).Count());
+
+            collection.Add(block.Object);
+            Assert.AreEqual(2, this.dstController.GetAllSelectedElements(this.repository.Object).Count());
+
+            collection.Add(5);
+            Assert.AreEqual(2, this.dstController.GetAllSelectedElements(this.repository.Object).Count());
+        }
+
+        [Test]
+        public void VerifyGetAllElementsInsidePackage()
+        {
+            this.repository.Setup(x => x.GetTreeSelectedPackage()).Returns(this.package.Object);
+            Assert.AreEqual(2, this.dstController.GetAllElementsInsidePackage(this.repository.Object).Count());
+        }
+
+        [Test]
+        public void VerifyMapAndPremap()
+        {
+            Assert.IsEmpty(this.dstController.DstMapResult);
+
+            var elementsToMap = new List<IMappedElementRowViewModel>
+            {
+                new EnterpriseArchitectBlockElement(null, null, MappingDirection.FromDstToHub),
+                new EnterpriseArchitectBlockElement(null, null, MappingDirection.FromDstToHub)
+            };
+
+            this.mappingEngine.Setup(x => x.Map(It.IsAny<(bool, List<EnterpriseArchitectBlockElement>)>()))
+                .Returns(null);
+
+            this.mappingEngine.Setup(x => x.Map(It.IsAny<(bool, List<EnterpriseArchitectRequirementElement>)>()))
+                .Returns(null);
+
+            Assert.DoesNotThrow(() => this.dstController.PreMap(elementsToMap));
+            Assert.IsEmpty(this.dstController.DstMapResult);
+            Assert.DoesNotThrow(() => this.dstController.Map(elementsToMap));
+            Assert.IsEmpty(this.dstController.DstMapResult);
+
+            this.mappingEngine.Setup(x => x.Map(It.IsAny<(bool, List<EnterpriseArchitectBlockElement>)>()))
+                .Returns(new List<MappedElementDefinitionRowViewModel>());
+
+            this.mappingEngine.Setup(x => x.Map(It.IsAny<(bool, List<EnterpriseArchitectRequirementElement>)>()))
+                .Returns(new List<MappedRequirementRowViewModel>());
+
+            Assert.DoesNotThrow(() => this.dstController.PreMap(elementsToMap));
+            Assert.IsEmpty(this.dstController.DstMapResult);
+            Assert.DoesNotThrow(() => this.dstController.Map(elementsToMap));
+            Assert.IsEmpty(this.dstController.DstMapResult);
+
+            this.mappingEngine.Setup(x => x.Map(It.IsAny<(bool, List<EnterpriseArchitectBlockElement>)>()))
+                .Returns(new List<MappedElementDefinitionRowViewModel>()
+                {
+                    new MappedElementDefinitionRowViewModel(null, null, MappingDirection.FromDstToHub)
+                });
+
+            this.mappingEngine.Setup(x => x.Map(It.IsAny<(bool, List<EnterpriseArchitectRequirementElement>)>()))
+                .Returns(new List<MappedRequirementRowViewModel>()
+                {
+                    new MappedRequirementRowViewModel(null, null, MappingDirection.FromDstToHub)
+                });
+
+            Assert.DoesNotThrow(() => this.dstController.PreMap(elementsToMap));
+            Assert.IsEmpty(this.dstController.DstMapResult);
+            Assert.DoesNotThrow(() => this.dstController.Map(elementsToMap));
+            Assert.AreEqual(2,this.dstController.DstMapResult.Count);
+
+            this.statusBarControlViewModel.Verify(x => 
+                    x.Append(It.IsAny<string>(), It.IsAny<StatusBarMessageSeverity>()), Times.Exactly(2));
         }
     }
 }

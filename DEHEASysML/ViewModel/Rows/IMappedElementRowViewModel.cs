@@ -1,5 +1,5 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
-// <copyright file="MappedElementDefinitionRowViewModel.cs" company="RHEA System S.A.">
+// <copyright file="IMappedElementRowViewModel.cs" company="RHEA System S.A.">
 // Copyright (c) 2020-2022 RHEA System S.A.
 // 
 // Author: Sam Gerené, Alex Vorobiev, Alexander van Delft, Nathanael Smiechowski, Antoine Théate.
@@ -24,27 +24,31 @@
 
 namespace DEHEASysML.ViewModel.Rows
 {
-    using CDP4Common.EngineeringModelData;
-
-    using DEHPCommon.Enumerators;
-
-    using EA;
+    using DEHEASysML.Enumerators;
 
     /// <summary>
-    /// The <see cref="MappedElementDefinitionRowViewModel" /> is the row view model that represents a mapping between
-    /// an <see cref="ElementDefinition" /> and an <see cref="Element" />
+    /// Interface definition for <see cref="MappedElementRowViewModel{TThing}"/>
     /// </summary>
-    public class MappedElementDefinitionRowViewModel : MappedElementRowViewModel<ElementDefinition>
+    public interface IMappedElementRowViewModel
     {
         /// <summary>
-        /// Initializes a new <see cref="MappedElementDefinitionRowViewModel" />
+        /// Gets or sets the <see cref="MappedRowStatus"/>
         /// </summary>
-        /// <param name="thing">The <see cref="ElementDefinition" /></param>
-        /// <param name="dstElement">The <see cref="Element" /></param>
-        /// <param name="mappingDirection">The <see cref="MappingDirection" /></param>
-        public MappedElementDefinitionRowViewModel(ElementDefinition thing, Element dstElement, MappingDirection mappingDirection)
-            : base(thing, dstElement, mappingDirection)
-        {
-        }
+        MappedRowStatus MappedRowStatus { get; set; }
+
+        /// <summary>
+        /// The name of the Target Element
+        /// </summary>
+        string TargetElementName { get; set; }
+
+        /// <summary>
+        /// The name of the Source Element
+        /// </summary>
+        string SourceElementName { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating wheter this row represents a mapping done to a new element
+        /// </summary>
+        bool ShouldCreateNewTargetElement { get; set; }
     }
 }

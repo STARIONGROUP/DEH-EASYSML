@@ -1,5 +1,5 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
-// <copyright file="MappedElementDefinitionRowViewModel.cs" company="RHEA System S.A.">
+// <copyright file="ElementRequirementRowViewModel.cs" company="RHEA System S.A.">
 // Copyright (c) 2020-2022 RHEA System S.A.
 // 
 // Author: Sam Gerené, Alex Vorobiev, Alexander van Delft, Nathanael Smiechowski, Antoine Théate.
@@ -22,28 +22,38 @@
 // </copyright>
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace DEHEASysML.ViewModel.Rows
+namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
 {
-    using CDP4Common.EngineeringModelData;
-
-    using DEHPCommon.Enumerators;
-
     using EA;
 
     /// <summary>
-    /// The <see cref="MappedElementDefinitionRowViewModel" /> is the row view model that represents a mapping between
-    /// an <see cref="ElementDefinition" /> and an <see cref="Element" />
+    /// The <see cref="ElementRequirementRowViewModel" /> represents an <see cref="Element"/> of Stereotype Requirement
     /// </summary>
-    public class MappedElementDefinitionRowViewModel : MappedElementRowViewModel<ElementDefinition>
+    public class ElementRequirementRowViewModel : ElementRowViewModel
     {
         /// <summary>
-        /// Initializes a new <see cref="MappedElementDefinitionRowViewModel" />
+        /// Initializes a new <see cref="ElementRequirementRowViewModel" />
         /// </summary>
-        /// <param name="thing">The <see cref="ElementDefinition" /></param>
-        /// <param name="dstElement">The <see cref="Element" /></param>
-        /// <param name="mappingDirection">The <see cref="MappingDirection" /></param>
-        public MappedElementDefinitionRowViewModel(ElementDefinition thing, Element dstElement, MappingDirection mappingDirection)
-            : base(thing, dstElement, mappingDirection)
+        /// <param name="parent">The parent row</param>
+        /// <param name="eaObject">The object to represent</param>
+        public ElementRequirementRowViewModel(EnterpriseArchitectObjectBaseRowViewModel parent, Element eaObject) 
+            : base(parent, eaObject)
+        {
+            this.Initialize();
+        }
+
+        /// <summary>
+        /// Initializes this row properties
+        /// </summary>
+        private void Initialize()
+        {
+            this.UpdateProperties();
+        }
+
+        /// <summary>
+        /// Compute the current row to initializes properties
+        /// </summary>
+        public override void ComputeRow()
         {
         }
     }

@@ -32,6 +32,11 @@ namespace DEHEASysML.Services.Dispatcher
     public interface IDispatcher
     {
         /// <summary>
+        /// Asserts that the mapping is available
+        /// </summary>
+        bool CanMap { get; set; }
+
+        /// <summary>
         /// Handle the connection to EA
         /// </summary>
         /// <param name="repository">The current <see cref="Repository" /></param>
@@ -78,5 +83,17 @@ namespace DEHEASysML.Services.Dispatcher
         /// </summary>
         /// <param name="repository">The <see cref="Repository" /></param>
         void OnPostInitiliazed(Repository repository);
+
+        /// <summary>
+        /// Handle the execution of the map selected elements command
+        /// </summary>
+        /// <param name="repository">The working <see cref="Repository"/></param>
+        void MapSelectedElementsCommand(Repository repository);
+
+        /// <summary>
+        /// Handle the execution of the map selected package command
+        /// </summary>
+        /// <param name="repository">The working <see cref="Repository"/></param>
+        void MapSelectedPackageCommand(Repository repository);
     }
 }

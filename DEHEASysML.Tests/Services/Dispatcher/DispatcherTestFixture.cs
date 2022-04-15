@@ -25,11 +25,17 @@
 namespace DEHEASysML.Tests.Services.Dispatcher
 {
     using System;
+    using System.Collections.Generic;
+
+    using Autofac;
 
     using DEHEASysML.DstController;
     using DEHEASysML.Services.Dispatcher;
     using DEHEASysML.ViewModel;
+    using DEHEASysML.ViewModel.Dialogs.Interfaces;
+    using DEHEASysML.Views.Dialogs;
 
+    using DEHPCommon;
     using DEHPCommon.Services.NavigationService;
     using DEHPCommon.UserInterfaces.ViewModels.Interfaces;
 
@@ -46,6 +52,8 @@ namespace DEHEASysML.Tests.Services.Dispatcher
         private Mock<Repository> repository;
         private Mock<IDstController> dstController;
         private Mock<IStatusBarControlViewModel> statusBar;
+        private Mock<INavigationService> navigationService;
+        private Mock<IDstMappingConfigurationDialogViewModel> dstMappingDialog;
 
         [SetUp]
         public void Setup()
@@ -62,9 +70,32 @@ namespace DEHEASysML.Tests.Services.Dispatcher
             this.dstController.Setup(x => x.OnFileOpen(this.repository.Object));
             this.dstController.Setup(x => x.OnNotifyContextItemModified(this.repository.Object, It.IsAny<string>(),It.IsAny<ObjectType>()));
 
+            this.dstController.Setup(x => x.RetrieveAllParentsIdPackage(It.IsAny<IEnumerable<Element>>()))
+                .Returns(new List<int>());
+
             this.statusBar = new Mock<IStatusBarControlViewModel>();
 
-            this.dispatcher = new Dispatcher(this.dstController.Object, this.statusBar.Object);
+            this.dstMappingDialog = new Mock<IDstMappingConfigurationDialogViewModel>();
+
+            this.dstMappingDialog.Setup(x =>
+                x.Initialize(It.IsAny<IEnumerable<Element>>(), It.IsAny<IEnumerable<int>>()));
+
+            this.navigationService = new Mock<INavigationService>();
+
+            this.navigationService.Setup(x =>
+                x.ShowDialog<DstMappingConfigurationDialog, IDstMappingConfigurationDialogViewModel>(this.dstMappingDialog.Object));
+
+            var containerBuilder = new ContainerBuilder();
+            containerBuilder.RegisterInstance(this.dstMappingDialog.Object).As<IDstMappingConfigurationDialogViewModel>();
+            AppContainer.Container = containerBuilder.Build();
+
+            this.dispatcher = new Dispatcher(this.dstController.Object, this.statusBar.Object, this.navigationService.Object);
+        }
+
+        [Test]
+        public void VerifyProperties()
+        {
+            Assert.IsFalse(this.dispatcher.CanMap);
         }
 
         [Test]
@@ -117,6 +148,22 @@ namespace DEHEASysML.Tests.Services.Dispatcher
             this.dstController.Verify(x => x.OnFileClose(this.repository.Object), Times.Once);
             this.dstController.Verify(x => x.OnFileOpen(this.repository.Object), Times.Once);
             this.dstController.Verify(x => x.OnNotifyContextItemModified(this.repository.Object, It.IsAny<string>(), It.IsAny<ObjectType>()), Times.Once);
+        }
+
+        [Test]
+        public void VerifyMapCommands()
+        {
+            this.dstController.Setup(x => x.GetAllElementsInsidePackage(this.repository.Object)).Returns(new List<Element>());
+            this.dstController.Setup(x => x.GetAllSelectedElements(this.repository.Object)).Returns(new List<Element>());
+            Assert.DoesNotThrow(() => this.dispatcher.MapSelectedElementsCommand(this.repository.Object));
+            Assert.DoesNotThrow(() => this.dispatcher.MapSelectedPackageCommand(this.repository.Object));
+
+            var element = new Mock<Element>();
+            this.dstController.Setup(x => x.GetAllElementsInsidePackage(this.repository.Object)).Returns(new List<Element>(){element.Object});
+            this.dstController.Setup(x => x.GetAllSelectedElements(this.repository.Object)).Returns(new List<Element>() { element.Object });
+
+            Assert.DoesNotThrow(() => this.dispatcher.MapSelectedElementsCommand(this.repository.Object));
+            Assert.DoesNotThrow(() => this.dispatcher.MapSelectedPackageCommand(this.repository.Object));
         }
     }
 }

@@ -1,5 +1,5 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
-// <copyright file="MappedElementDefinitionRowViewModel.cs" company="RHEA System S.A.">
+// <copyright file="ModelRowViewModel.cs" company="RHEA System S.A.">
 // Copyright (c) 2020-2022 RHEA System S.A.
 // 
 // Author: Sam Gerené, Alex Vorobiev, Alexander van Delft, Nathanael Smiechowski, Antoine Théate.
@@ -22,28 +22,25 @@
 // </copyright>
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace DEHEASysML.ViewModel.Rows
+namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
 {
-    using CDP4Common.EngineeringModelData;
-
-    using DEHPCommon.Enumerators;
+    using System.Collections.Generic;
 
     using EA;
 
     /// <summary>
-    /// The <see cref="MappedElementDefinitionRowViewModel" /> is the row view model that represents a mapping between
-    /// an <see cref="ElementDefinition" /> and an <see cref="Element" />
+    /// The <see cref="ModelRowViewModel" /> represents the root element of a Model
     /// </summary>
-    public class MappedElementDefinitionRowViewModel : MappedElementRowViewModel<ElementDefinition>
+    public class ModelRowViewModel : PackageRowViewModel
     {
         /// <summary>
-        /// Initializes a new <see cref="MappedElementDefinitionRowViewModel" />
+        /// Initializes a new <see cref="ModelRowViewModel" />
         /// </summary>
-        /// <param name="thing">The <see cref="ElementDefinition" /></param>
-        /// <param name="dstElement">The <see cref="Element" /></param>
-        /// <param name="mappingDirection">The <see cref="MappingDirection" /></param>
-        public MappedElementDefinitionRowViewModel(ElementDefinition thing, Element dstElement, MappingDirection mappingDirection)
-            : base(thing, dstElement, mappingDirection)
+        /// <param name="eaObject">The object to represent</param>
+        /// <param name="visibleElements">Collection of <see cref="Element"/> that as to be visible</param>
+        /// <param name="packagesId">The Id of <see cref="Package" /> to display</param>
+        public ModelRowViewModel(Package eaObject, IEnumerable<Element> visibleElements, IEnumerable<int> packagesId) 
+            : base(null, eaObject, visibleElements, packagesId)
         {
         }
     }

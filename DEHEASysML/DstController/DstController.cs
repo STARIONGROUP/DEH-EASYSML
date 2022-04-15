@@ -30,8 +30,12 @@ namespace DEHEASysML.DstController
 
     using DEHEASysML.Enumerators;
     using DEHEASysML.Extensions;
+    using DEHEASysML.Utils.Stereotypes;
+    using DEHEASysML.ViewModel.Rows;
 
     using DEHPCommon.HubController.Interfaces;
+    using DEHPCommon.MappingEngine;
+    using DEHPCommon.UserInterfaces.ViewModels.Interfaces;
 
     using EA;
 
@@ -50,9 +54,19 @@ namespace DEHEASysML.DstController
         private readonly IHubController hubController;
 
         /// <summary>
+        /// The <see cref="IMappingEngine" />
+        /// </summary>
+        private readonly IMappingEngine mappingEngine;
+
+        /// <summary>
         /// Gets the current class logger
         /// </summary>
         private readonly Logger logger = LogManager.GetCurrentClassLogger();
+
+        /// <summary>
+        /// The <see cref="IStatusBarControlViewModel" />
+        /// </summary>
+        private readonly IStatusBarControlViewModel statusBar;
 
         /// <summary>
         /// Backing field for <see cref="CurrentRepository" />
@@ -60,12 +74,24 @@ namespace DEHEASysML.DstController
         private Repository currentRepository;
 
         /// <summary>
+        /// Backing field for <see cref="CanMap" />
+        /// </summary>
+        private bool canMap;
+
+        /// <summary>
         /// Initializes a new <see cref="DstController" />
         /// </summary>
         /// <param name="hubController">The <see cref="IHubController" /></param>
-        public DstController(IHubController hubController)
+        /// <param name="mappingEngine">The <see cref="IMappingEngine" /></param>
+        /// <param name="statusBar">The <see cref="IStatusBarControlViewModel" /></param>
+        public DstController(IHubController hubController, IMappingEngine mappingEngine, IStatusBarControlViewModel statusBar)
         {
             this.hubController = hubController;
+            this.mappingEngine = mappingEngine;
+            this.statusBar = statusBar;
+
+            this.hubController.WhenAnyValue(x => x.IsSessionOpen)
+                .Subscribe(_ => this.UpdateProperties());
         }
 
         /// <summary>
@@ -76,6 +102,20 @@ namespace DEHEASysML.DstController
             get => this.currentRepository;
             set => this.RaiseAndSetIfChanged(ref this.currentRepository, value);
         }
+
+        /// <summary>
+        /// Asserts that the mapping is available
+        /// </summary>
+        public bool CanMap
+        {
+            get => this.canMap;
+            set => this.RaiseAndSetIfChanged(ref this.canMap, value);
+        }
+
+        /// <summary>
+        /// A collection of <see cref="IMappedElementRowViewModel" />
+        /// </summary>
+        public ReactiveList<IMappedElementRowViewModel> DstMapResult { get; } = new();
 
         /// <summary>
         /// Handle to clear everything when Enterprise Architect close
@@ -178,16 +218,178 @@ namespace DEHEASysML.DstController
         }
 
         /// <summary>
-        /// Gets the source and the target <see cref="Element"/>s of a <see cref="Connector"/>
+        /// Gets the source and the target <see cref="Element" />s of a <see cref="Connector" />
         /// </summary>
-        /// <param name="connector">The <see cref="Connector"/></param>
-        /// <returns>a <see cref="Tuple{T}"/> containing source and target</returns>
+        /// <param name="connector">The <see cref="Connector" /></param>
+        /// <returns>a <see cref="Tuple{T}" /> containing source and target</returns>
         public (Element source, Element target) ResolveConnector(Connector connector)
         {
             var source = this.CurrentRepository.GetElementByID(connector.ClientID);
             var target = this.CurrentRepository.GetElementByID(connector.SupplierID);
 
             return (source, target);
+        }
+
+        /// <summary>
+        /// Retrieves all selected <see cref="Element" />
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        /// <returns>A collection of selected Element</returns>
+        public IEnumerable<Element> GetAllSelectedElements(Repository repository)
+        {
+            this.CurrentRepository = repository;
+            var mappableElement = new List<Element>();
+            var collection = repository.GetTreeSelectedElements();
+
+            for (short elementIndex = 0; elementIndex < collection.Count; elementIndex++)
+            {
+                if (collection.GetAt(elementIndex) is Element element &&
+                    (element.Stereotype.AreEquals(StereotypeKind.Requirement) || element.Stereotype.AreEquals(StereotypeKind.Block))
+                    && !mappableElement.Contains(element))
+                {
+                    mappableElement.Add(element);
+                }
+            }
+
+            return mappableElement;
+        }
+
+        /// <summary>
+        /// Retrieves all <see cref="Element" /> from the selected <see cref="Package" />
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        /// <returns>A collection of <see cref="Element" /></returns>
+        public IEnumerable<Element> GetAllElementsInsidePackage(Repository repository)
+        {
+            this.CurrentRepository = repository;
+            var mappableElement = new List<Element>();
+            var selectedPackage = repository.GetTreeSelectedPackage();
+            mappableElement.AddRange(this.GetAllBlocks(selectedPackage));
+            mappableElement.AddRange(this.GetAllRequirements(selectedPackage));
+            return mappableElement;
+        }
+
+        /// <summary>
+        /// Retrieve all Id of <see cref="Package" /> and its parent hierarchy that contains  <see cref="Element" /> inside the
+        /// given collection
+        /// </summary>
+        /// <param name="elements">The collection of <see cref="Element" /></param>
+        /// <returns>A collection of Id</returns>
+        public IEnumerable<int> RetrieveAllParentsIdPackage(IEnumerable<Element> elements)
+        {
+            var packagesId = new List<int>();
+
+            foreach (var element in elements.Where(element => !packagesId.Contains(element.PackageID)))
+            {
+                this.GetPackageParentId(element.PackageID, ref packagesId);
+            }
+
+            return packagesId;
+        }
+
+        /// <summary>
+        /// Map all <see cref="IMappedElementRowViewModel" />
+        /// </summary>
+        /// <param name="elements">The collection of <see cref="IMappedElementRowViewModel" /></param>
+        public void Map(List<IMappedElementRowViewModel> elements)
+        {
+            this.DstMapResult.Clear();
+            this.Map(elements.OfType<EnterpriseArchitectBlockElement>().ToList(), true);
+            this.Map(elements.OfType<EnterpriseArchitectRequirementElement>().ToList(), true);
+        }
+
+        /// <summary>
+        /// Premaps all <see cref="IMappedElementRowViewModel" />
+        /// </summary>
+        /// <param name="elements">The collection of <see cref="IMappedElementRowViewModel"/> to premap</param>
+        /// <returns>The collection of premapped <see cref="IMappedElementRowViewModel" /></returns>
+        public List<IMappedElementRowViewModel> PreMap(List<IMappedElementRowViewModel> elements)
+        {
+            var premappedElements = new List<IMappedElementRowViewModel>();
+            premappedElements.AddRange(this.Map(elements.OfType<EnterpriseArchitectBlockElement>().ToList(), false));
+            premappedElements.AddRange(this.Map(elements.OfType<EnterpriseArchitectRequirementElement>().ToList(), false));
+            return premappedElements;
+        }
+
+        /// <summary>
+        /// Map all <see cref="EnterpriseArchitectBlockElement" />
+        /// </summary>
+        /// <param name="blockElements">The collection of <see cref="EnterpriseArchitectBlockElement" /></param>
+        /// <param name="isCompleteMapping">Asserts if the mapping has to been complete or not</param>
+        /// <returns>A collection of <see cref="IMappedElementRowViewModel" /></returns>
+        private List<IMappedElementRowViewModel> Map(List<EnterpriseArchitectBlockElement> blockElements, bool isCompleteMapping)
+        {
+            if (this.mappingEngine.Map((isCompleteMapping, blockElements)) is List<MappedElementDefinitionRowViewModel> mappedElements && mappedElements.Any())
+            {
+                if (isCompleteMapping)
+                {
+                    this.statusBar.Append($"Mapping of {mappedElements.Count} blocks in progress...");
+                    this.DstMapResult.AddRange(mappedElements);
+                }
+
+                return new List<IMappedElementRowViewModel>(mappedElements);
+            }
+
+            return new List<IMappedElementRowViewModel>();
+        }
+
+        /// <summary>
+        /// Map all <see cref="EnterpriseArchitectRequirementElement" />
+        /// </summary>
+        /// <param name="requirementElements">
+        /// The collection of <see cref="EnterpriseArchitectRequirementElement" />
+        /// </param>
+        /// <param name="isCompleteMapping">Asserts if the mapping has to been complete or not</param>
+        /// <returns>A collection of <see cref="IMappedElementRowViewModel" /></returns>
+        private List<IMappedElementRowViewModel> Map(List<EnterpriseArchitectRequirementElement> requirementElements, bool isCompleteMapping)
+        {
+            if (this.mappingEngine.Map((isCompleteMapping, requirementElements)) is List<MappedRequirementRowViewModel> mappedElements
+                && mappedElements.Any())
+            {
+                if (isCompleteMapping)
+                {
+                    this.statusBar.Append($"Mapping of {mappedElements.Count} requirements in progress...");
+                    this.DstMapResult.AddRange(mappedElements);
+                }
+
+                return new List<IMappedElementRowViewModel>(mappedElements);
+            }
+
+            return new List<IMappedElementRowViewModel>();
+        }
+
+        /// <summary>
+        /// Gets the Id of each parent of the given <see cref="Package" /> Id
+        /// </summary>
+        /// <param name="packageId">The <see cref="Package" /> id</param>
+        /// <param name="packagesId">A collection of all <see cref="Package" /> already found</param>
+        private void GetPackageParentId(int packageId, ref List<int> packagesId)
+        {
+            while (true)
+            {
+                var package = this.CurrentRepository.GetPackageByID(packageId);
+
+                if (!packagesId.Contains(package.PackageID))
+                {
+                    packagesId.Add(package.PackageID);
+
+                    if (package.ParentID != 0)
+                    {
+                        packageId = package.ParentID;
+                        continue;
+                    }
+                }
+
+                break;
+            }
+        }
+
+        /// <summary>
+        /// Update the properties
+        /// </summary>
+        private void UpdateProperties()
+        {
+            this.CanMap = this.hubController.IsSessionOpen;
         }
 
         /// <summary>
@@ -199,7 +401,7 @@ namespace DEHEASysML.DstController
         private List<Element> GetElementsFromPackage(IDualPackage package, StereotypeKind stereotype)
         {
             var elements = new List<Element>();
-            elements.AddRange(package.Elements.OfType<Element>().Where(x => x.Stereotype.AreEquals(stereotype)));
+            elements.AddRange(package.GetElementsOfStereotypeInPackage(stereotype));
 
             foreach (var subPackage in package.Packages.OfType<Package>())
             {

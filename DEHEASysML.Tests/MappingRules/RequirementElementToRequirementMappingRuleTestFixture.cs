@@ -65,7 +65,7 @@ namespace DEHEASysML.Tests.MappingRules
         private Iteration iteration;
         private ModelReferenceDataLibrary referenceDataLibrary;
         private Mock<Repository> repository;
-        private List<EnterpriseArchitectRequirementsSpecificationElement> elements;
+        private List<EnterpriseArchitectRequirementElement> elements;
 
         [SetUp]
         public void Setup()
@@ -132,7 +132,7 @@ namespace DEHEASysML.Tests.MappingRules
 
         private void SetupElements()
         {
-            this.elements = new List<EnterpriseArchitectRequirementsSpecificationElement>();
+            this.elements = new List<EnterpriseArchitectRequirementElement>();
             var modelPackage = this.CreatePackage(1,0, "Model Package");
             var subModelPackage = this.CreatePackage(2, modelPackage.Object.PackageID, "SubModel Package");
             var subSubModelPackage = this.CreatePackage(3, subModelPackage.Object.PackageID, "SubSubModel Package");
@@ -157,10 +157,10 @@ namespace DEHEASysML.Tests.MappingRules
                 connector.Object
             });
 
-            this.elements.Add(new EnterpriseArchitectRequirementsSpecificationElement(null, firstRequirement.Object, MappingDirection.FromDstToHub));
-            this.elements.Add(new EnterpriseArchitectRequirementsSpecificationElement(null, secondRequirement.Object, MappingDirection.FromDstToHub));
-            this.elements.Add(new EnterpriseArchitectRequirementsSpecificationElement(null, thirdRequirement.Object, MappingDirection.FromDstToHub));
-            this.elements.Add(new EnterpriseArchitectRequirementsSpecificationElement(null, forthRequirement.Object, MappingDirection.FromDstToHub));
+            this.elements.Add(new EnterpriseArchitectRequirementElement(null, firstRequirement.Object, MappingDirection.FromDstToHub));
+            this.elements.Add(new EnterpriseArchitectRequirementElement(null, secondRequirement.Object, MappingDirection.FromDstToHub));
+            this.elements.Add(new EnterpriseArchitectRequirementElement(null, thirdRequirement.Object, MappingDirection.FromDstToHub));
+            this.elements.Add(new EnterpriseArchitectRequirementElement(null, forthRequirement.Object, MappingDirection.FromDstToHub));
 
             this.dstController.Setup(x => x.ResolveConnector(It.IsAny<Connector>())).Returns((thirdRequirement.Object, forthRequirement.Object));
         }
@@ -210,11 +210,16 @@ namespace DEHEASysML.Tests.MappingRules
         [Test]
         public void VerifyMapping()
         {
-            Assert.DoesNotThrow(() => this.rule.Transform(this.elements));
+            Assert.DoesNotThrow(() => this.rule.Transform((true,this.elements)));
+            Assert.DoesNotThrow(() => this.rule.Transform((false,this.elements)));
             this.hubController.Setup(x => x.IsSessionOpen).Returns(true);
-            Assert.DoesNotThrow(() => this.rule.Transform(this.elements));
-            var mappedElements = this.rule.Transform(this.elements);
-            var specifications = mappedElements.Select(x => x.HubElement).Distinct().ToList();
+            Assert.DoesNotThrow(() => this.rule.Transform((true, this.elements)));
+            Assert.DoesNotThrow(() => this.rule.Transform((false, this.elements)));
+            var mappedElements = this.rule.Transform((true,this.elements));
+           
+            var specifications = mappedElements.Select(x => x.HubElement.Container)
+                .OfType<RequirementsSpecification>().Distinct().ToList();
+
             Assert.AreEqual(2, specifications.Count);
             var requirements = specifications.SelectMany(x => x.Requirement).ToList();
             Assert.AreEqual(4,requirements.Count);

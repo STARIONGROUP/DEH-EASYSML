@@ -29,15 +29,19 @@ namespace DEHEASysML.MappingRules
     using System.Linq;
     using System.Runtime.ExceptionServices;
 
+    using Autofac;
+
     using CDP4Common.CommonData;
     using CDP4Common.EngineeringModelData;
     using CDP4Common.SiteDirectoryData;
     using CDP4Common.Types;
 
+    using DEHEASysML.DstController;
     using DEHEASysML.Extensions;
     using DEHEASysML.Utils.Stereotypes;
     using DEHEASysML.ViewModel.Rows;
 
+    using DEHPCommon;
     using DEHPCommon.Enumerators;
     using DEHPCommon.MappingEngine;
     using DEHPCommon.MappingRules.Core;
@@ -53,7 +57,7 @@ namespace DEHEASysML.MappingRules
     /// <see cref="ElementDefinition" />
     /// </summary>
     public class BlockDefinitionToElementDefinitionMappingRule :
-        DstToHubBaseMappingRule<List<EnterpriseArchitectBlockElement>, List<MappedElementDefinitionRowViewModel>>
+        DstToHubBaseMappingRule<(bool completeMapping, List<EnterpriseArchitectBlockElement> elements), List<MappedElementDefinitionRowViewModel>>
 
     {
         /// <summary>
@@ -105,27 +109,40 @@ namespace DEHEASysML.MappingRules
         /// Transform a <see cref="List{T}" /> of <see cref="EnterpriseArchitectBlockElement" /> into a <see cref="List{T}" /> of
         /// <see cref="MappedElementDefinitionRowViewModel" />
         /// </summary>
-        /// <param name="input">The <see cref="List{T}" /> of <see cref="EnterpriseArchitectBlockElement " /></param>
+        /// <param name="input">Tuple of <see cref="bool"/>, The <see cref="List{T}" /> of <see cref="EnterpriseArchitectBlockElement " />
+        /// The <see cref="bool"/> handles the fact that it the mapping has to map everything</param>
         /// <returns>A collection of <see cref="MappedElementDefinitionRowViewModel" /></returns>
-        public override List<MappedElementDefinitionRowViewModel> Transform(List<EnterpriseArchitectBlockElement> input)
+        public override List<MappedElementDefinitionRowViewModel> Transform((bool completeMapping, List<EnterpriseArchitectBlockElement> elements) input)
         {
             try
             {
-                if (!this.HubController.IsSessionOpen)
+                var (completeMapping, elements) = input;
+
+                if (!this.HubController.IsSessionOpen || elements == null)
                 {
                     return default;
                 }
 
-                this.Elements = new List<EnterpriseArchitectBlockElement>(input);
+                this.DstController = AppContainer.Container.Resolve<IDstController>();
+
+                this.Elements = new List<EnterpriseArchitectBlockElement>(elements);
 
                 foreach (var mappedElement in this.Elements.ToList())
                 {
                     mappedElement.HubElement ??= this.GetOrCreateElementDefinition(mappedElement.DstElement);
-                    this.MapElement(mappedElement);
+                    mappedElement.ShouldCreateNewTargetElement = mappedElement.HubElement.Original == null;
+
+                    if (completeMapping)
+                    {
+                        this.MapElement(mappedElement);
+                    }
                 }
 
-                this.MapPorts();
-                this.ProcessInterfaces();
+                if (completeMapping)
+                {
+                    this.MapPorts();
+                    this.ProcessInterfaces();
+                }
 
                 return new List<MappedElementDefinitionRowViewModel>(this.Elements);
             }
