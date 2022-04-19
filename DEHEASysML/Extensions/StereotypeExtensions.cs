@@ -153,6 +153,17 @@ namespace DEHEASysML.Extensions
         }
 
         /// <summary>
+        /// Gets all <see cref="Element"/> of a certain Stereotype inside a <see cref="Package"/>
+        /// </summary>
+        /// <param name="package">The <see cref="IDualPackage"/></param>
+        /// <param name="stereotype">The <see cref="StereotypeKind"/></param>
+        /// <returns>A collection of <see cref="Element"/></returns>
+        public static IEnumerable<Element> GetElementsOfStereotypeInPackage(this IDualPackage package, StereotypeKind stereotype)
+        {
+            return package.Elements.OfType<Element>().Where(x => x.Stereotype.AreEquals(stereotype));
+        }
+
+        /// <summary>
         /// Verifies that the <paramref name="stereotypeName"/> correspond to the <see cref="StereotypeKind"/>
         /// </summary>
         /// <param name="stereotypeName">The name of the Stereotype</param>

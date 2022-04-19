@@ -22,160 +22,164 @@
 // </copyright>
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace DEHEASysML.MappingRules;
-
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-
-using Autofac;
-
-using CDP4Common.CommonData;
-using CDP4Common.EngineeringModelData;
-using CDP4Common.SiteDirectoryData;
-
-using CDP4Dal.Operations;
-
-using DEHEASysML.DstController;
-
-using DEHPCommon;
-using DEHPCommon.HubController.Interfaces;
-using DEHPCommon.MappingRules.Core;
-
-using NLog;
-
-/// <summary>
-/// The <see cref="DstToHubBaseMappingRule{TInput,TOuput}" /> provides some methods common for all
-/// <see cref="MappingRules" /> from DST to Hub
-/// </summary>
-public abstract class DstToHubBaseMappingRule<TInput, TOuput> : MappingRule<TInput, TOuput>
+namespace DEHEASysML.MappingRules
 {
-    /// <summary>
-    /// The current class logger
-    /// </summary>
-    protected readonly Logger Logger = LogManager.GetCurrentClassLogger();
+    using System;
+    using System.Collections.Generic;
+    using System.Threading.Tasks;
+
+    using Autofac;
+
+    using CDP4Common.CommonData;
+    using CDP4Common.EngineeringModelData;
+    using CDP4Common.SiteDirectoryData;
+
+    using CDP4Dal.Operations;
+
+    using DEHEASysML.DstController;
+
+    using DEHPCommon;
+    using DEHPCommon.HubController.Interfaces;
+    using DEHPCommon.MappingRules.Core;
+
+    using NLog;
 
     /// <summary>
-    /// The <see cref="IHubController" />
+    /// The <see cref="DstToHubBaseMappingRule{TInput,TOuput}" /> provides some methods common for all
+    /// <see cref="MappingRules" /> from DST to Hub
     /// </summary>
-    protected readonly IHubController HubController = AppContainer.Container.Resolve<IHubController>();
-
-    /// <summary>
-    /// The <see cref="IDstController" />
-    /// </summary>
-    protected IDstController DstController;
-
-    /// <summary>
-    /// The current <see cref="DomainOfExpertise" />
-    /// </summary>
-    protected DomainOfExpertise Owner;
-
-    /// <summary>
-    /// Initializes a new <see cref="DstToHubBaseMappingRule{TInput,TOuput}" />
-    /// </summary>
-    protected DstToHubBaseMappingRule()
+    public abstract class DstToHubBaseMappingRule<TInput, TOuput> : MappingRule<TInput, TOuput>
     {
-        this.DstController = AppContainer.Container.Resolve<IDstController>();
-        this.Owner = this.HubController.CurrentDomainOfExpertise;
-    }
+        /// <summary>
+        /// The current class logger
+        /// </summary>
+        protected readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
-    /// <summary>
-    /// Tries to create the category with the specified <paramref name="categoryNames" />
-    /// </summary>
-    /// <param name="categoryNames">The shortname and the name of the <see cref="Category" /></param>
-    /// <param name="category">The category</param>
-    /// <param name="permissibleClass">params of permissive class</param>
-    /// <returns></returns>
-    protected bool TryCreateCategory((string shortname, string name) categoryNames, out Category category, params ClassKind[] permissibleClass)
-    {
-        var (shortname, name) = categoryNames;
+        /// <summary>
+        /// The <see cref="IHubController" />
+        /// </summary>
+        protected readonly IHubController HubController = AppContainer.Container.Resolve<IHubController>();
 
-        var newCategory = new Category
+        /// <summary>
+        /// The <see cref="IDstController" />
+        /// </summary>
+        public IDstController DstController { get; set; }
+
+        /// <summary>
+        /// The current <see cref="DomainOfExpertise" />
+        /// </summary>
+        protected DomainOfExpertise Owner;
+
+        /// <summary>
+        /// Initializes a new <see cref="DstToHubBaseMappingRule{TInput,TOuput}" />
+        /// </summary>
+        protected DstToHubBaseMappingRule()
         {
-            Name = name,
-            ShortName = shortname,
-            Iid = Guid.NewGuid(),
-            PermissibleClass = new List<ClassKind>(permissibleClass)
-        };
+            this.Owner = this.HubController.CurrentDomainOfExpertise;
+        }
 
-        var rdl = this.HubController.GetDehpOrModelReferenceDataLibrary().Clone(false);
-        rdl.DefinedCategory.Add(newCategory);
-        return this.TryCreateReferenceDataLibraryThing(newCategory, rdl, ClassKind.Category, out category);
-    }
-
-    /// <summary>
-    /// Tries to add a specified <see cref="Thing" /> to the provided <see cref="ReferenceDataLibrary" /> and retrieve the new
-    /// reference from the cache after save
-    /// </summary>
-    /// <typeparam name="TThing">The Type of <see cref="Thing" /> to get</typeparam>
-    /// <param name="newThing">The <see cref="Thing" /></param>
-    /// <param name="clonedRdl">The cloned <see cref="ReferenceDataLibrary" /></param>
-    /// <param name="classKind">The <see cref="ClassKind" /></param>
-    /// <param name="thing">The out parameter</param>
-    /// <returns>Asserts if the <paramref name="newThing" /> has been successfully created</returns>
-    protected bool TryCreateReferenceDataLibraryThing<TThing>(TThing newThing, ReferenceDataLibrary clonedRdl, ClassKind classKind, out TThing thing) where TThing : Thing
-    {
-        try
+        /// <summary>
+        /// Tries to create the category with the specified <paramref name="categoryNames" />
+        /// </summary>
+        /// <param name="categoryNames">The shortname and the name of the <see cref="Category" /></param>
+        /// <param name="category">The category</param>
+        /// <param name="permissibleClass">params of permissive class</param>
+        /// <returns></returns>
+        protected bool TryCreateCategory((string shortname, string name) categoryNames, out Category category, params ClassKind[] permissibleClass)
         {
-            var transaction = new ThingTransaction(TransactionContextResolver.ResolveContext(clonedRdl), clonedRdl);
-            transaction.CreateOrUpdate(clonedRdl);
-            transaction.CreateOrUpdate(newThing);
+            var (shortname, name) = categoryNames;
 
-            Task.Run(async () =>
+            var newCategory = new Category
             {
-                await this.HubController.Write(transaction);
-                await this.HubController.RefreshReferenceDataLibrary(clonedRdl);
-            }).ContinueWith(task =>
+                Name = name,
+                ShortName = shortname,
+                Iid = Guid.NewGuid(),
+                PermissibleClass = new List<ClassKind>(permissibleClass)
+            };
+
+            var rdl = this.HubController.GetDehpOrModelReferenceDataLibrary().Clone(false);
+            rdl.DefinedCategory.Add(newCategory);
+            return this.TryCreateReferenceDataLibraryThing(newCategory, rdl, ClassKind.Category, out category);
+        }
+
+        /// <summary>
+        /// Tries to add a specified <see cref="Thing" /> to the provided <see cref="ReferenceDataLibrary" /> and retrieve the new
+        /// reference from the cache after save
+        /// </summary>
+        /// <typeparam name="TThing">The Type of <see cref="Thing" /> to get</typeparam>
+        /// <param name="newThing">The <see cref="Thing" /></param>
+        /// <param name="clonedRdl">The cloned <see cref="ReferenceDataLibrary" /></param>
+        /// <param name="classKind">The <see cref="ClassKind" /></param>
+        /// <param name="thing">The out parameter</param>
+        /// <returns>Asserts if the <paramref name="newThing" /> has been successfully created</returns>
+        protected bool TryCreateReferenceDataLibraryThing<TThing>(TThing newThing, ReferenceDataLibrary clonedRdl, ClassKind classKind, out TThing thing) where TThing : Thing
+        {
+            try
             {
-                if (!task.IsCompleted)
+                var transaction = new ThingTransaction(TransactionContextResolver.ResolveContext(clonedRdl), clonedRdl);
+                transaction.CreateOrUpdate(clonedRdl);
+                transaction.CreateOrUpdate(newThing);
+
+                Task.Run(async () =>
                 {
-                    this.Logger.Error($"Error during the task of the creation of {newThing.UserFriendlyName} because {task.Exception}");
-                }
-            }).Wait();
+                    await this.HubController.Write(transaction);
+                    await this.HubController.RefreshReferenceDataLibrary(clonedRdl);
+                }).ContinueWith(task =>
+                {
+                    if (!task.IsCompleted)
+                    {
+                        this.Logger.Error($"Error during the task of the creation of {newThing.UserFriendlyName} because {task.Exception}");
+                    }
+                    else
+                    {
+                        this.Logger.Info($"Thing {newThing.UserFriendlyName} has been succesfully created");
+                    }
+                }).Wait();
 
-            return this.HubController.TryGetThingById(newThing.Iid, classKind, out thing);
+                return this.HubController.TryGetThingById(newThing.Iid, classKind, out thing);
+            }
+            catch (Exception exception)
+            {
+                this.Logger.Error($"Could not create {newThing} because {exception}");
+                thing = default;
+                return false;
+            }
         }
-        catch (Exception exception)
-        {
-            this.Logger.Error($"Could not create {newThing} because {exception}");
-            thing = default;
-            return false;
-        }
-    }
 
-    /// <summary>
-    /// Create a <see cref="BinaryRelationship" /> based
-    /// </summary>
-    /// <param name="source">The source of the <see cref="BinaryRelationship" /></param>
-    /// <param name="target">The target of the <see cref="BinaryRelationship" /></param>
-    /// <param name="relationShipName">The name of the <see cref="BinaryRelationship" /></param>
-    /// <param name="categoryNames">The category name and shortname for the <see cref="BinaryRelationship" /></param>
-    /// <param name="shouldAddCategory">Asserts if the <see cref="BinaryRelationship"/> will be categorize or not</param>
-    /// <returns>The created <see cref="BinaryRelationship" /></returns>
-    protected BinaryRelationship CreateBinaryRelationShip(Thing source, Thing target, string relationShipName, 
-        (string shortname, string name) categoryNames, bool shouldAddCategory = true)
-    {
-        var relationship = new BinaryRelationship
+        /// <summary>
+        /// Create a <see cref="BinaryRelationship" /> based
+        /// </summary>
+        /// <param name="source">The source of the <see cref="BinaryRelationship" /></param>
+        /// <param name="target">The target of the <see cref="BinaryRelationship" /></param>
+        /// <param name="relationShipName">The name of the <see cref="BinaryRelationship" /></param>
+        /// <param name="categoryNames">The category name and shortname for the <see cref="BinaryRelationship" /></param>
+        /// <param name="shouldAddCategory">Asserts if the <see cref="BinaryRelationship"/> will be categorize or not</param>
+        /// <returns>The created <see cref="BinaryRelationship" /></returns>
+        protected BinaryRelationship CreateBinaryRelationShip(Thing source, Thing target, string relationShipName,
+            (string shortname, string name) categoryNames, bool shouldAddCategory = true)
         {
-            Iid = Guid.NewGuid(),
-            Owner = this.Owner,
-            Name = relationShipName,
-            Source = source,
-            Target = target
-        };
+            var relationship = new BinaryRelationship
+            {
+                Iid = Guid.NewGuid(),
+                Owner = this.Owner,
+                Name = relationShipName,
+                Source = source,
+                Target = target
+            };
 
-        if (!shouldAddCategory)
-        {
+            if (!shouldAddCategory)
+            {
+                return relationship;
+            }
+
+            if (this.HubController.TryGetThingBy(x => x.Name == categoryNames.name
+                                                      && x.IsDeprecated, ClassKind.Category, out Category category)
+                || this.TryCreateCategory(categoryNames, out category, ClassKind.BinaryRelationship))
+            {
+                relationship.Category.Add(category);
+            }
+
             return relationship;
         }
-
-        if (this.HubController.TryGetThingBy(x => x.Name == categoryNames.name
-                                                  && x.IsDeprecated, ClassKind.Category, out Category category)
-            || this.TryCreateCategory(categoryNames, out category, ClassKind.BinaryRelationship))
-        {
-            relationship.Category.Add(category);
-        }
-
-        return relationship;
     }
 }

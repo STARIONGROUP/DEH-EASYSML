@@ -27,6 +27,7 @@ namespace DEHEASysML.Tests.MappingRules
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Reactive.Concurrency;
 
     using Autofac;
 
@@ -52,7 +53,9 @@ namespace DEHEASysML.Tests.MappingRules
     using Moq;
 
     using NUnit.Framework;
-    
+
+    using ReactiveUI;
+
     using Parameter = CDP4Common.EngineeringModelData.Parameter;
 
     [TestFixture]
@@ -73,6 +76,8 @@ namespace DEHEASysML.Tests.MappingRules
         [SetUp]
         public void Setup()
         {
+            RxApp.MainThreadScheduler = Scheduler.CurrentThread;
+
             this.uri = new Uri("https://uri.test");
             this.assembler = new Assembler(this.uri);
             this.domain = new DomainOfExpertise(Guid.NewGuid(), this.assembler.Cache, this.uri);
@@ -180,15 +185,22 @@ namespace DEHEASysML.Tests.MappingRules
         public void VerifyMap()
         {
             this.hubController.Setup(x => x.IsSessionOpen).Returns(false);
-            Assert.DoesNotThrow(() => this.rule.Transform(null));
+            Assert.DoesNotThrow(() => this.rule.Transform((true, null)));
+            Assert.DoesNotThrow(() => this.rule.Transform((false, null)));
 
             this.hubController.Setup(x => x.IsSessionOpen).Returns(true);
-            Assert.Throws<ArgumentNullException>(() => this.rule.Transform(null));
+            Assert.DoesNotThrow(() => this.rule.Transform((true, null)));
+            Assert.DoesNotThrow(() => this.rule.Transform((false, null)));
 
-            Assert.DoesNotThrow(() => this.rule.Transform(new List<EnterpriseArchitectBlockElement>()
+            Assert.DoesNotThrow(() => this.rule.Transform((true,new List<EnterpriseArchitectBlockElement>()
             {
                 new EnterpriseArchitectBlockElement(null, this.block.Object, MappingDirection.FromDstToHub)
-            }));
+            })));
+
+            Assert.DoesNotThrow(() => this.rule.Transform((false, new List<EnterpriseArchitectBlockElement>()
+            {
+                new EnterpriseArchitectBlockElement(null, this.block.Object, MappingDirection.FromDstToHub)
+            })));
         }
 
         [Test]
@@ -261,6 +273,8 @@ namespace DEHEASysML.Tests.MappingRules
         [Test]
         public void VerifyMapProperties()
         {
+            this.rule.DstController = this.dstController.Object;
+
             MeasurementUnit measurementUnit = new SimpleUnit();
             MeasurementScale measurementScale = new RatioScale();
 
@@ -350,6 +364,8 @@ namespace DEHEASysML.Tests.MappingRules
         [Test]
         public void VerifyMapPartProperties()
         {
+            this.rule.DstController = this.dstController.Object;
+
             var partProperty = new Mock<Element>();
             partProperty.Setup(x => x.Stereotype).Returns(StereotypeKind.PartProperty.ToString());
             partProperty.Setup(x => x.PropertyType).Returns(42);
@@ -370,6 +386,8 @@ namespace DEHEASysML.Tests.MappingRules
         [Test]
         public void VerifyMapPorts()
         {
+            this.rule.DstController = this.dstController.Object;
+
             var port = new Mock<Element>();
             port.Setup(x => x.MetaType).Returns(StereotypeKind.Port.ToString());
 

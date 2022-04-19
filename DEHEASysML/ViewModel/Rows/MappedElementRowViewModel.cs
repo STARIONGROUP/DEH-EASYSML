@@ -24,25 +24,36 @@
 
 namespace DEHEASysML.ViewModel.Rows
 {
+    using System;
     using System.Collections.Generic;
 
     using CDP4Common.CommonData;
     using CDP4Common.EngineeringModelData;
 
+    using DEHEASysML.Enumerators;
+
     using DEHPCommon.Enumerators;
+
+    using EA;
 
     using ReactiveUI;
 
     /// <summary>
-    /// The <see cref="MappedElementRowViewModel" /> is the base abstract row view model that represents a mapping done between
+    /// The <see cref="MappedElementRowViewModel{TThing}" /> is the base abstract row view model that represents a mapping done
+    /// between
     /// a <see cref="Thing" /> and a DST Element
     /// </summary>
-    public abstract class MappedElementRowViewModel<TThing, TDstElement> : ReactiveObject where TThing : Thing
+    public abstract class MappedElementRowViewModel<TThing> : ReactiveObject, IMappedElementRowViewModel where TThing : Thing
     {
+        /// <summary>
+        /// A collection of <see cref="BinaryRelationship" />
+        /// </summary>
+        public readonly List<BinaryRelationship> RelationShips;
+
         /// <summary>
         /// Backing field for <see cref="DstElement" />
         /// </summary>
-        private TDstElement dstElement;
+        private Element dstElement;
 
         /// <summary>
         /// Backing field for <see cref="HubElement" />
@@ -55,22 +66,49 @@ namespace DEHEASysML.ViewModel.Rows
         private MappingDirection mappingDirection;
 
         /// <summary>
-        /// Backing field for <see cref="ShouldCreateNewTargetElement"/>
+        /// Backing field for <see cref="ShouldCreateNewTargetElement" />
         /// </summary>
         private bool shouldCreateNewTargetElement;
 
         /// <summary>
-        /// Initializes a new <see cref="MappedElementRowViewModel{TThing,TDstElement}" />
+        /// Backing field for <see cref="TargetElementName" />
+        /// </summary>
+        private string targetElementName;
+
+        /// <summary>
+        /// Backing field for <see cref="SourceElementName" />
+        /// </summary>
+        private string sourceElementName;
+
+        /// <summary>
+        /// Backing field for <see cref="MappedRowStatus" />
+        /// </summary>
+        private MappedRowStatus mappedRowStatus;
+
+        /// <summary>
+        /// Initializes a new <see cref="MappedElementRowViewModel{TThing}" />
         /// </summary>
         /// <param name="thing">The <see cref="TThing" /></param>
-        /// <param name="dstElement">The <see cref="TDstElement" /></param>
+        /// <param name="dstElement">The <see cref="Element" /></param>
         /// <param name="mappingDirection">The <see cref="MappingDirection" /></param>
-        protected MappedElementRowViewModel(TThing thing, TDstElement dstElement, MappingDirection mappingDirection)
+        protected MappedElementRowViewModel(TThing thing, Element dstElement, MappingDirection mappingDirection)
         {
             this.HubElement = thing;
             this.DstElement = dstElement;
             this.MappingDirection = mappingDirection;
             this.RelationShips = new List<BinaryRelationship>();
+
+            this.WhenAnyValue(x => x.DstElement, x => x.HubElement)
+                .Subscribe(_ => this.UpdateProperties());
+        }
+
+        /// <summary>
+        /// Gets or sets the <see cref="IMappedElementRowViewModel.MappedRowStatus" />
+        /// </summary>
+        public MappedRowStatus MappedRowStatus
+        {
+            get => this.mappedRowStatus;
+            set => this.RaiseAndSetIfChanged(ref this.mappedRowStatus, value);
         }
 
         /// <summary>
@@ -92,9 +130,9 @@ namespace DEHEASysML.ViewModel.Rows
         }
 
         /// <summary>
-        /// The <see cref="TDstElement" />
+        /// The <see cref="Element" />
         /// </summary>
-        public TDstElement DstElement
+        public Element DstElement
         {
             get => this.dstElement;
             set => this.RaiseAndSetIfChanged(ref this.dstElement, value);
@@ -110,8 +148,33 @@ namespace DEHEASysML.ViewModel.Rows
         }
 
         /// <summary>
-        /// A collection of <see cref="BinaryRelationship"/>
+        /// The name of the Target Element
         /// </summary>
-        public readonly List<BinaryRelationship> RelationShips;
+        public string TargetElementName
+        {
+            get => this.targetElementName;
+            set => this.RaiseAndSetIfChanged(ref this.targetElementName, value);
+        }
+
+        /// <summary>
+        /// The name of the Source Element
+        /// </summary>
+        public string SourceElementName
+        {
+            get => this.sourceElementName;
+            set => this.RaiseAndSetIfChanged(ref this.sourceElementName, value);
+        }
+
+        /// <summary>
+        /// Update this view model properties
+        /// </summary>
+        private void UpdateProperties()
+        {
+            var dstElementDisplay = $"{this.DstElement?.Name} [{this.DstElement?.Stereotype}]";
+            var hubElementDisplay = $"{((INamedThing)this.HubElement)?.Name} [{this.HubElement?.GetType().Name}]";
+
+            this.SourceElementName = this.MappingDirection == MappingDirection.FromDstToHub ? dstElementDisplay : hubElementDisplay;
+            this.TargetElementName = this.MappingDirection == MappingDirection.FromDstToHub ? hubElementDisplay : dstElementDisplay;
+        }
     }
 }

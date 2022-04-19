@@ -19,6 +19,10 @@
     <ProjectGuid>{5507BC7E-3E2C-4568-AAC8-FCDEE7914CDA}</ProjectGuid>
   </PropertyGroup>
   <ItemGroup>
+    <None Remove="Resources\EnterpriseArchitect.ico" />
+    <None Remove="Resources\icon.ico" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="NLog" Version="4.6.8" />
     <PackageReference Include="reactiveui" Version="6.5.0" />
     <PackageReference Include="Rx-Linq" Version="2.2.5" />
@@ -38,6 +42,14 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\DEH-Common\DEHPCommon\DEHPCommon.csproj" />
+  </ItemGroup>
+	<ItemGroup>
+    <Resource Include="Resources\EnterpriseArchitect.ico">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\icon.ico">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Resource>
   </ItemGroup>
   <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
   <Target Name="AfterBuild">

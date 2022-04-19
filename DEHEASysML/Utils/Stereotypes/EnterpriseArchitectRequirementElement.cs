@@ -1,5 +1,5 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
-// <copyright file="MappedElementDefinitionRowViewModel.cs" company="RHEA System S.A.">
+// <copyright file="EnterpriseArchitectRequirementElement.cs" company="RHEA System S.A.">
 // Copyright (c) 2020-2022 RHEA System S.A.
 // 
 // Author: Sam Gerené, Alex Vorobiev, Alexander van Delft, Nathanael Smiechowski, Antoine Théate.
@@ -22,27 +22,33 @@
 // </copyright>
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace DEHEASysML.ViewModel.Rows
+namespace DEHEASysML.Utils.Stereotypes
 {
     using CDP4Common.EngineeringModelData;
+
+    using DEHEASysML.ViewModel.Rows;
 
     using DEHPCommon.Enumerators;
 
     using EA;
 
+    using Requirement = CDP4Common.EngineeringModelData.Requirement;
+
     /// <summary>
-    /// The <see cref="MappedElementDefinitionRowViewModel" /> is the row view model that represents a mapping between
-    /// an <see cref="ElementDefinition" /> and an <see cref="Element" />
+    /// The <see cref="EnterpriseArchitectRequirementElement" /> represents a Requirement from EA.
+    /// The purpose of this <see cref="EnterpriseArchitectRequirementElement" /> is to type the Requirement from EA.
+    /// e.g. since the only obious differences between Blocks and Requirement for instance are from their names and stereotypes and
+    /// there is no type difference in the EA API, they are both <see cref="Element" />
     /// </summary>
-    public class MappedElementDefinitionRowViewModel : MappedElementRowViewModel<ElementDefinition>
+    public class EnterpriseArchitectRequirementElement : MappedRequirementRowViewModel
     {
         /// <summary>
-        /// Initializes a new <see cref="MappedElementDefinitionRowViewModel" />
+        /// Initializes a new <see cref="EnterpriseArchitectRequirementElement" />
         /// </summary>
-        /// <param name="thing">The <see cref="ElementDefinition" /></param>
+        /// <param name="thing">The <see cref="RequirementsSpecification" /></param>
         /// <param name="dstElement">The <see cref="Element" /></param>
         /// <param name="mappingDirection">The <see cref="MappingDirection" /></param>
-        public MappedElementDefinitionRowViewModel(ElementDefinition thing, Element dstElement, MappingDirection mappingDirection)
+        public EnterpriseArchitectRequirementElement(Requirement thing, Element dstElement, MappingDirection mappingDirection) 
             : base(thing, dstElement, mappingDirection)
         {
         }
