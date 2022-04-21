@@ -1,0 +1,60 @@
+﻿<UserControl x:Class="DEHEASysML.Views.ImpactPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
+             xmlns:objectBrowser="clr-namespace:DEHPCommon.UserInterfaces.Views.ObjectBrowser;assembly=DEHPCommon"
+             xmlns:enterpriseArchitectObjectBrowser="clr-namespace:DEHEASysML.Views.EnterpriseArchitectObjectBrowser"
+             xmlns:requirementsBrowser="clr-namespace:DEHEASysML.Views.RequirementsBrowser"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="800">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <dx:PixelSnapper Grid.Column="0" HorizontalAlignment="Center">
+                <Image Height="30" Source="pack://application:,,,/DEHEASysML;component/Resources/EnterpriseArchitect.ico" />
+            </dx:PixelSnapper>
+            <Path Grid.Column="1" Stretch="Fill" Fill="Black" Data="M 0,110 110,110 110,90 120,120 110,150 110,130 0,130 Z" HorizontalAlignment="Left" Margin="10,5" MaxHeight="30" RenderTransformOrigin=".5,.5">
+                <Path.RenderTransform>
+                    <RotateTransform Angle="{Binding ArrowDirection}" />
+                </Path.RenderTransform>
+            </Path>
+            <dx:PixelSnapper Grid.Column="2" HorizontalAlignment="Center">
+                <Image Height="30" Source="pack://application:,,,/DEHEASysML;component/Resources/icon.ico"/>
+            </dx:PixelSnapper>
+        </Grid>
+        <Button Grid.Row="1" ToolTip="Change Transfer Direction" Height="40" Margin="0 5" Width="150" HorizontalAlignment="Center" Content="Change Transfer Direction" Command="{Binding ChangeMappingDirection}"/>
+        <dx:DXTabControl Name="HubEngineeringModelPreview" Grid.Row="2" 
+                         SelectedIndex="{Binding CurrentMappingDirection}">
+            <dx:DXTabItem Header="Hub Impact">
+                <dx:DXTabControl>
+                    <dx:DXTabItem Header="Hub Engineering Model">
+                        <objectBrowser:ObjectBrowser DataContext="{Binding HubNetChangePreviewViewModel.ObjectNetChangePreview}" />
+                    </dx:DXTabItem>
+                    <dx:DXTabItem Header="Requirements">
+                        <requirementsBrowser:RequirementsBrowser DataContext="{Binding HubNetChangePreviewViewModel.RequirementsNetChangePreview}" />
+                    </dx:DXTabItem>
+                </dx:DXTabControl>
+            </dx:DXTabItem>
+            <dx:DXTabItem Header="Dst Impact">
+                <dx:DXTabControl>
+                    <dx:DXTabItem Header="Enterprise Architect Objects">
+                        <enterpriseArchitectObjectBrowser:EnterpriseArchitectObjectBrowser DataContext="{Binding DstNetChangePreviewViewModel}" />
+                    </dx:DXTabItem>
+                </dx:DXTabControl>
+            </dx:DXTabItem>
+        </dx:DXTabControl>
+
+    </Grid>
+</UserControl>

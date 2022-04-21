@@ -27,7 +27,11 @@ namespace DEHEASysML.DstController
     using System;
     using System.Collections.Generic;
 
+    using CDP4Common.CommonData;
+
     using DEHEASysML.ViewModel.Rows;
+
+    using DEHPCommon.Enumerators;
 
     using EA;
 
@@ -52,6 +56,16 @@ namespace DEHEASysML.DstController
         /// A collection of <see cref="IMappedElementRowViewModel" />
         /// </summary>
         ReactiveList<IMappedElementRowViewModel> DstMapResult { get; }
+
+        /// <summary>
+        /// The <see cref="MappingDirection" />
+        /// </summary> 
+        MappingDirection MappingDirection { get; set; }
+
+        /// <summary>
+        /// A collection of <see cref="Thing"/> selected for the transfer
+        /// </summary>
+        ReactiveList<Thing> SelectedDstMapResultForTransfer { get; }
 
         /// <summary>
         /// Handle to clear everything when Enterprise Architect close

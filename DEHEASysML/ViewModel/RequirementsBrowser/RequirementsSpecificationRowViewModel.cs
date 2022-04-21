@@ -89,6 +89,14 @@ namespace DEHEASysML.ViewModel.RequirementsBrowser
         }
 
         /// <summary>
+        /// Updates the contained rows 
+        /// </summary>
+        public void UpdateChildren()
+        {
+            this.ComputeContainedRows();
+        }
+
+        /// <summary>
         /// Used to call virtual member when this gets initialized
         /// </summary>
         private void Initialize()

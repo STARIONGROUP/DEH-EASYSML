@@ -227,7 +227,11 @@ namespace DEHEASysML.ViewModel.Dialogs
         private void InitializeObservablesAndCommands()
         {
             this.ContinueCommand = ReactiveCommand.Create();
-            this.ContinueCommand.Subscribe(_ => this.ExecuteContinueCommand(() => { this.DstController.Map(this.MappedElements.ToList()); }));
+
+            this.ContinueCommand.Subscribe(_ => this.ExecuteContinueCommand(() =>
+            {
+                this.DstController.Map(this.MappedElements.ToList());
+            }));
 
             this.MapToNewElementCommand = ReactiveCommand.Create(this.WhenAnyValue(x => x.CanExecuteMapToNewElement));
             this.MapToNewElementCommand.Subscribe(_ => this.ExecuteMapToNewElementCommand());
@@ -289,6 +293,19 @@ namespace DEHEASysML.ViewModel.Dialogs
             switch (this.SelectedItem)
             {
                 case EnterpriseArchitectRequirementElement requirement:
+                    var requirementsSpecification = requirement.HubElement.Container as RequirementsSpecification;
+
+                    if (requirement.HubElement.Original == null)
+                    {
+                        requirementsSpecification.Requirement.Remove(requirement.HubElement);
+                    }
+                    else
+                    {
+                        var originalRequirement = requirement.HubElement.Original as Requirement;
+                        requirementsSpecification.Requirement.RemoveAll(x => x.Iid == requirement.HubElement.Iid);
+                        requirementsSpecification.Requirement.Add(originalRequirement);
+                    }
+
                     requirement.HubElement = (Requirement)this.SelectedObjectBrowserThing.Clone(true);
                     requirement.ShouldCreateNewTargetElement = false;
                     requirement.MappedRowStatus = MappedRowStatus.ExistingElement;

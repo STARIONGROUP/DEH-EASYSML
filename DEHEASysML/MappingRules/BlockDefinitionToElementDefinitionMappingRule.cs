@@ -658,7 +658,8 @@ namespace DEHEASysML.MappingRules
                     Iid = Guid.NewGuid(),
                     Owner = this.Owner,
                     Name = dstElementName,
-                    ShortName = shortName
+                    ShortName = shortName,
+                    Container = this.HubController.OpenIteration
                 };
             }
 

@@ -144,7 +144,7 @@ namespace DEHEASysML.ViewModel.RequirementsBrowser
         /// <summary>
         /// Populate the context menu for the implementing view model
         /// </summary>
-        public void PopulateContextMenu()
+        public virtual void PopulateContextMenu()
         {
             this.ContextMenu.Clear();
 

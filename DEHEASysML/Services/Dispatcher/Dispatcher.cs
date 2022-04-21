@@ -55,6 +55,11 @@ namespace DEHEASysML.Services.Dispatcher
         private const string HubPanelName = "Hub Panel";
 
         /// <summary>
+        /// The name of the <see cref="ImpactPanelControl" /> inside EA
+        /// </summary>
+        private const string ImpactPanelName = "Impact Panel";
+
+        /// <summary>
         /// The <see cref="IDstController" />
         /// </summary>
         private readonly IDstController dstController;
@@ -68,11 +73,6 @@ namespace DEHEASysML.Services.Dispatcher
         /// The <see cref="Repository" />
         /// </summary>
         private Repository currentRepository;
-
-        /// <summary>
-        /// Asserts if the <see cref="HubPanelControl" /> has been created
-        /// </summary>
-        private bool hubPanelControlCreated;
 
         /// <summary>
         /// Backing field for <see cref="CanMap" />
@@ -115,8 +115,6 @@ namespace DEHEASysML.Services.Dispatcher
         public void Connect(Repository repository)
         {
             this.currentRepository = repository;
-            this.currentRepository.HideAddinWindow();
-            this.currentRepository.RemoveWindow(HubPanelName);
             this.dstController.Connect(repository);
         }
 
@@ -125,18 +123,15 @@ namespace DEHEASysML.Services.Dispatcher
         /// </summary>
         public void ShowHubPanel()
         {
-            if (this.StatusBar is EnterpriseArchitectStatusBarControlViewModel enterpriseArchitectStatusBar)
-            {
-                enterpriseArchitectStatusBar.Initialize(this.currentRepository);
-            }
+            this.HandleTabVisibility(HubPanelName, typeof(HubPanelControl).ToString());
+        }
 
-            if (!this.hubPanelControlCreated)
-            {
-                this.currentRepository.AddWindow(HubPanelName, typeof(HubPanelControl).ToString());
-                this.hubPanelControlCreated = true;
-            }
-
-            this.currentRepository.ShowAddinWindow(HubPanelName);
+        /// <summary>
+        /// Show the Impact Panel to the user
+        /// </summary>
+        public void ShowImpactPanel()
+        {
+            this.HandleTabVisibility(ImpactPanelName, typeof(ImpactPanelControl).ToString());
         }
 
         /// <summary>
@@ -212,6 +207,37 @@ namespace DEHEASysML.Services.Dispatcher
         {
             var elements = this.dstController.GetAllElementsInsidePackage(repository);
             this.OpenMappingDialog(elements);
+        }
+
+        /// <summary>
+        /// Handle the visibility of a Tab inside EA
+        /// </summary>
+        /// <param name="tabName">The name of the tab</param>
+        /// <param name="controlId">The id of the ActiveX Control</param>
+        private void HandleTabVisibility(string tabName, string controlId)
+        {
+            this.InitializeStatusBar();
+
+            switch (this.currentRepository.IsTabOpen(tabName))
+            {
+                case 0:
+                    this.currentRepository.AddTab(tabName, controlId);
+                    break;
+                case 1:
+                    this.currentRepository.ActivateTab(tabName);
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Initializes the <see cref="IStatusBarControlViewModel" />
+        /// </summary>
+        private void InitializeStatusBar()
+        {
+            if (this.StatusBar is EnterpriseArchitectStatusBarControlViewModel enterpriseArchitectStatusBar)
+            {
+                enterpriseArchitectStatusBar.Initialize(this.currentRepository);
+            }
         }
 
         /// <summary>

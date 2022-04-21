@@ -43,6 +43,8 @@ namespace DEHEASysML
     using DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser;
     using DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Interfaces;
     using DEHEASysML.ViewModel.Interfaces;
+    using DEHEASysML.ViewModel.NetChangePreview;
+    using DEHEASysML.ViewModel.NetChangePreview.Interfaces;
     using DEHEASysML.ViewModel.RequirementsBrowser;
 
     using DEHPCommon;
@@ -75,7 +77,7 @@ namespace DEHEASysML
         /// <summary>
         /// The name of the Impact Panel Menu
         /// </summary>
-        private const string ImpactPanelMenu = "&Impact Panel";
+        private const string ImpactPanelMenu = "&Open Impact Panel";
 
         /// <summary>
         /// The name of the Map Selected Elements command
@@ -208,6 +210,9 @@ namespace DEHEASysML
             {
                 case HubPanelMenu:
                     this.dispatcher.ShowHubPanel();
+                    break;
+                case ImpactPanelMenu:
+                    this.dispatcher.ShowImpactPanel();
                     break;
                 case MapSelectedElementsMenu:
                     this.dispatcher.MapSelectedElementsCommand(repository);
@@ -378,6 +383,11 @@ namespace DEHEASysML
             containerBuilder.RegisterType<RequirementsBrowserViewModel>().As<IRequirementsBrowserViewModel>();
             containerBuilder.RegisterType<DstMappingConfigurationDialogViewModel>().As<IDstMappingConfigurationDialogViewModel>();
             containerBuilder.RegisterType<EnterpriseArchitectObjectBrowserViewModel>().As<IEnterpriseArchitectObjectBrowserViewModel>();
+            containerBuilder.RegisterType<ImpactPanelViewModel>().As<IImpactPanelViewModel>().SingleInstance();
+            containerBuilder.RegisterType<DstNetChangePreviewViewModel>().As<IDstNetChangePreviewViewModel>().SingleInstance();
+            containerBuilder.RegisterType<HubNetChangePreviewViewModel>().As<IHubNetChangePreviewViewModel>().SingleInstance();
+            containerBuilder.RegisterType<HubObjectNetChangePreviewViewModel>().As<IHubObjectNetChangePreviewViewModel>().SingleInstance();
+            containerBuilder.RegisterType<HubRequirementsNetChangePreviewViewModel>().As<IHubRequirementsNetChangePreviewViewModel>().SingleInstance();
         }
     }
 }

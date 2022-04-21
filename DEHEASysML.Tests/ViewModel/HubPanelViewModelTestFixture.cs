@@ -160,6 +160,7 @@ namespace DEHEASysML.Tests.ViewModel
             Assert.IsNotNull(this.viewModel.StatusBar);
             Assert.IsNotNull(this.viewModel.RequirementsBrowser);
             Assert.AreEqual("Connect", this.viewModel.ConnectButtonText);
+            Assert.IsFalse(this.viewModel.IsBusy);
         }
 
         [Test]

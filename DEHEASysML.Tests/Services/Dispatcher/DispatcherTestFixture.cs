@@ -59,10 +59,8 @@ namespace DEHEASysML.Tests.Services.Dispatcher
         public void Setup()
         {
             this.repository = new Mock<Repository>();
-            this.repository.Setup(x => x.AddWindow(It.IsAny<string>(), It.IsAny<string>()));
-            this.repository.Setup(x => x.ShowAddinWindow(It.IsAny<string>()));
-            this.repository.Setup(x => x.RemoveWindow(It.IsAny<string>()));
-            this.repository.Setup(x => x.HideAddinWindow());
+            this.repository.Setup(x => x.AddTab(It.IsAny<string>(), It.IsAny<string>()));
+            this.repository.Setup(x => x.ActivateTab(It.IsAny<string>()));
 
             this.dstController = new Mock<IDstController>();
             this.dstController.Setup(x => x.OnFileClose(this.repository.Object));
@@ -99,19 +97,27 @@ namespace DEHEASysML.Tests.Services.Dispatcher
         }
 
         [Test]
-        public void VerifyShowHubPanel()
+        public void VerifyShowPanels()
         {
             this.dispatcher.Connect(this.repository.Object);
+            this.repository.Setup(x => x.IsTabOpen("Hub Panel")).Returns(0);
+            this.repository.Setup(x => x.IsTabOpen("Impact Panel")).Returns(0);
             Assert.DoesNotThrow(() => this.dispatcher.ShowHubPanel());
+            Assert.DoesNotThrow(() => this.dispatcher.ShowImpactPanel());
+
+            this.repository.Setup(x => x.IsTabOpen("Hub Panel")).Returns(1);
+            this.repository.Setup(x => x.IsTabOpen("Impact Panel")).Returns(1);
             Assert.DoesNotThrow(() => this.dispatcher.ShowHubPanel());
-            this.repository.Verify(x => x.AddWindow(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
-            this.repository.Verify(x => x.ShowAddinWindow(It.IsAny<string>()), Times.Exactly(2));
+            Assert.DoesNotThrow(() => this.dispatcher.ShowImpactPanel());
 
             this.dispatcher.StatusBar = new EnterpriseArchitectStatusBarControlViewModel(new Mock<INavigationService>().Object);
+            this.repository.Setup(x => x.IsTabOpen("Hub Panel")).Returns(2);
+            this.repository.Setup(x => x.IsTabOpen("Impact Panel")).Returns(2);
             Assert.DoesNotThrow(() => this.dispatcher.ShowHubPanel());
+            Assert.DoesNotThrow(() => this.dispatcher.ShowImpactPanel());
             Assert.DoesNotThrow(() => this.dispatcher.OnPostInitiliazed(this.repository.Object));
-            this.repository.Verify(x => x.ShowAddinWindow(It.IsAny<string>()), Times.Exactly(3));
-            this.repository.Verify(x => x.HideAddinWindow(), Times.Exactly(2));
+            this.repository.Verify(x => x.AddTab(It.IsAny<string>(), It.IsAny<string>()), Times.Exactly(2));
+            this.repository.Verify(x => x.ActivateTab(It.IsAny<string>()), Times.Exactly(2));
         }
 
         [Test]
@@ -132,8 +138,6 @@ namespace DEHEASysML.Tests.Services.Dispatcher
 
             this.repository.Setup(x => x.IsTabOpen("DEHP")).Returns(2);
             Assert.DoesNotThrow(() => this.dispatcher.Disconnect());
-
-            this.repository.Verify(x => x.RemoveWindow(It.IsAny<string>()), Times.Exactly(1));
         }
 
         [Test]

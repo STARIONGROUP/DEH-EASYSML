@@ -1,5 +1,5 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
-// <copyright file="HubPanelControl.Designer.cs" company="RHEA System S.A.">
+// <copyright file="ImpactPanelControl.Designer.cs" company="RHEA System S.A.">
 // Copyright (c) 2020-2022 RHEA System S.A.
 // 
 // Author: Sam Gerené, Alex Vorobiev, Alexander van Delft, Nathanael Smiechowski, Antoine Théate.
@@ -34,10 +34,10 @@ namespace DEHEASysML.Forms
     using DEHPCommon;
 
     /// <summary>
-    /// Interaction logic for the <see cref="HubPanelControl" />
+    /// Interaction logic for the <see cref="ImpactPanelControl" />
     /// </summary>
     [ExcludeFromCodeCoverage]
-    partial class HubPanelControl
+    partial class ImpactPanelControl
     {
         /// <summary> 
         /// Required designer variable.
@@ -47,7 +47,7 @@ namespace DEHEASysML.Forms
         /// <summary>
         /// The <see cref="ElementHost"/>
         /// </summary>
-        private ElementHost hubPanelHost;
+        private ElementHost impactPanelHost;
 
         /// <summary> 
         /// Clean up any resources being used.
@@ -70,28 +70,28 @@ namespace DEHEASysML.Forms
         /// </summary>
         private void InitializeComponent()
         {
-            this.hubPanelHost = new System.Windows.Forms.Integration.ElementHost();
+            this.impactPanelHost = new System.Windows.Forms.Integration.ElementHost();
             this.SuspendLayout();
             // 
-            // hubPanelHost
+            // impactPanelHost
             // 
-            this.hubPanelHost.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.hubPanelHost.Location = new System.Drawing.Point(0, 0);
-            this.hubPanelHost.Name = "hubPanelHost";
-            this.hubPanelHost.Size = new System.Drawing.Size(552, 343);
-            this.hubPanelHost.TabIndex = 0;
-            this.hubPanelHost.Text = "hubPanelHost";
-            var hubPanel = new HubPanel();
-            var hubPanelViewModel = AppContainer.Container.Resolve<IHubPanelViewModel>();
-            hubPanel.DataContext = hubPanelViewModel;
-            this.hubPanelHost.Child = hubPanel;
+            this.impactPanelHost.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.impactPanelHost.Location = new System.Drawing.Point(0, 0);
+            this.impactPanelHost.Name = "impactPanelHost";
+            this.impactPanelHost.Size = new System.Drawing.Size(552, 343);
+            this.impactPanelHost.TabIndex = 0;
+            this.impactPanelHost.Text = "impactPanelHost";
+            var impactPanel = new ImpactPanel();
+            var impactPanelViewModel = AppContainer.Container.Resolve<IImpactPanelViewModel>();
+            impactPanel.DataContext = impactPanelViewModel;
+            this.impactPanelHost.Child = impactPanel;
             // 
             // HubPanelControl
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.Controls.Add(this.hubPanelHost);
-            this.Name = "HubPanelControl";
+            this.Controls.Add(this.impactPanelHost);
+            this.Name = "ImpactPanelControl";
             this.ResumeLayout(false);
         }
 

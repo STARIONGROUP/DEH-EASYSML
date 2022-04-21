@@ -198,14 +198,37 @@ namespace DEHEASysML.Tests.ViewModel.Dialogs
 
             var requirement = this.CreateElement(StereotypeKind.Requirement);
             requirement.Setup(x => x.Name).Returns("arequirement");
-            this.viewModel.SelectedItem = new EnterpriseArchitectRequirementElement(null, requirement.Object, MappingDirection.FromDstToHub);
+           
+            var requirementSpecification1 = new RequirementsSpecification();
+
+            var requirement1 = new CDP4Common.EngineeringModelData.Requirement()
+            {
+                Iid = Guid.NewGuid(),
+                Container = requirementSpecification1
+            };
+
+            requirementSpecification1.Requirement.Add(requirement1);
+            this.viewModel.SelectedItem = new EnterpriseArchitectRequirementElement(requirement1, requirement.Object, MappingDirection.FromDstToHub);
 
             Assert.IsFalse(this.viewModel.CanExecuteMapToNewElement);
-            this.viewModel.SelectedObjectBrowserThing = new CDP4Common.EngineeringModelData.Requirement();
+            var requirementSpecification = new RequirementsSpecification();
+
+            this.viewModel.SelectedObjectBrowserThing = new CDP4Common.EngineeringModelData.Requirement()
+            {
+                Container = requirementSpecification
+            };
+
+            requirementSpecification.Requirement.Add(this.viewModel.SelectedObjectBrowserThing as CDP4Common.EngineeringModelData.Requirement);
 
             Assert.IsTrue(this.viewModel.MapToNewElementCommand.CanExecute(null));
             Assert.DoesNotThrow(() => this.viewModel.MapToNewElementCommand.Execute(null));
             Assert.AreEqual(MappedRowStatus.ExistingElement, this.viewModel.SelectedItem.MappedRowStatus);
+
+            this.viewModel.SelectedItem = new EnterpriseArchitectRequirementElement(requirement1.Clone(false), requirement.Object, MappingDirection.FromDstToHub);
+            requirementSpecification1.Requirement.Add(requirement1);
+
+            Assert.DoesNotThrow(() => this.viewModel.MapToNewElementCommand.Execute(null));
+
             Assert.IsNotEmpty(this.viewModel.SelectedItem.SourceElementName);
             Assert.IsNotEmpty(this.viewModel.SelectedItem.TargetElementName);
 
