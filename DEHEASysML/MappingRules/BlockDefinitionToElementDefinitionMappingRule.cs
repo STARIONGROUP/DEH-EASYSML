@@ -109,8 +109,10 @@ namespace DEHEASysML.MappingRules
         /// Transform a <see cref="List{T}" /> of <see cref="EnterpriseArchitectBlockElement" /> into a <see cref="List{T}" /> of
         /// <see cref="MappedElementDefinitionRowViewModel" />
         /// </summary>
-        /// <param name="input">Tuple of <see cref="bool"/>, The <see cref="List{T}" /> of <see cref="EnterpriseArchitectBlockElement " />
-        /// The <see cref="bool"/> handles the fact that it the mapping has to map everything</param>
+        /// <param name="input">
+        /// Tuple of <see cref="bool" />, The <see cref="List{T}" /> of <see cref="EnterpriseArchitectBlockElement " />
+        /// The <see cref="bool" /> handles the fact that it the mapping has to map everything
+        /// </param>
         /// <returns>A collection of <see cref="MappedElementDefinitionRowViewModel" /></returns>
         public override List<MappedElementDefinitionRowViewModel> Transform((bool completeMapping, List<EnterpriseArchitectBlockElement> elements) input)
         {
@@ -123,9 +125,13 @@ namespace DEHEASysML.MappingRules
                     return default;
                 }
 
+                this.Owner = this.HubController.CurrentDomainOfExpertise;
+
                 this.DstController = AppContainer.Container.Resolve<IDstController>();
 
                 this.Elements = new List<EnterpriseArchitectBlockElement>(elements);
+
+                this.portsToConnect.Clear();
 
                 foreach (var mappedElement in this.Elements.ToList())
                 {
@@ -181,7 +187,7 @@ namespace DEHEASysML.MappingRules
                 var elementUsageName = $"{interfaceBlock.Name}_Impl";
 
                 var interfaceElementUsage = this.portsToConnect
-                    .FirstOrDefault(x => x.Item2.DstElement.Name == elementUsageName).Item3;
+                    .FirstOrDefault(x => x.Item1.PropertyTypeName as string == elementUsageName).Item3;
 
                 if (interfaceElementUsage == null)
                 {
@@ -200,7 +206,8 @@ namespace DEHEASysML.MappingRules
                     .Clone(false) ?? this.CreateBinaryRelationShip(elementUsage, interfaceElementUsage,
                     interfaceBlock.Name, this.interfaceCategoryNames);
 
-                element.RelationShips.Add(relationShip);
+                this.Elements.First(x => x.DstElement.ElementGUID == element.DstElement.ElementGUID)
+                    .RelationShips.Add(relationShip);
             }
         }
 
@@ -280,6 +287,9 @@ namespace DEHEASysML.MappingRules
                 }
 
                 this.UpdateValueSet(parameter, valueOfProperty);
+
+                elementDefinition.Parameter.RemoveAll(x => x.Iid == parameter.Iid);
+                elementDefinition.Parameter.Add(parameter);
             }
         }
 
@@ -329,22 +339,28 @@ namespace DEHEASysML.MappingRules
                     interfaceEndKind = InterfaceEndKind.INPUT;
                 }
 
-                if (portBlock == null || element.HubElement.ContainedElement.Any(x => x.Name == portBlock.Name))
+                if (portBlock == null)
                 {
                     continue;
                 }
 
-                var elementUsage = new ElementUsage
-                {
-                    Name = portBlock.Name,
-                    ShortName = portBlock.GetShortName(),
-                    Iid = Guid.NewGuid(),
-                    Owner = this.Owner,
-                    ElementDefinition = this.GetPortElementDefinition(),
-                    InterfaceEnd = interfaceEndKind
-                };
+                var elementUsage = element.HubElement.ContainedElement.FirstOrDefault(x => x.Name == portBlock.Name);
 
-                element.HubElement.ContainedElement.Add(elementUsage);
+                if (elementUsage == null)
+                {
+                    elementUsage = new ElementUsage
+                    {
+                        Name = portBlock.Name,
+                        ShortName = portBlock.GetShortName(),
+                        Iid = Guid.NewGuid(),
+                        Owner = this.Owner,
+                        ElementDefinition = this.GetPortElementDefinition(),
+                        InterfaceEnd = interfaceEndKind
+                    };
+
+                    element.HubElement.ContainedElement.Add(elementUsage);
+                }
+
                 this.portsToConnect.Add((port, element, elementUsage));
             }
         }
@@ -388,7 +404,7 @@ namespace DEHEASysML.MappingRules
             }
 
             var partPropertyBlock = this.DstController.CurrentRepository.GetElementByID(partProperty.PropertyType);
-            var mappedElement = this.Elements.FirstOrDefault(x => x.DstElement.ElementGUID == partProperty.ElementGUID);
+            var mappedElement = this.Elements.FirstOrDefault(x => x.DstElement.ElementGUID == partPropertyBlock.ElementGUID);
 
             if (mappedElement == null)
             {
@@ -460,11 +476,11 @@ namespace DEHEASysML.MappingRules
             {
                 var shortName = property.GetShortName();
 
-                if (!this.HubController.TryGetThingBy(x => 
-                            !x.IsDeprecated && 
+                if (!this.HubController.TryGetThingBy(x =>
+                            !x.IsDeprecated &&
                             (string.Equals(x.ShortName, shortName, StringComparison.InvariantCultureIgnoreCase)
                              || string.Equals(x.Name, property.Name, StringComparison.InvariantCultureIgnoreCase))
-                             , ClassKind.ParameterType, out parameterType))
+                        , ClassKind.ParameterType, out parameterType))
                 {
                     ParameterType newParameterType;
 

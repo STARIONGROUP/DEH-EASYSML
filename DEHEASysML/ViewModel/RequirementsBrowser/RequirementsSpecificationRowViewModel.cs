@@ -31,6 +31,7 @@ namespace DEHEASysML.ViewModel.RequirementsBrowser
     using CDP4Common.EngineeringModelData;
 
     using CDP4Dal;
+    using CDP4Dal.Events;
 
     using DEHEASysML.ViewModel.Comparers;
 
@@ -61,6 +62,14 @@ namespace DEHEASysML.ViewModel.RequirementsBrowser
         }
 
         /// <summary>
+        /// Updates the contained rows
+        /// </summary>
+        public void UpdateChildren()
+        {
+            this.ComputeContainedRows();
+        }
+
+        /// <summary>
         /// Updates this view model properties
         /// </summary>
         protected override void UpdateProperties()
@@ -70,11 +79,32 @@ namespace DEHEASysML.ViewModel.RequirementsBrowser
         }
 
         /// <summary>
+        /// The <see cref="ObjectChangedEvent" /> event-handler.
+        /// </summary>
+        /// <param name="objectChange">The <see cref="ObjectChangedEvent" /></param>
+        protected override void ObjectChangeEventHandler(ObjectChangedEvent objectChange)
+        {
+            base.ObjectChangeEventHandler(objectChange);
+            this.UpdateProperties();
+        }
+
+        /// <summary>
         /// Computes this view model <see cref="RowViewModelBase{T}.ContainedRows" />
         /// </summary>
         protected override void ComputeContainedRows()
         {
             base.ComputeContainedRows();
+
+            if (this.Thing is null)
+            {
+                return;
+            }
+
+            if (this.Thing.IsDeprecated)
+            {
+                ((IterationRequirementsViewModel)this.ContainerViewModel).UpdateProperties();
+                return;
+            }
 
             foreach (var requirement in this.Thing.Requirement.Where(x => x.Group == null && !x.IsDeprecated).ToList())
             {
@@ -86,14 +116,6 @@ namespace DEHEASysML.ViewModel.RequirementsBrowser
                 this.ContainedRows.SortedInsert(new RequirementsGroupRowViewModel(requirementGroup, this.Session, this,
                     this.Thing.Requirement.Where(x => x.Group != null).ToList()), ChildRowComparer);
             }
-        }
-
-        /// <summary>
-        /// Updates the contained rows 
-        /// </summary>
-        public void UpdateChildren()
-        {
-            this.ComputeContainedRows();
         }
 
         /// <summary>

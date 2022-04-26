@@ -27,6 +27,7 @@ namespace DEHEASysML.Tests.ViewModel.Comparers
     using System;
 
     using CDP4Common.EngineeringModelData;
+    using CDP4Common.SiteDirectoryData;
 
     using CDP4Dal;
 
@@ -51,6 +52,12 @@ namespace DEHEASysML.Tests.ViewModel.Comparers
             this.comparer = new RequirementsSpecificationComparer();
             this.session = new Mock<ISession>();
             this.iteration = new Iteration();
+
+            this.iteration.IterationSetup = new IterationSetup()
+            {
+                Container = new EngineeringModelSetup()
+            };
+
             this.iterationRequirements = new IterationRequirementsViewModel(this.iteration, this.session.Object);
         }
 

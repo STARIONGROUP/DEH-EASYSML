@@ -32,6 +32,7 @@ namespace DEHEASysML.ViewModel
     using DEHEASysML.Views;
 
     using DEHPCommon.Enumerators;
+    using DEHPCommon.UserInterfaces.ViewModels.Interfaces;
 
     using ReactiveUI;
 
@@ -61,11 +62,14 @@ namespace DEHEASysML.ViewModel
         /// <param name="dstController">The <see cref="IDstController" /></param>
         /// <param name="hubNetChangePreviewViewModel">The <see cref="IHubNetChangePreviewViewModel" /></param>
         /// <param name="dstNetChangePreview">The <see cref="IDstNetChangePreviewViewModel" /></param>
-        public ImpactPanelViewModel(IDstController dstController, IHubNetChangePreviewViewModel hubNetChangePreviewViewModel, IDstNetChangePreviewViewModel dstNetChangePreview)
+        /// <param name="transferControlViewModel">The <see cref="ITransferControlViewModel" /></param>
+        public ImpactPanelViewModel(IDstController dstController, IHubNetChangePreviewViewModel hubNetChangePreviewViewModel,
+            IDstNetChangePreviewViewModel dstNetChangePreview, ITransferControlViewModel transferControlViewModel)
         {
             this.dstController = dstController;
             this.HubNetChangePreviewViewModel = hubNetChangePreviewViewModel;
             this.DstNetChangePreviewViewModel = dstNetChangePreview;
+            this.TransferControlViewModel = transferControlViewModel;
 
             this.InitializesCommands();
             this.UpdateProperties();
@@ -98,6 +102,11 @@ namespace DEHEASysML.ViewModel
         /// The <see cref="IDstNetChangePreviewViewModel" />
         /// </summary>
         public IDstNetChangePreviewViewModel DstNetChangePreviewViewModel { get; }
+
+        /// <summary>
+        /// The <see cref="ITransferControlViewModel" />
+        /// </summary>
+        public ITransferControlViewModel TransferControlViewModel { get; }
 
         /// <summary>
         /// Gets the <see cref="ReactiveCommand" /> that will change the mapping direction

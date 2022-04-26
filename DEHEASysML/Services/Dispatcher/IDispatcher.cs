@@ -100,5 +100,10 @@ namespace DEHEASysML.Services.Dispatcher
         /// Show the Impact Panel to the user
         /// </summary>
         void ShowImpactPanel();
+
+        /// <summary>
+        /// Open the Transfer History dialog
+        /// </summary>
+        void OpenTransferHistory();
     }
 }

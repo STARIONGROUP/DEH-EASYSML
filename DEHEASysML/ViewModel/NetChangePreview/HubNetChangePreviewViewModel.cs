@@ -90,11 +90,6 @@ namespace DEHEASysML.ViewModel.NetChangePreview
         /// </summary>
         private void InitializeObservable()
         {
-            CDPMessageBus.Current.Listen<SessionEvent>(this.hubController.Session)
-                .Where(x => x.Status == SessionStatus.EndUpdate && this.hubController.OpenIteration != null)
-                .ObserveOn(RxApp.MainThreadScheduler)
-                .Subscribe(_ => this.ComputeValues());
-
             this.WhenAnyValue(x => x.dstController.CanMap)
                 .Where(x => !x)
                 .Subscribe(_ => this.ComputeValues());

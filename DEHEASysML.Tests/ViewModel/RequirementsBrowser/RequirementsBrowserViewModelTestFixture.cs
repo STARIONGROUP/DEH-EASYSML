@@ -69,6 +69,11 @@ namespace DEHEASysML.Tests.ViewModel.RequirementsBrowser
 
             this.iteration = new Iteration();
 
+            this.iteration.IterationSetup = new IterationSetup()
+            {
+                Container = new EngineeringModelSetup()
+            };
+
             this.hubController = new Mock<IHubController>();
             this.hubController.Setup(x => x.Session).Returns(this.session.Object);
             this.hubController.Setup(x => x.IsSessionOpen).Returns(false);

@@ -1,0 +1,297 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+	<Fragment>
+		<ComponentGroup Id="DEHEASysMLComponents" Directory="INSTALLFOLDER">
+			<Component Id="nlog" Guid="{9FCD63A6-FC3E-499F-B15A-35B0953D4FE7}">
+				<File Id="nlogconfig" Vital="yes" Source="$(var.DEHEASysML.TargetDir)NLog.config" KeyPath="yes"/>
+			</Component>
+
+			<!--Dll Dependencies-->
+
+			<Component Guid="{8DBAEA18-E0DB-486A-B301-2DC1A7486BC6}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)Autofac.dll" KeyPath="yes" />
+			</Component>
+
+			<!--CDP4 Dependencies-->
+			<Component Guid="{59747BB6-E8A2-43CE-9E9F-4E7579DAE864}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)CDP4Common.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{4190EC06-9CD5-4A50-AC86-4D67503BFE52}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)CDP4Dal.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{0B4149D3-25D9-492F-874A-C9CFAE90F339}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)CDP4JsonFileDal.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{03C1D10B-DE8B-49D2-8431-267826695BC3}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)CDP4JsonSerializer.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{DA5060CC-DDB9-4288-AEF3-A47E36101B66}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)CDP4RequirementsVerification.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{3841F96A-D897-4D1B-9508-6BDF57F1944B}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)CDP4ServicesDal.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{2F097859-5530-46AD-B882-B56F49DFC92C}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)CDP4WspDal.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{0858044F-BBC5-4F82-8D14-6657FF24D48E}">
+				<Class Id="{EC884B3C-DE35-31C3-8C05-7CD3AAB4C3C7}" Context="InprocServer32" Description="DEHEASysML.Forms.HubPanelControl" ThreadingModel="both" ForeignServer="mscoree.dll">
+					<ProgId Id="DEHEASysML.Forms.HubPanelControl" Description="DEHEASysML.Forms.HubPanelControl" />
+				</Class>
+				<Class Id="{9FA962D5-42B3-3D4E-A2D8-D7082E24E031}" Context="InprocServer32" Description="DEHEASysML.Forms.ImpactPanelControl" ThreadingModel="both" ForeignServer="mscoree.dll">
+					<ProgId Id="DEHEASysML.Forms.ImpactPanelControl" Description="DEHEASysML.Forms.ImpactPanelControl" />
+				</Class>
+				<Class Id="{F8F393B6-194A-3511-867E-E51955739159}" Context="InprocServer32" Description="DEHEASysML.App" ThreadingModel="both" ForeignServer="mscoree.dll">
+					<ProgId Id="DEHEASysML.App" Description="DEHEASysML.App" />
+				</Class>
+				<File Id="fil6F9F480E0389A32E3CCA841AF30A0C3A" Name="DEHEASysML.dll"  KeyPath="yes" Source="$(var.DEHEASysML.TargetPath)" />
+				<ProgId Id="Record" />
+				<RegistryValue Root="HKCR" Key="CLSID\{EC884B3C-DE35-31C3-8C05-7CD3AAB4C3C7}\Implemented Categories\{62C8FE65-4EBB-45e7-B440-6E39B2CDBF29}" Value="" Type="string" Action="write" />
+				<RegistryValue Root="HKCR" Key="CLSID\{EC884B3C-DE35-31C3-8C05-7CD3AAB4C3C7}\InprocServer32\1.0.0.0" Name="Class" Value="DEHEASysML.Forms.HubPanelControl" Type="string" Action="write" />
+				<RegistryValue Root="HKCR" Key="CLSID\{EC884B3C-DE35-31C3-8C05-7CD3AAB4C3C7}\InprocServer32\1.0.0.0" Name="Assembly" Value="DEHEASysML, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" Type="string" Action="write" />
+				<RegistryValue Root="HKCR" Key="CLSID\{EC884B3C-DE35-31C3-8C05-7CD3AAB4C3C7}\InprocServer32\1.0.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+				<RegistryValue Root="HKCR" Key="CLSID\{EC884B3C-DE35-31C3-8C05-7CD3AAB4C3C7}\InprocServer32\1.0.0.0" Name="CodeBase" Value="file:///[#fil6F9F480E0389A32E3CCA841AF30A0C3A]" Type="string" Action="write" />
+				<RegistryValue Root="HKCR" Key="CLSID\{EC884B3C-DE35-31C3-8C05-7CD3AAB4C3C7}\InprocServer32" Name="Class" Value="DEHEASysML.Forms.HubPanelControl" Type="string" Action="write" />
+				<RegistryValue Root="HKCR" Key="CLSID\{EC884B3C-DE35-31C3-8C05-7CD3AAB4C3C7}\InprocServer32" Name="Assembly" Value="DEHEASysML, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" Type="string" Action="write" />
+				<RegistryValue Root="HKCR" Key="CLSID\{EC884B3C-DE35-31C3-8C05-7CD3AAB4C3C7}\InprocServer32" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+				<RegistryValue Root="HKCR" Key="CLSID\{EC884B3C-DE35-31C3-8C05-7CD3AAB4C3C7}\InprocServer32" Name="CodeBase" Value="file:///[#fil6F9F480E0389A32E3CCA841AF30A0C3A]" Type="string" Action="write" />
+				<RegistryValue Root="HKCR" Key="CLSID\{9FA962D5-42B3-3D4E-A2D8-D7082E24E031}\Implemented Categories\{62C8FE65-4EBB-45e7-B440-6E39B2CDBF29}" Value="" Type="string" Action="write" />
+				<RegistryValue Root="HKCR" Key="CLSID\{9FA962D5-42B3-3D4E-A2D8-D7082E24E031}\InprocServer32\1.0.0.0" Name="Class" Value="DEHEASysML.Forms.ImpactPanelControl" Type="string" Action="write" />
+				<RegistryValue Root="HKCR" Key="CLSID\{9FA962D5-42B3-3D4E-A2D8-D7082E24E031}\InprocServer32\1.0.0.0" Name="Assembly" Value="DEHEASysML, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" Type="string" Action="write" />
+				<RegistryValue Root="HKCR" Key="CLSID\{9FA962D5-42B3-3D4E-A2D8-D7082E24E031}\InprocServer32\1.0.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+				<RegistryValue Root="HKCR" Key="CLSID\{9FA962D5-42B3-3D4E-A2D8-D7082E24E031}\InprocServer32\1.0.0.0" Name="CodeBase" Value="file:///[#fil6F9F480E0389A32E3CCA841AF30A0C3A]" Type="string" Action="write" />
+				<RegistryValue Root="HKCR" Key="CLSID\{9FA962D5-42B3-3D4E-A2D8-D7082E24E031}\InprocServer32" Name="Class" Value="DEHEASysML.Forms.ImpactPanelControl" Type="string" Action="write" />
+				<RegistryValue Root="HKCR" Key="CLSID\{9FA962D5-42B3-3D4E-A2D8-D7082E24E031}\InprocServer32" Name="Assembly" Value="DEHEASysML, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" Type="string" Action="write" />
+				<RegistryValue Root="HKCR" Key="CLSID\{9FA962D5-42B3-3D4E-A2D8-D7082E24E031}\InprocServer32" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+				<RegistryValue Root="HKCR" Key="CLSID\{9FA962D5-42B3-3D4E-A2D8-D7082E24E031}\InprocServer32" Name="CodeBase" Value="file:///[#fil6F9F480E0389A32E3CCA841AF30A0C3A]" Type="string" Action="write" />
+				<RegistryValue Root="HKCR" Key="CLSID\{F8F393B6-194A-3511-867E-E51955739159}\Implemented Categories\{62C8FE65-4EBB-45e7-B440-6E39B2CDBF29}" Value="" Type="string" Action="write" />
+				<RegistryValue Root="HKCR" Key="CLSID\{F8F393B6-194A-3511-867E-E51955739159}\InprocServer32\1.0.0.0" Name="Class" Value="DEHEASysML.App" Type="string" Action="write" />
+				<RegistryValue Root="HKCR" Key="CLSID\{F8F393B6-194A-3511-867E-E51955739159}\InprocServer32\1.0.0.0" Name="Assembly" Value="DEHEASysML, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" Type="string" Action="write" />
+				<RegistryValue Root="HKCR" Key="CLSID\{F8F393B6-194A-3511-867E-E51955739159}\InprocServer32\1.0.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+				<RegistryValue Root="HKCR" Key="CLSID\{F8F393B6-194A-3511-867E-E51955739159}\InprocServer32\1.0.0.0" Name="CodeBase" Value="file:///[#fil6F9F480E0389A32E3CCA841AF30A0C3A]" Type="string" Action="write" />
+				<RegistryValue Root="HKCR" Key="CLSID\{F8F393B6-194A-3511-867E-E51955739159}\InprocServer32" Name="Class" Value="DEHEASysML.App" Type="string" Action="write" />
+				<RegistryValue Root="HKCR" Key="CLSID\{F8F393B6-194A-3511-867E-E51955739159}\InprocServer32" Name="Assembly" Value="DEHEASysML, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" Type="string" Action="write" />
+				<RegistryValue Root="HKCR" Key="CLSID\{F8F393B6-194A-3511-867E-E51955739159}\InprocServer32" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+				<RegistryValue Root="HKCR" Key="CLSID\{F8F393B6-194A-3511-867E-E51955739159}\InprocServer32" Name="CodeBase" Value="file:///[#fil6F9F480E0389A32E3CCA841AF30A0C3A]" Type="string" Action="write" />
+			</Component>
+
+			<Component Guid="{9644F997-5AA9-48C6-B6EB-674CA041C3C3}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)DEHPCommon.dll" KeyPath="yes"/>
+			</Component>
+
+			<!--DevExpress v20.1-->
+			<Component Guid="{0B455AF0-D70C-43C8-A207-E92007487F6B}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)DevExpress.CodeParser.v20.1.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{5E0C0D71-ED05-4197-9FED-C09050AE2935}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)DevExpress.Data.Desktop.v20.1.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{DEB8E753-7022-4A67-925C-11272A32C9CA}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)DevExpress.Data.v20.1.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{854EF779-E700-4C60-ADAD-BB225D7351EF}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)DevExpress.DataAccess.v20.1.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{FA52A9D5-B0B1-48D3-BFD0-9ACF25A5E403}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)DevExpress.Images.v20.1.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{99A8703F-8764-484B-83E3-3D570CDD8043}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)DevExpress.Mvvm.v20.1.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{1E0A15D2-F02E-4F21-B413-4133D65F7EF2}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)DevExpress.Office.v20.1.Core.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{8FEDE4C1-9359-4FD6-A59C-89B2F02EFD51}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)DevExpress.Pdf.v20.1.Core.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{EDA345B4-6D09-4422-AAB8-978278B21A3B}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)DevExpress.Pdf.v20.1.Drawing.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{08E0C175-3596-42A6-A9E1-60C546FA3E33}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)DevExpress.Printing.v20.1.Core.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{CBCAEAA5-6DA8-4327-93C9-036F19707D97}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)DevExpress.RichEdit.v20.1.Core.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{720EA84B-0B00-447B-ADBE-93AB27A2806B}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)DevExpress.RichEdit.v20.1.Export.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{F0336EC6-FF22-443E-9EA1-D31A01D7773F}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)DevExpress.Xpf.Accordion.v20.1.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{A79922CA-C957-48BD-94D1-4F376A948F09}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)DevExpress.Xpf.Controls.v20.1.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{88FCA732-8725-421A-A9CD-29D7A204AD2A}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)DevExpress.Xpf.Core.v20.1.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{C2DDD864-D622-46EC-9C96-F14F0F9419FD}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)DevExpress.Xpf.Core.v20.1.Extensions.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{A2F072F4-DA13-46B3-A3EA-23891AC01485}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)DevExpress.Xpf.Docking.v20.1.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{B3937E36-1BB7-4279-8C1F-361525CCC231}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)DevExpress.Xpf.DocumentViewer.v20.1.Core.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{80EDCEF4-54C7-4FC2-9EB7-8C4A20A65BA6}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)DevExpress.Xpf.ExpressionEditor.v20.1.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{423860AB-1B3B-4E67-98D9-0C1AE51DA38E}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)DevExpress.Xpf.Grid.v20.1.Core.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{DDD8BBA3-C76F-4591-903F-90CE3629E11C}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)DevExpress.Xpf.Grid.v20.1.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{94F78EA7-56CA-451C-AD23-5CA767C7FA76}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)DevExpress.Xpf.Grid.v20.1.Extensions.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{0A19BFBA-0536-4B44-8C3E-0E1DC415CC76}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)DevExpress.Xpf.Layout.v20.1.Core.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{051D137D-954A-4C69-9170-AB56553E32FE}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)DevExpress.Xpf.LayoutControl.v20.1.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{515FD394-1A4A-4ADB-8D2D-5AC3CBD81BF5}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)DevExpress.Xpf.NavBar.v20.1.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{7C2657C5-8700-4645-BE2C-596FA2F8AE9F}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)DevExpress.Xpf.Office.v20.1.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{63638D6A-115E-4E32-895E-8435BC425A81}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)DevExpress.Xpf.Printing.v20.1.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{75DDB232-D7DF-4F06-9D37-18FDD35A4372}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)DevExpress.Xpf.Ribbon.v20.1.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{B56D0877-8E0C-4B1B-89CC-B0AC53CA5AE3}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)DevExpress.Xpf.RichEdit.v20.1.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{C3DD6A65-D590-4F15-BB7F-A481567B1E39}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)DevExpress.Xpf.Themes.Office2019Colorful.v20.1.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{ABB3FFED-F04C-4AC5-A3AE-8BCCB5745B61}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)DevExpress.Xpo.v20.1.dll" KeyPath="yes" />
+			</Component>
+
+			<!--Other dlls-->
+
+			<Component Guid="{E15EB80A-FFA8-43A3-9CDA-2ACCF355958E}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)DotNetZip.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{0E1F17C6-FBAA-41D6-881D-D214F626A9FE}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)Interop.EA.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{BECEEE7E-E7FD-4CE0-A1A6-1E25FF4A7324}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)Microsoft.Bcl.AsyncInterfaces.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{2C415C5C-43CA-4589-8139-D34787ED6689}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)Newtonsoft.Json.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{F9FCCC8C-EB24-446E-8F92-36C9465F5B46}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)NLog.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{BE9F99E8-C7F1-4A4B-89A5-A55E2CD7EDA3}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)ReactiveUI.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{B63DA42C-4DB4-49D3-8E08-911A31BB3B9F}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)Splat.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{21C87A05-69DD-441F-AC39-12B986E0B33E}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)System.Buffers.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{F9A07DCA-0E91-445C-B615-0382E926DA09}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)System.Diagnostics.DiagnosticSource.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{834E56F5-BA74-42FD-964E-6D9678CD8185}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)System.Memory.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{FDF65D02-CECA-4110-8670-CD90BF4F9198}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)System.Net.Http.Formatting.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{42A4B0DF-1346-4FF9-A249-1782E27705EE}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)System.Numerics.Vectors.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{97F0618A-CC06-4767-9D8B-B5FE58CE0397}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)System.Reactive.Core.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{71034D13-AC2E-4A3C-8886-A901118B5475}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)System.Reactive.Interfaces.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{67BA9C64-A4D6-4B74-8AB4-0BB135B1838E}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)System.Reactive.Linq.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{D5892690-B936-4470-A1B4-3ACD6E04258B}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)System.Reactive.PlatformServices.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{1AFFDC17-0512-4563-9185-5F2492D6F821}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)System.Reactive.Windows.Threading.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{AF4F45F4-F10E-40F4-804F-330F47FFECBD}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)System.Runtime.CompilerServices.Unsafe.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{39AE25AC-D272-4A81-B87D-8820BA745660}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)System.Threading.Tasks.Extensions.dll" KeyPath="yes" />
+			</Component>
+
+			<Component Guid="{5A17B539-7BDE-4C91-8754-138023650519}">
+				<File Vital="yes" Source="$(var.DEHEASysML.TargetDir)System.ValueTuple.dll" KeyPath="yes" />
+			</Component>
+		</ComponentGroup>
+	</Fragment>
+</Wix>

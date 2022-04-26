@@ -24,6 +24,10 @@
 
 namespace DEHEASysML.ViewModel.Rows
 {
+    using System.Collections.Generic;
+
+    using CDP4Common.EngineeringModelData;
+
     using DEHEASysML.Enumerators;
 
     /// <summary>
@@ -50,5 +54,10 @@ namespace DEHEASysML.ViewModel.Rows
         /// Gets or sets a value indicating wheter this row represents a mapping done to a new element
         /// </summary>
         bool ShouldCreateNewTargetElement { get; set; }
+
+        /// <summary>
+        /// A collection of <see cref="BinaryRelationship" />
+        /// </summary>
+        List<BinaryRelationship> RelationShips { get; }
     }
 }

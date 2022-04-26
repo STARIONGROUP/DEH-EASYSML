@@ -224,7 +224,8 @@ namespace DEHEASysML.ViewModel
                     (i, o) => i.Value != null && o.Value)
                 .Subscribe(this.UpdateConnectButtonText);
 
-            this.WhenAnyValue(x => x.ObjectBrowser.IsBusy, x => x.RequirementsBrowser.IsBusy).Subscribe(_ => this.UpdateIsBusy());
+            this.WhenAnyValue(x => x.ObjectBrowser.IsBusy, 
+                x => x.RequirementsBrowser.IsBusy).Subscribe(_ => this.UpdateIsBusy());
         }
 
         /// <summary>

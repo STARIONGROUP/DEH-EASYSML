@@ -71,14 +71,6 @@ namespace DEHEASysML.MappingRules
         protected DomainOfExpertise Owner;
 
         /// <summary>
-        /// Initializes a new <see cref="DstToHubBaseMappingRule{TInput,TOuput}" />
-        /// </summary>
-        protected DstToHubBaseMappingRule()
-        {
-            this.Owner = this.HubController.CurrentDomainOfExpertise;
-        }
-
-        /// <summary>
         /// Tries to create the category with the specified <paramref name="categoryNames" />
         /// </summary>
         /// <param name="categoryNames">The shortname and the name of the <see cref="Category" /></param>
