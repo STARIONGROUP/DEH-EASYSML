@@ -10,58 +10,58 @@
              xmlns:requirementsBrowser="clr-namespace:DEHEASysML.Views.RequirementsBrowser"
              x:Class="DEHEASysML.Views.HubPanel"
              mc:Ignorable="d" 
-             d:DesignHeight="550"  d:DesignWidth="300">
-    <Grid>
-        <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition/>
-            </Grid.RowDefinitions>
-            <Grid Grid.Row="0" Margin="10">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <Button MinWidth="80" MaxWidth="150" Height="40" HorizontalAlignment="Left" 
-                        Command="{Binding ConnectCommand}"
-                        Content="{Binding ConnectButtonText}"
-                        ToolTip="Connect or disconnect from a Hub data source"/>
-                <views:HubSessionControl Grid.Column="1" HorizontalAlignment="Left" DataContext="{Binding SessionControl}" />
-            </Grid>
-            <Grid Grid.Row="1">
+             d:DesignHeight="450" d:DesignWidth="800">
+    <dx:LoadingDecorator BorderEffect="Default" BorderEffectColor="Blue" IsSplashScreenShown="{Binding IsBusy}" OwnerLock="LoadingContent">
+            <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
+                    <RowDefinition/>
                 </Grid.RowDefinitions>
-                <views:HubBrowserHeader Grid.Row="1" DataContext="{Binding HubBrowserHeader}"/>
-                <dx:DXTabControl Grid.Row="2">
-                    <dx:DXTabItem>
-                        <dx:DXTabItem.Header>
-                            <TextBlock Text="Engineering Model" />
-                        </dx:DXTabItem.Header>
-                        <objectBrowser:ObjectBrowser >
-                            <objectBrowser:ObjectBrowser DataContext="{Binding ObjectBrowser}"/> 
-                        </objectBrowser:ObjectBrowser>
-                    </dx:DXTabItem>
-                    <dx:DXTabItem>
-                        <dx:DXTabItem.Header>
-                            <TextBlock Text="Requirements" />
-                        </dx:DXTabItem.Header>
-                        <requirementsBrowser:RequirementsBrowser >
-                            <requirementsBrowser:RequirementsBrowser DataContext="{Binding RequirementsBrowser}"/>
-                        </requirementsBrowser:RequirementsBrowser>
+                <Grid Grid.Row="0" Margin="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Button MinWidth="80" MaxWidth="150" Height="40" HorizontalAlignment="Left" 
+                            Command="{Binding ConnectCommand}"
+                            Content="{Binding ConnectButtonText}"
+                            ToolTip="Connect or disconnect from a Hub data source"/>
+                    <views:HubSessionControl Grid.Column="1" HorizontalAlignment="Left" DataContext="{Binding SessionControl}" />
+                </Grid>
+                <Grid Grid.Row="1">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <views:HubBrowserHeader Grid.Row="1" DataContext="{Binding HubBrowserHeader}"/>
+                    <dx:DXTabControl Grid.Row="2">
+                        <dx:DXTabItem>
+                            <dx:DXTabItem.Header>
+                                <TextBlock Text="Engineering Model" />
+                            </dx:DXTabItem.Header>
+                            <objectBrowser:ObjectBrowser >
+                                <objectBrowser:ObjectBrowser DataContext="{Binding ObjectBrowser}"/> 
+                            </objectBrowser:ObjectBrowser>
                         </dx:DXTabItem>
-                    <dx:DXTabItem>
-                        <dx:DXTabItem.Header>
-                            <TextBlock Text="Publications" />
-                        </dx:DXTabItem.Header>
-                        <publicationBrowser:PublicationBrowser >
-                            <publicationBrowser:PublicationBrowser DataContext="{Binding PublicationBrowser}"/>
-                        </publicationBrowser:PublicationBrowser>
-                    </dx:DXTabItem>
-                </dx:DXTabControl>
-            </Grid>
+                        <dx:DXTabItem>
+                            <dx:DXTabItem.Header>
+                                <TextBlock Text="Requirements" />
+                            </dx:DXTabItem.Header>
+                            <requirementsBrowser:RequirementsBrowser >
+                                <requirementsBrowser:RequirementsBrowser DataContext="{Binding RequirementsBrowser}"/>
+                            </requirementsBrowser:RequirementsBrowser>
+                            </dx:DXTabItem>
+                        <dx:DXTabItem>
+                            <dx:DXTabItem.Header>
+                                <TextBlock Text="Publications" />
+                            </dx:DXTabItem.Header>
+                            <publicationBrowser:PublicationBrowser >
+                                <publicationBrowser:PublicationBrowser DataContext="{Binding PublicationBrowser}"/>
+                            </publicationBrowser:PublicationBrowser>
+                        </dx:DXTabItem>
+                    </dx:DXTabControl>
+                </Grid>
         </Grid>
-    </Grid>
+    </dx:LoadingDecorator>
 </UserControl>

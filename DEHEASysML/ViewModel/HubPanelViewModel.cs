@@ -25,6 +25,7 @@
 namespace DEHEASysML.ViewModel
 {
     using System;
+    using System.Reactive.Linq;
 
     using DEHEASysML.ViewModel.Interfaces;
     using DEHEASysML.ViewModel.RequirementsBrowser;
@@ -64,6 +65,11 @@ namespace DEHEASysML.ViewModel
         protected readonly INavigationService NavigationService;
 
         /// <summary>
+        /// Backing field for <see cref="IsBusy" />
+        /// </summary>
+        private bool? isBusy;
+
+        /// <summary>
         /// Determines if the <see cref="HubPanelViewModel" /> can appends message
         /// to the <see cref="IStatusBarControlViewModel" />
         /// </summary>
@@ -97,7 +103,7 @@ namespace DEHEASysML.ViewModel
             this.ObjectBrowser = objectBrowser;
             this.StatusBar = statusBar;
             this.RequirementsBrowser = requirementsBrowser;
-            this.InitializeCommands();
+            this.InitializeCommandsAndObservables();
         }
 
         /// <summary>
@@ -107,6 +113,15 @@ namespace DEHEASysML.ViewModel
         {
             get => this.connectButtonText;
             set => this.RaiseAndSetIfChanged(ref this.connectButtonText, value);
+        }
+
+        /// <summary>
+        /// Asserts if this view model is busy or not
+        /// </summary>
+        public bool? IsBusy
+        {
+            get => this.isBusy;
+            set => this.RaiseAndSetIfChanged(ref this.isBusy, value);
         }
 
         /// <summary>
@@ -194,9 +209,9 @@ namespace DEHEASysML.ViewModel
         }
 
         /// <summary>
-        /// Initializes all <see cref="ReactiveCommand{T}" />
+        /// Initializes all <see cref="ReactiveCommand{T}" /> and <see cref="Observable"/>
         /// </summary>
-        private void InitializeCommands()
+        private void InitializeCommandsAndObservables()
         {
             this.ConnectCommand = ReactiveCommand.Create(null, RxApp.MainThreadScheduler);
             this.ConnectCommand.Subscribe(_ => this.ConnectCommandExecute());
@@ -208,6 +223,20 @@ namespace DEHEASysML.ViewModel
                     x => x.hubController.IsSessionOpen,
                     (i, o) => i.Value != null && o.Value)
                 .Subscribe(this.UpdateConnectButtonText);
+
+            this.WhenAnyValue(x => x.ObjectBrowser.IsBusy, x => x.RequirementsBrowser.IsBusy).Subscribe(_ => this.UpdateIsBusy());
+        }
+
+        /// <summary>
+        /// Update the <see cref="IsBusy"/> property
+        /// </summary>
+        private void UpdateIsBusy()
+        {
+            var requirementsBrowserIsBusy = this.RequirementsBrowser.IsBusy;
+            var objectBrowserIsBusy = this.ObjectBrowser.IsBusy;
+
+            this.IsBusy = objectBrowserIsBusy != null && requirementsBrowserIsBusy != null
+                                                      && objectBrowserIsBusy.Value && requirementsBrowserIsBusy.Value;
         }
     }
 }

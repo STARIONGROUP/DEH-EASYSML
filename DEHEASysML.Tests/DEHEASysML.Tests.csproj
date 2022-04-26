@@ -20,7 +20,5 @@
 	  <Reference Include="Interop.EA">
 		  <HintPath>..\lib\Interop.EA.dll</HintPath>
 	  </Reference>
-	  <Reference Include="PresentationCore" />
-	  <Reference Include="PresentationFramework" />
   </ItemGroup>
 </Project>

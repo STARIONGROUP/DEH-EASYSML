@@ -3,16 +3,5 @@
   "mappings": {
     "DEHPCommon": "../DEH-Common/DEHPCommon/DEHPCommon.csproj"
   },
-  "restore": [
-    {
-      "name": "DEHEASysML",
-      "packages": [
-        {
-          "packageName": "DEHPCommon",
-          "version": "1.0.236"
-        }
-      ]
-    }
-  ],
   "removeProjects": true
 }

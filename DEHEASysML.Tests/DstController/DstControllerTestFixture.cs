@@ -108,6 +108,9 @@ namespace DEHEASysML.Tests.DstController
         {
             Assert.IsNull(this.dstController.CurrentRepository);
             Assert.IsFalse(this.dstController.CanMap);
+            Assert.AreEqual(MappingDirection.FromDstToHub, this.dstController.MappingDirection);
+            this.dstController.MappingDirection = MappingDirection.FromHubToDst;
+            Assert.AreEqual(MappingDirection.FromHubToDst, this.dstController.MappingDirection);
         }
 
         [Test]

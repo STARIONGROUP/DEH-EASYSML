@@ -116,6 +116,13 @@ namespace DEHEASysML.MappingRules
                         ClassKind.RequirementsGroup, ClassKind.RequirementsSpecification);
                 }
 
+                this.requirementsSpecifications.Clear();
+
+                foreach (var requirementsSpecification in this.HubController.OpenIteration.RequirementsSpecification)
+                {
+                    this.requirementsSpecifications.Add(requirementsSpecification.Clone(true));
+                }
+
                 this.mappedElements = new List<EnterpriseArchitectRequirementElement>(elements);
 
                 foreach (var mappedElement in this.mappedElements)
@@ -213,6 +220,10 @@ namespace DEHEASysML.MappingRules
         {
             if (!mappedElement.ShouldCreateNewTargetElement && mappedElement.HubElement != null)
             {
+                this.UpdateRequirementProperties(mappedElement.DstElement, mappedElement.HubElement);
+                var requirementSpecification = mappedElement.HubElement.Container as RequirementsSpecification;
+                requirementSpecification.Requirement.RemoveAll(x => x.Iid == mappedElement.HubElement.Iid);
+                requirementSpecification.Requirement.Add(mappedElement.HubElement);
                 return;
             }
 
@@ -434,7 +445,7 @@ namespace DEHEASysML.MappingRules
 
             if (this.TryGetRequirement(requirementElement, out var alreadyCreatedRequirement))
             {
-                requirement = alreadyCreatedRequirement.Clone(true);
+                requirement = alreadyCreatedRequirement;
 
                 var requirementsSpecification = this.requirementsSpecifications
                     .First(x => x.Requirement.Contains(alreadyCreatedRequirement));
@@ -452,11 +463,21 @@ namespace DEHEASysML.MappingRules
                 };
             }
 
+            this.UpdateRequirementProperties(requirementElement, requirement);
+            return requirement != null;
+        }
+
+        /// <summary>
+        /// Update the properties of the <see cref="Requirement"/>
+        /// </summary>
+        /// <param name="requirementElement">The <see cref="Element"/></param>
+        /// <param name="requirement">The <see cref="Requirement"/></param>
+        private void UpdateRequirementProperties(Element requirementElement, Requirement requirement)
+        {
             requirement.Category.RemoveAll(x => x.Iid == this.requirementCategory.Iid);
             requirement.Category.Add(this.requirementCategory);
 
-            this.UpdateOrCreateDefinition(requirementElement, ref requirement);
-            return requirement != null;
+            this.UpdateOrCreateDefinition(requirementElement, requirement);
         }
 
         /// <summary>
@@ -464,7 +485,7 @@ namespace DEHEASysML.MappingRules
         /// </summary>
         /// <param name="requirementElement">The <see cref="Element" /></param>
         /// <param name="requirement">The <see cref="Requirement" /></param>
-        private void UpdateOrCreateDefinition(Element requirementElement, ref Requirement requirement)
+        private void UpdateOrCreateDefinition(Element requirementElement, Requirement requirement)
         {
             if (requirement == null)
             {

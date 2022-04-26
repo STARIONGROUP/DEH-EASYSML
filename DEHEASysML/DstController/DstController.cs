@@ -28,11 +28,14 @@ namespace DEHEASysML.DstController
     using System.Collections.Generic;
     using System.Linq;
 
+    using CDP4Common.CommonData;
+
     using DEHEASysML.Enumerators;
     using DEHEASysML.Extensions;
     using DEHEASysML.Utils.Stereotypes;
     using DEHEASysML.ViewModel.Rows;
 
+    using DEHPCommon.Enumerators;
     using DEHPCommon.HubController.Interfaces;
     using DEHPCommon.MappingEngine;
     using DEHPCommon.UserInterfaces.ViewModels.Interfaces;
@@ -79,6 +82,11 @@ namespace DEHEASysML.DstController
         private bool canMap;
 
         /// <summary>
+        /// Backing field for <see cref="MappingDirection" />
+        /// </summary>
+        private MappingDirection mappingDirection;
+
+        /// <summary>
         /// Initializes a new <see cref="DstController" />
         /// </summary>
         /// <param name="hubController">The <see cref="IHubController" /></param>
@@ -92,6 +100,15 @@ namespace DEHEASysML.DstController
 
             this.hubController.WhenAnyValue(x => x.IsSessionOpen)
                 .Subscribe(_ => this.UpdateProperties());
+        }
+
+        /// <summary>
+        /// Gets or sets the <see cref="MappingDirection" />
+        /// </summary>
+        public MappingDirection MappingDirection
+        {
+            get => this.mappingDirection;
+            set => this.RaiseAndSetIfChanged(ref this.mappingDirection, value);
         }
 
         /// <summary>
@@ -116,6 +133,11 @@ namespace DEHEASysML.DstController
         /// A collection of <see cref="IMappedElementRowViewModel" />
         /// </summary>
         public ReactiveList<IMappedElementRowViewModel> DstMapResult { get; } = new();
+
+        /// <summary>
+        /// A collection of <see cref="Thing"/> selected for the transfer
+        /// </summary>
+        public ReactiveList<Thing> SelectedDstMapResultForTransfer { get; } = new();
 
         /// <summary>
         /// Handle to clear everything when Enterprise Architect close
@@ -294,14 +316,15 @@ namespace DEHEASysML.DstController
         public void Map(List<IMappedElementRowViewModel> elements)
         {
             this.DstMapResult.Clear();
-            this.Map(elements.OfType<EnterpriseArchitectBlockElement>().ToList(), true);
-            this.Map(elements.OfType<EnterpriseArchitectRequirementElement>().ToList(), true);
+            var mappedElement = this.Map(elements.OfType<EnterpriseArchitectBlockElement>().ToList(), true);
+            mappedElement.AddRange(this.Map(elements.OfType<EnterpriseArchitectRequirementElement>().ToList(), true));
+            this.DstMapResult.AddRange(mappedElement);
         }
 
         /// <summary>
         /// Premaps all <see cref="IMappedElementRowViewModel" />
         /// </summary>
-        /// <param name="elements">The collection of <see cref="IMappedElementRowViewModel"/> to premap</param>
+        /// <param name="elements">The collection of <see cref="IMappedElementRowViewModel" /> to premap</param>
         /// <returns>The collection of premapped <see cref="IMappedElementRowViewModel" /></returns>
         public List<IMappedElementRowViewModel> PreMap(List<IMappedElementRowViewModel> elements)
         {
@@ -324,7 +347,6 @@ namespace DEHEASysML.DstController
                 if (isCompleteMapping)
                 {
                     this.statusBar.Append($"Mapping of {mappedElements.Count} blocks in progress...");
-                    this.DstMapResult.AddRange(mappedElements);
                 }
 
                 return new List<IMappedElementRowViewModel>(mappedElements);
@@ -349,7 +371,6 @@ namespace DEHEASysML.DstController
                 if (isCompleteMapping)
                 {
                     this.statusBar.Append($"Mapping of {mappedElements.Count} requirements in progress...");
-                    this.DstMapResult.AddRange(mappedElements);
                 }
 
                 return new List<IMappedElementRowViewModel>(mappedElements);
@@ -389,6 +410,8 @@ namespace DEHEASysML.DstController
         /// </summary>
         private void UpdateProperties()
         {
+            this.DstMapResult.Clear();
+            this.SelectedDstMapResultForTransfer.Clear();
             this.CanMap = this.hubController.IsSessionOpen;
         }
 

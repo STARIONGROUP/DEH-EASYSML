@@ -95,5 +95,10 @@ namespace DEHEASysML.Services.Dispatcher
         /// </summary>
         /// <param name="repository">The working <see cref="Repository"/></param>
         void MapSelectedPackageCommand(Repository repository);
+
+        /// <summary>
+        /// Show the Impact Panel to the user
+        /// </summary>
+        void ShowImpactPanel();
     }
 }
