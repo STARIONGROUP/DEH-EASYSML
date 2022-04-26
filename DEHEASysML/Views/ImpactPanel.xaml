@@ -7,6 +7,7 @@
              xmlns:objectBrowser="clr-namespace:DEHPCommon.UserInterfaces.Views.ObjectBrowser;assembly=DEHPCommon"
              xmlns:enterpriseArchitectObjectBrowser="clr-namespace:DEHEASysML.Views.EnterpriseArchitectObjectBrowser"
              xmlns:requirementsBrowser="clr-namespace:DEHEASysML.Views.RequirementsBrowser"
+             xmlns:views="clr-namespace:DEHPCommon.UserInterfaces.Views;assembly=DEHPCommon"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800">
     <Grid>
@@ -55,6 +56,6 @@
                 </dx:DXTabControl>
             </dx:DXTabItem>
         </dx:DXTabControl>
-
+        <views:TransferControl Grid.Row="3" DataContext="{Binding TransferControlViewModel}"></views:TransferControl>
     </Grid>
 </UserControl>

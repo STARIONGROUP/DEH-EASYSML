@@ -326,6 +326,7 @@ namespace DEHEASysML.Tests.MappingRules
 
             ParameterType parameterType = new SimpleQuantityKind()
             {
+                Iid = Guid.NewGuid(),
                 ShortName = "mass",
                 Name = "mass",
             };
@@ -340,6 +341,7 @@ namespace DEHEASysML.Tests.MappingRules
 
             var parameter = new Parameter()
             {
+                Iid = Guid.NewGuid(),
                 ValueSet =
                 {
                     new ParameterValueSet()
@@ -350,6 +352,7 @@ namespace DEHEASysML.Tests.MappingRules
                 },
                 ParameterType = new SimpleQuantityKind()
                 {
+                    Iid = Guid.NewGuid(),
                     ShortName = "mass"
                 },
                 Container = elementDefinition
@@ -358,7 +361,7 @@ namespace DEHEASysML.Tests.MappingRules
             elementDefinition.Parameter.Add(parameter);
 
             Assert.DoesNotThrow(() => this.rule.MapProperties(elementDefinition, this.block.Object));
-            Assert.AreEqual("45", elementDefinition.Parameter.First().ValueSet.First().ActualValue.First());
+            Assert.AreEqual("aValue", elementDefinition.Parameter.Last().ValueSet.First().ActualValue.First());
         }
 
         [Test]

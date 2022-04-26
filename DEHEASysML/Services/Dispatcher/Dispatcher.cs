@@ -39,6 +39,7 @@ namespace DEHEASysML.Services.Dispatcher
     using DEHPCommon;
     using DEHPCommon.Services.NavigationService;
     using DEHPCommon.UserInterfaces.ViewModels.Interfaces;
+    using DEHPCommon.UserInterfaces.Views.ExchangeHistory;
 
     using EA;
 
@@ -132,6 +133,14 @@ namespace DEHEASysML.Services.Dispatcher
         public void ShowImpactPanel()
         {
             this.HandleTabVisibility(ImpactPanelName, typeof(ImpactPanelControl).ToString());
+        }
+
+        /// <summary>
+        /// Open the Transfer History dialog
+        /// </summary>
+        public void OpenTransferHistory()
+        {
+            this.navigationService.ShowDialog<ExchangeHistory>();
         }
 
         /// <summary>

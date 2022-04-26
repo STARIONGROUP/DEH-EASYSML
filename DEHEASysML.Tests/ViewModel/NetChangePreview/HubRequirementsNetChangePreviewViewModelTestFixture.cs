@@ -65,6 +65,7 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
         private Person person;
         private Participant participant;
         private ReactiveList<Thing> selectedDstMapResultForTransfer;
+        private ReactiveList<RequirementsGroup> selectedGroups;
 
         [SetUp]
         public void Setup()
@@ -129,8 +130,10 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
             this.objectBrowserTreeSelectorService.Setup(x => x.ThingKinds).Returns(new List<Type>() { typeof(RequirementsSpecification) });
 
             this.selectedDstMapResultForTransfer = new ReactiveList<Thing>();
+            this.selectedGroups = new ReactiveList<RequirementsGroup>();
             this.dstController = new Mock<IDstController>();
             this.dstController.Setup(x => x.SelectedDstMapResultForTransfer).Returns(this.selectedDstMapResultForTransfer);
+            this.dstController.Setup(x => x.SelectedGroupsForTransfer).Returns(this.selectedGroups);
 
             this.viewModel = new HubRequirementsNetChangePreviewViewModel(this.hubController.Object, this.objectBrowserTreeSelectorService.Object,
                 this.dstController.Object);

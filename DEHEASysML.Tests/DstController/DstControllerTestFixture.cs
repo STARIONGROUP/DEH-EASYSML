@@ -27,6 +27,15 @@ namespace DEHEASysML.Tests.DstController
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Reactive.Concurrency;
+
+    using CDP4Common.CommonData;
+    using CDP4Common.EngineeringModelData;
+    using CDP4Common.SiteDirectoryData;
+    using CDP4Common.Types;
+
+    using CDP4Dal;
+    using CDP4Dal.Operations;
 
     using DEHEASysML.DstController;
     using DEHEASysML.Enumerators;
@@ -37,13 +46,22 @@ namespace DEHEASysML.Tests.DstController
     using DEHPCommon.Enumerators;
     using DEHPCommon.HubController.Interfaces;
     using DEHPCommon.MappingEngine;
+    using DEHPCommon.Services.ExchangeHistory;
+    using DEHPCommon.Services.NavigationService;
+    using DEHPCommon.UserInterfaces.ViewModels;
     using DEHPCommon.UserInterfaces.ViewModels.Interfaces;
+    using DEHPCommon.UserInterfaces.Views;
 
     using EA;
 
     using Moq;
 
     using NUnit.Framework;
+
+    using ReactiveUI;
+
+    using Parameter = CDP4Common.EngineeringModelData.Parameter;
+    using Requirement = CDP4Common.EngineeringModelData.Requirement;
 
     [TestFixture]
     public class DstControllerTestFixture
@@ -54,12 +72,42 @@ namespace DEHEASysML.Tests.DstController
         private Mock<Package> package;
         private Mock<IMappingEngine> mappingEngine;
         private Mock<IStatusBarControlViewModel> statusBarControlViewModel;
+        private Mock<IExchangeHistoryService> exchangeService;
+        private Mock<INavigationService> navigationService;
+        private Iteration iteration;
 
         [SetUp]
         public void Setup()
         {
+            RxApp.MainThreadScheduler = Scheduler.CurrentThread;
+
+            var uri = new Uri("http://t.e");
+            var assembler = new Assembler(uri);
+
+            this.iteration =
+                new Iteration(Guid.NewGuid(), assembler.Cache, uri)
+                {
+                    Container = new EngineeringModel(Guid.NewGuid(), assembler.Cache, uri)
+                    {
+                        EngineeringModelSetup = new EngineeringModelSetup(Guid.NewGuid(), assembler.Cache, uri)
+                        {
+                            RequiredRdl = { new ModelReferenceDataLibrary(Guid.NewGuid(), assembler.Cache, uri) },
+                            Container = new SiteReferenceDataLibrary(Guid.NewGuid(), assembler.Cache, uri)
+                            {
+                                Container = new SiteDirectory(Guid.NewGuid(), assembler.Cache, uri)
+                            }
+                        }
+                    }
+                };
+
+            assembler.Cache.TryAdd(new CacheKey(this.iteration.Iid, null), new Lazy<Thing>(() => this.iteration));
+
             this.hubController = new Mock<IHubController>();
             this.hubController.Setup(x => x.Close());
+            this.hubController.Setup(x => x.CurrentDomainOfExpertise).Returns(new DomainOfExpertise());
+            this.hubController.Setup(x => x.OpenIteration).Returns(this.iteration);
+            this.hubController.Setup(x => x.Write(It.IsAny<ThingTransaction>())).Returns(System.Threading.Tasks.Task.CompletedTask);
+            this.hubController.Setup(x => x.RegisterNewLogEntryToTransaction(It.IsAny<string>(), It.IsAny<ThingTransaction>()));
 
             this.repository = new Mock<Repository>();
             this.package = new Mock<Package>();
@@ -88,10 +136,14 @@ namespace DEHEASysML.Tests.DstController
             this.mappingEngine = new Mock<IMappingEngine>();
             this.statusBarControlViewModel = new Mock<IStatusBarControlViewModel>();
 
+            this.exchangeService = new Mock<IExchangeHistoryService>();
+            this.navigationService = new Mock<INavigationService>();
+
             this.statusBarControlViewModel.Setup(x => 
                 x.Append(It.IsAny<string>(), It.IsAny<StatusBarMessageSeverity>()));
 
-            this.dstController = new DstController(this.hubController.Object, this.mappingEngine.Object, this.statusBarControlViewModel.Object);
+            this.dstController = new DstController(this.hubController.Object, this.mappingEngine.Object, this.statusBarControlViewModel.Object,
+                this.exchangeService.Object, this.navigationService.Object);
         }
 
         public Mock<Package> CreatePackage(int id, int parentId)
@@ -111,6 +163,7 @@ namespace DEHEASysML.Tests.DstController
             Assert.AreEqual(MappingDirection.FromDstToHub, this.dstController.MappingDirection);
             this.dstController.MappingDirection = MappingDirection.FromHubToDst;
             Assert.AreEqual(MappingDirection.FromHubToDst, this.dstController.MappingDirection);
+            Assert.IsEmpty(this.dstController.SelectedGroupsForTransfer);
         }
 
         [Test]
@@ -298,6 +351,217 @@ namespace DEHEASysML.Tests.DstController
 
             this.statusBarControlViewModel.Verify(x => 
                     x.Append(It.IsAny<string>(), It.IsAny<StatusBarMessageSeverity>()), Times.Exactly(2));
+        }
+
+        [Test]
+        public void VerifyTransferToHub()
+        {
+            Assert.DoesNotThrowAsync(async () => await this.dstController.TransferMappedThingsToHub());
+
+            this.navigationService.Setup(x =>
+                x.ShowDxDialog<CreateLogEntryDialog, CreateLogEntryDialogViewModel>(It.IsAny<CreateLogEntryDialogViewModel>())).Returns(false);
+
+            this.dstController.SelectedDstMapResultForTransfer.Add(new ElementDefinition());
+            Assert.DoesNotThrowAsync(async () => await this.dstController.TransferMappedThingsToHub());
+            this.dstController.SelectedDstMapResultForTransfer.Clear();
+
+            this.navigationService.Setup(x =>
+                x.ShowDxDialog<CreateLogEntryDialog, CreateLogEntryDialogViewModel>(It.IsAny<CreateLogEntryDialogViewModel>())).Returns(true);
+
+            Assert.DoesNotThrowAsync(async () => await this.dstController.TransferMappedThingsToHub());
+           
+            this.statusBarControlViewModel.Verify(x => x.Append(It.IsAny<string>(), StatusBarMessageSeverity.Warning),
+                Times.Exactly(3));
+
+            var parameter = new Parameter()
+            {
+                Iid = Guid.NewGuid(),
+                ParameterType = new SimpleQuantityKind(),
+                ValueSet =
+                {
+                    new ParameterValueSet
+                    {
+                        Computed = new ValueArray<string>(new[] { "654321" }),
+                        ValueSwitch = ParameterSwitchKind.MANUAL
+                    }
+                }
+            };
+
+            var elementDefinition1 = new ElementDefinition()
+            {
+                Iid = Guid.NewGuid(),
+                Parameter =
+                {
+                    parameter
+                },
+                ContainedElement =
+                {
+                    new ElementUsage()
+                    {
+                        Iid = Guid.NewGuid(),
+                        ElementDefinition = new ElementDefinition()
+                        {
+                            Iid = Guid.NewGuid(),
+                            Container = this.iteration
+                        }
+                    }
+                },
+                Container = this.iteration
+            };
+
+            var existingElementDefinition = new ElementDefinition()
+            {
+                Iid = Guid.NewGuid(),
+                Container = this.iteration
+            };
+
+            this.iteration.Element.Add(existingElementDefinition);
+            existingElementDefinition = existingElementDefinition.Clone(false);
+
+            var elementDefinition2 = new ElementDefinition()
+            {
+                Iid = Guid.NewGuid(),
+                Container = this.iteration
+            };
+
+            var elementDefinition3 = new ElementDefinition()
+            {
+                Iid = Guid.NewGuid(),
+                Container = this.iteration
+            };
+
+            this.dstController.DstMapResult.Add(new EnterpriseArchitectBlockElement(elementDefinition1, null, MappingDirection.FromDstToHub)
+            {
+                RelationShips = 
+                {
+                    new BinaryRelationship()
+                    {
+                        Source = elementDefinition1,
+                        Target = elementDefinition2,
+                        Iid = Guid.NewGuid()
+                    },
+                    new BinaryRelationship()
+                    {
+                        Source = elementDefinition1,
+                        Target = elementDefinition3,
+                        Iid = Guid.NewGuid()
+                    },
+                    new BinaryRelationship()
+                    {
+                        Source = elementDefinition2,
+                        Target = elementDefinition1,
+                        Iid = Guid.NewGuid()
+                    },
+                    new BinaryRelationship()
+                    {
+                        Source = elementDefinition1,
+                        Target = existingElementDefinition,
+                        Iid = Guid.NewGuid()
+                    },
+                    new BinaryRelationship()
+                    {
+                        Source = existingElementDefinition,
+                        Target = elementDefinition1,
+                        Iid = Guid.NewGuid()
+                    }
+                }
+            });
+
+            this.dstController.DstMapResult.Add(new EnterpriseArchitectBlockElement(elementDefinition2, null, MappingDirection.FromDstToHub));
+            this.dstController.DstMapResult.Add(new EnterpriseArchitectBlockElement(elementDefinition3, null, MappingDirection.FromDstToHub));
+
+            var requirementsGroup1 = new RequirementsGroup()
+            {
+                Iid = Guid.NewGuid()
+            };
+
+            var requirementsGroup2 = new RequirementsGroup()
+            {
+                Iid = Guid.NewGuid()
+            };
+
+            var requirementsSpecification1 = new RequirementsSpecification()
+            {
+                Iid = Guid.NewGuid(),
+                Group = { requirementsGroup1, requirementsGroup2 }
+            };
+            
+            var requirementsSpecification2 = new RequirementsSpecification()
+            {
+                Iid = Guid.NewGuid()
+            };
+
+            this.dstController.SelectedGroupsForTransfer.Add(requirementsGroup1);
+
+            var requirement1 = new Requirement()
+            {
+                Iid = Guid.NewGuid(),
+                Group = requirementsGroup1,
+                Definition = 
+                { 
+                    new Definition()
+                    {
+                        Content = "A definition"
+                    }
+                }
+            };
+
+            var requirement2 = new Requirement()
+            {
+                Iid = Guid.NewGuid(),
+                Group = requirementsGroup2
+            };
+
+            var requirement3 = new Requirement()
+            {
+                Iid = Guid.NewGuid(),
+            };
+
+            requirementsSpecification1.Requirement.Add(requirement1);
+            requirementsSpecification1.Requirement.Add(requirement2);
+            requirementsSpecification2.Requirement.Add(requirement3);
+
+            this.dstController.DstMapResult.Add(new EnterpriseArchitectRequirementElement(requirement1, null, MappingDirection.FromDstToHub)
+            {
+                RelationShips =
+                {
+                    new BinaryRelationship()
+                    {
+                        Iid = Guid.NewGuid(),
+                        Source = requirement1,
+                        Target = requirement2
+                    },
+                    new BinaryRelationship()
+                    {
+                        Iid = Guid.NewGuid(),
+                        Source = requirement2,
+                        Target = requirement1
+                    },
+                    new BinaryRelationship()
+                    {
+                        Iid = Guid.NewGuid(),
+                        Source = requirement1,
+                        Target = requirement3
+                    },
+                    new BinaryRelationship()
+                    {
+                        Iid = Guid.NewGuid(),
+                        Source = requirement3,
+                        Target = requirement1
+                    }
+                }
+            });
+
+            this.dstController.DstMapResult.Add(new EnterpriseArchitectRequirementElement(requirement2, null, MappingDirection.FromDstToHub));
+            this.dstController.DstMapResult.Add(new EnterpriseArchitectRequirementElement(requirement3, null, MappingDirection.FromDstToHub));
+            this.dstController.SelectedDstMapResultForTransfer.Add(requirement1);
+            this.dstController.SelectedDstMapResultForTransfer.Add(requirement3);
+            this.dstController.SelectedDstMapResultForTransfer.Add(elementDefinition1);
+            this.dstController.SelectedDstMapResultForTransfer.Add(elementDefinition3);
+
+            this.hubController.Setup(x => x.GetThingById(parameter.Iid, It.IsAny<Iteration>(), out parameter)).Returns(true);
+
+            Assert.DoesNotThrowAsync(async () => await this.dstController.TransferMappedThingsToHub());
         }
     }
 }

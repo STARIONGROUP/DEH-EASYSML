@@ -243,6 +243,11 @@ namespace DEHEASysML.ViewModel.NetChangePreview
             where T : RequirementsContainer
         {
             containerRow.IsSelectedForTransfer = this.GetAllContainedRequirementRows(containerRow).Any(x => x.IsSelectedForTransfer);
+
+            if (containerRow.Thing is RequirementsGroup requirementsGroup)
+            {
+                this.AddOrRemoveToSelectedThingsToTransfer(requirementsGroup, containerRow.IsSelectedForTransfer);
+            }
         }
 
         /// <summary>
@@ -274,6 +279,11 @@ namespace DEHEASysML.ViewModel.NetChangePreview
         private void AddOrRemoveToSelectedThingsToTransfer<T>(RequirementContainerRowViewModel<T> containerRowView, bool areSelected)
             where T : RequirementsContainer
         {
+            if (containerRowView.Thing is RequirementsGroup requirementsGroup)
+            {
+                this.AddOrRemoveToSelectedThingsToTransfer(requirementsGroup, areSelected);
+            }
+
             foreach (var containedRow in containerRowView.ContainedRows)
             {
                 switch (containedRow)
@@ -287,6 +297,22 @@ namespace DEHEASysML.ViewModel.NetChangePreview
                         this.AddOrRemoveToSelectedThingsToTransfer(requirementContainerRow, areSelected);
                         break;
                 }
+            }
+        }
+
+        /// <summary>
+        /// Adds or remove a <see cref="RequirementsGroup"/> for the transfer
+        /// </summary>
+        /// <param name="group">The <see cref="RequirementsGroup"/></param>
+        /// <param name="isSelected">A value indicating whether the elements are to be selected</param>
+        private void AddOrRemoveToSelectedThingsToTransfer(RequirementsGroup group, bool isSelected)
+        {
+            this.dstController.SelectedGroupsForTransfer.RemoveAll(this.dstController.SelectedGroupsForTransfer
+                .Where(x => x.Iid == group.Iid).ToList());
+
+            if (isSelected)
+            {
+                this.dstController.SelectedGroupsForTransfer.Add(group);
             }
         }
 

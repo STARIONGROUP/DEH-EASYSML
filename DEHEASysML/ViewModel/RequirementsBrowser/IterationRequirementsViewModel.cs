@@ -24,19 +24,25 @@
 
 namespace DEHEASysML.ViewModel.RequirementsBrowser
 {
+    using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Reactive.Linq;
 
     using CDP4Common.CommonData;
     using CDP4Common.EngineeringModelData;
+    using CDP4Common.SiteDirectoryData;
 
     using CDP4Dal;
+    using CDP4Dal.Events;
 
     using DEHEASysML.ViewModel.Comparers;
 
     using DEHPCommon.Extensions;
     using DEHPCommon.UserInterfaces.ViewModels;
     using DEHPCommon.UserInterfaces.ViewModels.Interfaces;
+
+    using ReactiveUI;
 
     /// <summary>
     /// Represent the view-model of the browser that displays all the <see cref="RequirementsSpecification" />s in one
@@ -59,6 +65,7 @@ namespace DEHEASysML.ViewModel.RequirementsBrowser
             this.ShortName = "Requirements";
             this.Initialize();
 
+            this.AddSubscriptions();
             this.UpdateProperties();
         }
 
@@ -66,6 +73,11 @@ namespace DEHEASysML.ViewModel.RequirementsBrowser
         /// Gets or sets the name of this browsable thing
         /// </summary>
         public string ShortName { get; protected set; }
+
+        /// <summary>
+        /// Gets the view model current <see cref="EngineeringModelSetup"/>
+        /// </summary>
+        public EngineeringModelSetup CurrentEngineeringModelSetup => this.Thing.IterationSetup.GetContainerOfType<EngineeringModelSetup>();
 
         /// <summary>
         /// Update the properties of this view model
@@ -76,6 +88,16 @@ namespace DEHEASysML.ViewModel.RequirementsBrowser
         }
 
         /// <summary>
+        /// The <see cref="ObjectChangedEvent"/> event-handler.
+        /// </summary>
+        /// <param name="objectChange">The <see cref="ObjectChangedEvent"/></param>
+        protected override void ObjectChangeEventHandler(ObjectChangedEvent objectChange)
+        {
+            base.ObjectChangeEventHandler(objectChange);
+            this.UpdateProperties();
+        }
+
+        /// <summary>
         /// Update the contained row of this view model
         /// </summary>
         private void UpdateRequirementsSpecificationsRows()
@@ -83,7 +105,9 @@ namespace DEHEASysML.ViewModel.RequirementsBrowser
             var currentRows = this.ContainedRows.Select(x => x.Thing).OfType<RequirementsSpecification>().ToList();
 
             var added = this.Thing.RequirementsSpecification.Except(currentRows).ToList();
-            var removed = currentRows.Except(this.Thing.RequirementsSpecification).ToList();
+           
+            var removed = currentRows
+                .Except(this.Thing.RequirementsSpecification.Where(x => !x.IsDeprecated)).ToList();
 
             foreach (var requirementsSpecification in added)
             {
@@ -92,7 +116,7 @@ namespace DEHEASysML.ViewModel.RequirementsBrowser
 
             foreach (var requirementsSpecification in removed)
             {
-                this.RemoveElementDefinitionRow(requirementsSpecification);
+                this.RemoveRequirementsSpecificationRow(requirementsSpecification);
             }
         }
 
@@ -100,7 +124,7 @@ namespace DEHEASysML.ViewModel.RequirementsBrowser
         /// Remove a row of the associated <see cref="RequirementsSpecification" />
         /// </summary>
         /// <param name="requirementsSpecification">The <see cref="RequirementsSpecification" /> to remove</param>
-        private void RemoveElementDefinitionRow(RequirementsSpecification requirementsSpecification)
+        private void RemoveRequirementsSpecificationRow(RequirementsSpecification requirementsSpecification)
         {
             var row = this.ContainedRows.SingleOrDefault(x => x.Thing == requirementsSpecification);
 
@@ -131,6 +155,37 @@ namespace DEHEASysML.ViewModel.RequirementsBrowser
         private void Initialize()
         {
             this.InitializeCommands();
+        }
+
+        /// <summary>
+        /// Add the necessary subscriptions for this view model.
+        /// </summary>
+        private void AddSubscriptions()
+        {
+            var engineeringModelSetupSubscription = CDPMessageBus.Current.Listen<ObjectChangedEvent>(this.CurrentEngineeringModelSetup)
+                .Where(objectChange => (objectChange.EventKind == EventKind.Updated)
+                                       && (objectChange.ChangedThing.RevisionNumber > this.RevisionNumber))
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Subscribe(_ => this.UpdateProperties());
+
+            this.Disposables.Add(engineeringModelSetupSubscription);
+
+            var domainOfExpertiseSubscription = CDPMessageBus.Current.Listen<ObjectChangedEvent>(typeof(DomainOfExpertise))
+                .Where(objectChange => (objectChange.EventKind == EventKind.Updated) 
+                                       && (objectChange.ChangedThing.RevisionNumber > this.RevisionNumber) 
+                                       && (objectChange.ChangedThing.Cache == this.Session.Assembler.Cache))
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Subscribe(_ => this.UpdateProperties());
+
+            this.Disposables.Add(domainOfExpertiseSubscription);
+
+            var iterationSetupSubscription = CDPMessageBus.Current.Listen<ObjectChangedEvent>(this.Thing.IterationSetup)
+                .Where(objectChange => (objectChange.EventKind == EventKind.Updated)
+                                       && (objectChange.ChangedThing.RevisionNumber > this.RevisionNumber))
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Subscribe(_ => this.UpdateProperties());
+
+            this.Disposables.Add(iterationSetupSubscription);
         }
     }
 }

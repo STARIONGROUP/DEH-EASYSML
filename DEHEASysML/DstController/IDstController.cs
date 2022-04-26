@@ -28,6 +28,7 @@ namespace DEHEASysML.DstController
     using System.Collections.Generic;
 
     using CDP4Common.CommonData;
+    using CDP4Common.EngineeringModelData;
 
     using DEHEASysML.ViewModel.Rows;
 
@@ -36,6 +37,8 @@ namespace DEHEASysML.DstController
     using EA;
 
     using ReactiveUI;
+
+    using Task = System.Threading.Tasks.Task;
 
     /// <summary>
     /// Interface definition for <see cref="DstController" />
@@ -59,13 +62,18 @@ namespace DEHEASysML.DstController
 
         /// <summary>
         /// The <see cref="MappingDirection" />
-        /// </summary> 
+        /// </summary>
         MappingDirection MappingDirection { get; set; }
 
         /// <summary>
-        /// A collection of <see cref="Thing"/> selected for the transfer
+        /// A collection of <see cref="Thing" /> selected for the transfer
         /// </summary>
         ReactiveList<Thing> SelectedDstMapResultForTransfer { get; }
+
+        /// <summary>
+        /// A collection of all <see cref="RequirementsGroup" /> that should be transfered
+        /// </summary>
+        ReactiveList<RequirementsGroup> SelectedGroupsForTransfer { get; }
 
         /// <summary>
         /// Handle to clear everything when Enterprise Architect close
@@ -173,5 +181,11 @@ namespace DEHEASysML.DstController
         /// <param name="elements"></param>
         /// <returns>The collection of premapped <see cref="IMappedElementRowViewModel" /></returns>
         List<IMappedElementRowViewModel> PreMap(List<IMappedElementRowViewModel> elements);
+
+        /// <summary>
+        /// Transfers the mapped variables to the Hub data source
+        /// </summary>
+        /// <returns>A <see cref="Task" /></returns>
+        Task TransferMappedThingsToHub();
     }
 }

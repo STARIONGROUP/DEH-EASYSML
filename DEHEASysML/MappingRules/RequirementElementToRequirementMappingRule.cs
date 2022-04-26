@@ -104,6 +104,8 @@ namespace DEHEASysML.MappingRules
                     return default;
                 }
 
+                this.Owner = this.HubController.CurrentDomainOfExpertise;
+
                 this.DstController = AppContainer.Container.Resolve<IDstController>();
                 var (completeMapping, elements) = input;
 
@@ -118,7 +120,8 @@ namespace DEHEASysML.MappingRules
 
                 this.requirementsSpecifications.Clear();
 
-                foreach (var requirementsSpecification in this.HubController.OpenIteration.RequirementsSpecification)
+                foreach (var requirementsSpecification in this.HubController.OpenIteration
+                             .RequirementsSpecification.Where(x => !x.IsDeprecated))
                 {
                     this.requirementsSpecifications.Add(requirementsSpecification.Clone(true));
                 }
@@ -374,7 +377,8 @@ namespace DEHEASysML.MappingRules
             var alreadyCreated = this.requirementsSpecifications
                                      .FirstOrDefault(x => string.Equals(x.ShortName, shortName, StringComparison.InvariantCultureIgnoreCase))
                                  ?? this.HubController.OpenIteration.RequirementsSpecification
-                                     .FirstOrDefault(x => string.Equals(x.ShortName, shortName, StringComparison.InvariantCultureIgnoreCase))
+                                     .FirstOrDefault(x => !x.IsDeprecated 
+                                                          && string.Equals(x.ShortName, shortName, StringComparison.InvariantCultureIgnoreCase))
                                      ?.Clone(true);
 
             if (alreadyCreated == null)

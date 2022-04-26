@@ -32,6 +32,7 @@ namespace DEHEASysML.ViewModel.RequirementsBrowser
     using CDP4Common.EngineeringModelData;
 
     using CDP4Dal;
+    using CDP4Dal.Events;
 
     using DEHPCommon.UserInterfaces.ViewModels.Interfaces;
     using DEHPCommon.UserInterfaces.ViewModels.Rows.ElementDefinitionTreeRows;
@@ -65,6 +66,16 @@ namespace DEHEASysML.ViewModel.RequirementsBrowser
         }
 
         /// <summary>
+        /// The <see cref="ObjectChangedEvent" /> event-handler.
+        /// </summary>
+        /// <param name="objectChange">The <see cref="ObjectChangedEvent" /></param>
+        protected override void ObjectChangeEventHandler(ObjectChangedEvent objectChange)
+        {
+            base.ObjectChangeEventHandler(objectChange);
+            this.UpdateProperties();
+        }
+
+        /// <summary>
         /// Gets the definition of the current requirement
         /// </summary>
         public string Definition
@@ -79,6 +90,31 @@ namespace DEHEASysML.ViewModel.RequirementsBrowser
         public void UpdateProperties()
         {
             this.ThingStatus = new ThingStatus(this.Thing);
+
+            if (this.Thing.IsDeprecated)
+            {
+                switch (this.ContainerViewModel)
+                {
+                    case RequirementsGroupRowViewModel groupRowViewModel:
+                        groupRowViewModel.UpdateChildren();
+                        return;
+                    case RequirementsSpecificationRowViewModel specificationRowViewModel:
+                        specificationRowViewModel.UpdateChildren();
+                        return;
+                }
+            }
+
+            if (this.Thing.Group != null && this.ContainerViewModel.Thing.Iid != this.Thing.Group.Iid 
+                || this.Thing.Group == null && this.ContainerViewModel is RequirementsGroupRowViewModel)
+            {
+                if (((IHaveContainedRows)this.TopContainerViewModel).ContainedRows.FirstOrDefault(x => x.Thing.Iid == this.Thing.Container.Iid) 
+                    is RequirementsSpecificationRowViewModel requirementsSpecificationRowViewModel)
+                {
+                    requirementsSpecificationRowViewModel.UpdateChildren();
+                }
+
+                return;
+            }
 
             var definitions = this.Thing.Definition;
 

@@ -29,6 +29,7 @@ namespace DEHEASysML.Tests.ViewModel
     using DEHEASysML.ViewModel.NetChangePreview.Interfaces;
 
     using DEHPCommon.Enumerators;
+    using DEHPCommon.UserInterfaces.ViewModels.Interfaces;
 
     using Moq;
 
@@ -41,6 +42,7 @@ namespace DEHEASysML.Tests.ViewModel
         private Mock<IDstController> dstController;
         private Mock<IHubNetChangePreviewViewModel> hubNetChangePreview;
         private Mock<IDstNetChangePreviewViewModel> dstNetChangePreview;
+        private Mock<ITransferControlViewModel> transferControl;
 
         [SetUp]
         public void Setup()
@@ -49,7 +51,10 @@ namespace DEHEASysML.Tests.ViewModel
             this.dstController.Setup(x => x.MappingDirection).Returns(MappingDirection.FromDstToHub);
             this.dstNetChangePreview = new Mock<IDstNetChangePreviewViewModel>();
             this.hubNetChangePreview = new Mock<IHubNetChangePreviewViewModel>();
-            this.viewModel = new ImpactPanelViewModel(this.dstController.Object, this.hubNetChangePreview.Object, this.dstNetChangePreview.Object);
+            this.transferControl = new Mock<ITransferControlViewModel>();
+
+            this.viewModel = new ImpactPanelViewModel(this.dstController.Object, this.hubNetChangePreview.Object, this.dstNetChangePreview.Object,
+                this.transferControl.Object);
         }
 
         [Test]

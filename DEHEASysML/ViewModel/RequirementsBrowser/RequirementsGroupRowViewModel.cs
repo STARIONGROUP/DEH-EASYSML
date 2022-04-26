@@ -31,6 +31,7 @@ namespace DEHEASysML.ViewModel.RequirementsBrowser
     using CDP4Common.EngineeringModelData;
 
     using CDP4Dal;
+    using CDP4Dal.Events;
 
     using DEHEASysML.ViewModel.Comparers;
 
@@ -67,6 +68,24 @@ namespace DEHEASysML.ViewModel.RequirementsBrowser
         {
             this.requirements = requirements;
             this.Initialize();
+        }
+
+        /// <summary>
+        /// Updates the contained rows
+        /// </summary>
+        public void UpdateChildren()
+        {
+            this.ComputeContainedRows();
+        }
+
+        /// <summary>
+        /// The <see cref="ObjectChangedEvent" /> event-handler.
+        /// </summary>
+        /// <param name="objectChange">The <see cref="ObjectChangedEvent" /></param>
+        protected override void ObjectChangeEventHandler(ObjectChangedEvent objectChange)
+        {
+            base.ObjectChangeEventHandler(objectChange);
+            this.UpdateProperties();
         }
 
         /// <summary>

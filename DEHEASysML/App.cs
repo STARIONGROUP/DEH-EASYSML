@@ -85,6 +85,11 @@ namespace DEHEASysML
         private const string MapSelectedElementsMenu = "&Map selected element(s)";
 
         /// <summary>
+        /// The name of the Transfer History command
+        /// </summary>
+        private const string TransferHistoryMenu = "&Open Transfer History";
+
+        /// <summary>
         /// The name of the Map Selected Package command
         /// </summary>
         private const string MapSelectedPackage = "&Map selected package";
@@ -167,7 +172,7 @@ namespace DEHEASysML
                         case "":
                             return MenuHeader;
                         case MenuHeader:
-                            string[] subMenuItems = { HubPanelMenu, ImpactPanelMenu, MapSelectedElementsMenu };
+                            string[] subMenuItems = { HubPanelMenu, ImpactPanelMenu, MapSelectedElementsMenu,"-", TransferHistoryMenu };
                             return subMenuItems;
                     }
 
@@ -219,6 +224,9 @@ namespace DEHEASysML
                     break;
                 case MapSelectedPackage:
                     this.dispatcher.MapSelectedPackageCommand(repository);
+                    break;
+                case TransferHistoryMenu:
+                    this.dispatcher.OpenTransferHistory();
                     break;
             }
         }
@@ -388,6 +396,7 @@ namespace DEHEASysML
             containerBuilder.RegisterType<HubNetChangePreviewViewModel>().As<IHubNetChangePreviewViewModel>().SingleInstance();
             containerBuilder.RegisterType<HubObjectNetChangePreviewViewModel>().As<IHubObjectNetChangePreviewViewModel>().SingleInstance();
             containerBuilder.RegisterType<HubRequirementsNetChangePreviewViewModel>().As<IHubRequirementsNetChangePreviewViewModel>().SingleInstance();
+            containerBuilder.RegisterType<EnterpriseArchitectTransferControlViewModel>().As<ITransferControlViewModel>().SingleInstance();
         }
     }
 }

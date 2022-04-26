@@ -28,7 +28,12 @@ namespace DEHEASysML.DstController
     using System.Collections.Generic;
     using System.Linq;
 
+    using CDP4Common;
     using CDP4Common.CommonData;
+    using CDP4Common.EngineeringModelData;
+    using CDP4Common.Types;
+
+    using CDP4Dal.Operations;
 
     using DEHEASysML.Enumerators;
     using DEHEASysML.Extensions;
@@ -38,13 +43,21 @@ namespace DEHEASysML.DstController
     using DEHPCommon.Enumerators;
     using DEHPCommon.HubController.Interfaces;
     using DEHPCommon.MappingEngine;
+    using DEHPCommon.Services.ExchangeHistory;
+    using DEHPCommon.Services.NavigationService;
+    using DEHPCommon.UserInterfaces.ViewModels;
     using DEHPCommon.UserInterfaces.ViewModels.Interfaces;
+    using DEHPCommon.UserInterfaces.Views;
 
     using EA;
 
     using NLog;
 
     using ReactiveUI;
+
+    using Parameter = CDP4Common.EngineeringModelData.Parameter;
+    using Requirement = CDP4Common.EngineeringModelData.Requirement;
+    using Task = System.Threading.Tasks.Task;
 
     /// <summary>
     /// The <see cref="DstController" /> takes care of retrieving data from and to Enterprise Architext
@@ -62,6 +75,11 @@ namespace DEHEASysML.DstController
         private readonly IMappingEngine mappingEngine;
 
         /// <summary>
+        /// The <see cref="IExchangeHistoryService" />
+        /// </summary>
+        private readonly IExchangeHistoryService exchangeHistory;
+
+        /// <summary>
         /// Gets the current class logger
         /// </summary>
         private readonly Logger logger = LogManager.GetCurrentClassLogger();
@@ -70,6 +88,11 @@ namespace DEHEASysML.DstController
         /// The <see cref="IStatusBarControlViewModel" />
         /// </summary>
         private readonly IStatusBarControlViewModel statusBar;
+
+        /// <summary>
+        /// The <see cref="INavigationService" />
+        /// </summary>
+        private readonly INavigationService navigationService;
 
         /// <summary>
         /// Backing field for <see cref="CurrentRepository" />
@@ -92,11 +115,16 @@ namespace DEHEASysML.DstController
         /// <param name="hubController">The <see cref="IHubController" /></param>
         /// <param name="mappingEngine">The <see cref="IMappingEngine" /></param>
         /// <param name="statusBar">The <see cref="IStatusBarControlViewModel" /></param>
-        public DstController(IHubController hubController, IMappingEngine mappingEngine, IStatusBarControlViewModel statusBar)
+        /// <param name="exchangeHistory">The <see cref="IExchangeHistoryService" /></param>
+        /// <param name="navigationService">The <see cref="INavigationService" /></param>
+        public DstController(IHubController hubController, IMappingEngine mappingEngine, IStatusBarControlViewModel statusBar,
+            IExchangeHistoryService exchangeHistory, INavigationService navigationService)
         {
             this.hubController = hubController;
             this.mappingEngine = mappingEngine;
             this.statusBar = statusBar;
+            this.exchangeHistory = exchangeHistory;
+            this.navigationService = navigationService;
 
             this.hubController.WhenAnyValue(x => x.IsSessionOpen)
                 .Subscribe(_ => this.UpdateProperties());
@@ -135,9 +163,14 @@ namespace DEHEASysML.DstController
         public ReactiveList<IMappedElementRowViewModel> DstMapResult { get; } = new();
 
         /// <summary>
-        /// A collection of <see cref="Thing"/> selected for the transfer
+        /// A collection of <see cref="Thing" /> selected for the transfer
         /// </summary>
         public ReactiveList<Thing> SelectedDstMapResultForTransfer { get; } = new();
+
+        /// <summary>
+        /// A collection of all <see cref="RequirementsGroup" /> that should be transfered
+        /// </summary>
+        public ReactiveList<RequirementsGroup> SelectedGroupsForTransfer { get; } = new();
 
         /// <summary>
         /// Handle to clear everything when Enterprise Architect close
@@ -332,6 +365,276 @@ namespace DEHEASysML.DstController
             premappedElements.AddRange(this.Map(elements.OfType<EnterpriseArchitectBlockElement>().ToList(), false));
             premappedElements.AddRange(this.Map(elements.OfType<EnterpriseArchitectRequirementElement>().ToList(), false));
             return premappedElements;
+        }
+
+        /// <summary>
+        /// Transfers the mapped variables to the Hub data source
+        /// </summary>
+        /// <returns>A <see cref="Task" /></returns>
+        public async Task TransferMappedThingsToHub()
+        {
+            try
+            {
+                var (iterationClone, transaction) = this.GetIterationTransaction();
+
+                if (!(this.SelectedDstMapResultForTransfer.Any() && this.TrySupplyingAndCreatingLogEntry(transaction)))
+                {
+                    this.statusBar.Append("Transfer to the Hub aborted !", StatusBarMessageSeverity.Warning);
+                    return;
+                }
+
+                this.PrepareThingsForTransfer(iterationClone, transaction);
+                transaction.CreateOrUpdate(iterationClone);
+
+                await this.hubController.Write(transaction);
+
+                await this.hubController.Refresh();
+                await this.UpdateParametersValueSets();
+                await this.hubController.Refresh();
+
+                this.SelectedGroupsForTransfer.Clear();
+                this.SelectedDstMapResultForTransfer.Clear();
+                this.DstMapResult.Clear();
+            }
+            catch (Exception e)
+            {
+                this.logger.Error(e);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Updates the <see cref="IValueSet" /> with the new values
+        /// </summary>
+        /// <returns>A <see cref="Task" /></returns>
+        private async Task UpdateParametersValueSets()
+        {
+            var (iterationClone, transaction) = this.GetIterationTransaction();
+
+            var parameters = this.SelectedDstMapResultForTransfer
+                .OfType<ElementDefinition>()
+                .SelectMany(x => x.Parameter)
+                .ToList();
+
+            foreach (var parameter in parameters)
+            {
+                if (this.hubController.GetThingById(parameter.Iid, this.hubController.OpenIteration, out Parameter newParameter))
+                {
+                    var clonedParameter = newParameter.Clone(false);
+
+                    for (var valueSetIndex = 0; valueSetIndex < clonedParameter.ValueSet.Count; valueSetIndex++)
+                    {
+                        var valueSet = clonedParameter.ValueSet[valueSetIndex].Clone(false);
+                        this.UpdateValueSet(valueSet, parameter.ValueSet[valueSetIndex]);
+                        transaction.CreateOrUpdate(valueSet);
+                    }
+
+                    transaction.CreateOrUpdate(clonedParameter);
+                }
+            }
+
+            transaction.CreateOrUpdate(iterationClone);
+            await this.hubController.Write(transaction);
+        }
+
+        /// <summary>
+        /// Update the <see cref="ParameterValueSet" />
+        /// </summary>
+        /// <param name="toUpdate">The <see cref="ParameterValueSet" /> to update</param>
+        /// <param name="valueSet">The <see cref="ParameterValueSet" /> containing new values</param>
+        private void UpdateValueSet(ParameterValueSet toUpdate, IValueSet valueSet)
+        {
+            this.exchangeHistory.Append(toUpdate, valueSet);
+
+            toUpdate.Manual = valueSet.Manual;
+            toUpdate.ValueSwitch = ParameterSwitchKind.MANUAL;
+        }
+
+        /// <summary>
+        /// Prepares all <see cref="Thing" /> that are selected for transfer
+        /// </summary>
+        /// <param name="iterationClone">The <see cref="Iteration" /> clone</param>
+        /// <param name="transaction">The <see cref="IThingTransaction" /></param>
+        private void PrepareThingsForTransfer(Iteration iterationClone, IThingTransaction transaction)
+        {
+            var thingsToTransfer = new List<Thing>(this.SelectedDstMapResultForTransfer.OfType<ElementDefinition>());
+
+            thingsToTransfer.AddRange(this.SelectedDstMapResultForTransfer.OfType<Requirement>()
+                .Select(x => x.Container as RequirementsSpecification).Distinct());
+
+            var mappedElements = this.SelectedDstMapResultForTransfer.Select(x => x.Iid)
+                .Select(thingId => this.DstMapResult.OfType<EnterpriseArchitectBlockElement>()
+                                       .FirstOrDefault(x => x.HubElement.Iid == thingId) ??
+                                   (IMappedElementRowViewModel)this.DstMapResult.OfType<EnterpriseArchitectRequirementElement>()
+                                       .FirstOrDefault(x => x.HubElement.Iid == thingId))
+                .ToList();
+
+            var relationships = mappedElements.SelectMany(x => x.RelationShips).ToList();
+
+            foreach (var relationship in relationships.ToList())
+            {
+                if (this.SelectedDstMapResultForTransfer.All(x => x.Iid != relationship.Source.Container.Iid && x.Iid != relationship.Source.Iid)
+                    && relationship.Target.Original == null || 
+                    this.SelectedDstMapResultForTransfer.All(x => x.Iid != relationship.Target.Container.Iid 
+                    && x.Iid != relationship.Target.Iid) && relationship.Target.Original == null)
+                {
+                    relationships.RemoveAll(x => x.Iid == relationship.Iid);
+                }
+            }
+
+            this.statusBar.Append($"Processing {relationships.Count} relationship(s)");
+            thingsToTransfer.AddRange(relationships);
+
+            foreach (var thing in thingsToTransfer)
+            {
+                switch (thing)
+                {
+                    case ElementDefinition elementDefinition:
+                        this.PrepareElementDefinitionForTransfer(iterationClone, transaction, elementDefinition);
+                        break;
+                    case RequirementsSpecification requirementsSpecification:
+                        this.PrepareRequirementsSpecificationForTransfer(iterationClone, transaction, requirementsSpecification);
+                        break;
+                    case BinaryRelationship relationship:
+                        this.AddOrUpdateIterationAndTransaction(relationship, iterationClone.Relationship, transaction);
+                        break;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Updates the <see cref="IThingTransaction" /> and the <see cref="ContainerList{T}" /> with the provided
+        /// <see cref="Thing" />
+        /// </summary>
+        /// <typeparam name="TThing">A <see cref="Thing" /></typeparam>
+        /// <param name="thing">The <see cref="Thing" /></param>
+        /// <param name="containerList">The <see cref="ContainerList{T}" /></param>
+        /// <param name="transaction">The <see cref="IThingTransaction" /></param>
+        private void AddOrUpdateIterationAndTransaction<TThing>(TThing thing, ContainerList<TThing> containerList, IThingTransaction transaction)
+            where TThing : Thing
+        {
+            try
+            {
+                if (thing.Container == null || containerList.All(x => x.Iid != thing.Iid))
+                {
+                    containerList.Add(thing);
+                    this.exchangeHistory.Append(thing, ChangeKind.Create);
+                }
+                else
+                {
+                    this.exchangeHistory.Append(thing, ChangeKind.Update);
+                }
+
+                transaction.CreateOrUpdate(thing);
+            }
+            catch (Exception exception)
+            {
+                this.logger.Error(exception);
+            }
+        }
+
+        /// <summary>
+        /// Prepares the provided <see cref="RequirementsSpecification" /> for transfer
+        /// </summary>
+        /// <param name="iterationClone">The <see cref="Iteration" /> clone</param>
+        /// <param name="transaction">The <see cref="IThingTransaction" /></param>
+        /// <param name="requirementsSpecification">The <see cref="RequirementsSpecification" /> to transfer</param>
+        private void PrepareRequirementsSpecificationForTransfer(Iteration iterationClone, IThingTransaction transaction, RequirementsSpecification requirementsSpecification)
+        {
+            this.AddOrUpdateIterationAndTransaction(requirementsSpecification, iterationClone.RequirementsSpecification, transaction);
+
+            var groups = requirementsSpecification.Group;
+
+            this.RegisterRequirementsGroups(transaction, groups);
+
+            foreach (var requirement in this.SelectedDstMapResultForTransfer.OfType<Requirement>()
+                         .Where(x => x.Container.Iid == requirementsSpecification.Iid))
+            {
+                transaction.CreateOrUpdate(requirement);
+
+                foreach (var definition in requirement.Definition)
+                {
+                    transaction.CreateOrUpdate(definition);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Registers the <see cref="RequirementsGroup" /> to be created or updated
+        /// </summary>
+        /// <param name="transaction">The <see cref="IThingTransaction" /></param>
+        /// <param name="groups">The <see cref="ContainerList{T}" /> of <see cref="RequirementsGroup" /></param>
+        private void RegisterRequirementsGroups(IThingTransaction transaction, ContainerList<RequirementsGroup> groups)
+        {
+            foreach (var requirementsGroup in groups)
+            {
+                if (this.SelectedGroupsForTransfer.Any(x => x.Iid == requirementsGroup.Iid))
+                {
+                    transaction.CreateOrUpdate(requirementsGroup);
+                }
+
+                if (requirementsGroup.Group.Any())
+                {
+                    this.RegisterRequirementsGroups(transaction, requirementsGroup.Group);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Prepares the provided <see cref="ElementDefinition" /> for transfer
+        /// </summary>
+        /// <param name="iterationClone">The <see cref="Iteration" /> clone</param>
+        /// <param name="transaction">The <see cref="IThingTransaction" /></param>
+        /// <param name="elementDefinition">The <see cref="ElementDefinition" /> to prepare</param>
+        private void PrepareElementDefinitionForTransfer(Iteration iterationClone, IThingTransaction transaction, ElementDefinition elementDefinition)
+        {
+            this.AddOrUpdateIterationAndTransaction(elementDefinition, iterationClone.Element, transaction);
+
+            foreach (var elementUsage in elementDefinition.ContainedElement)
+            {
+                this.AddOrUpdateIterationAndTransaction(elementUsage.ElementDefinition.Clone(false), iterationClone.Element, transaction);
+                this.AddOrUpdateIterationAndTransaction(elementUsage, elementDefinition.ContainedElement, transaction);
+            }
+
+            foreach (var parameter in elementDefinition.Parameter)
+            {
+                transaction.CreateOrUpdate(parameter);
+            }
+        }
+
+        /// <summary>
+        /// Pops the <see cref="CreateLogEntryDialog" /> and based on its result, either registers a new ModelLogEntry to the
+        /// <see cref="transaction" /> or not
+        /// </summary>
+        /// <param name="transaction">The <see cref="IThingTransaction" /> that will get the changes registered to</param>
+        /// <returns>A boolean result, true if the user pressed OK, otherwise false</returns>
+        private bool TrySupplyingAndCreatingLogEntry(ThingTransaction transaction)
+        {
+            var vm = new CreateLogEntryDialogViewModel();
+
+            var dialogResult = this.navigationService
+                .ShowDxDialog<CreateLogEntryDialog, CreateLogEntryDialogViewModel>(vm);
+
+            if (dialogResult != true)
+            {
+                return false;
+            }
+
+            this.hubController.RegisterNewLogEntryToTransaction(vm.LogEntryContent, transaction);
+            return true;
+        }
+
+        /// <summary>
+        /// Initializes a new <see cref="IThingTransaction" /> based on the current open <see cref="Iteration" />
+        /// </summary>
+        /// <returns>
+        /// A <see cref="ValueTuple" /> Containing the <see cref="Iteration" /> clone and the
+        /// <see cref="IThingTransaction" />
+        /// </returns>
+        private (Iteration clone, ThingTransaction transaction) GetIterationTransaction()
+        {
+            var iterationClone = this.hubController.OpenIteration.Clone(false);
+            return (iterationClone, new ThingTransaction(TransactionContextResolver.ResolveContext(iterationClone), iterationClone));
         }
 
         /// <summary>

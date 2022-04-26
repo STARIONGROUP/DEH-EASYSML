@@ -48,7 +48,7 @@ namespace DEHEASysML.ViewModel.Rows
         /// <summary>
         /// A collection of <see cref="BinaryRelationship" />
         /// </summary>
-        public readonly List<BinaryRelationship> RelationShips;
+        public List<BinaryRelationship> RelationShips { get; } = new();
 
         /// <summary>
         /// Backing field for <see cref="DstElement" />
@@ -96,7 +96,6 @@ namespace DEHEASysML.ViewModel.Rows
             this.HubElement = thing;
             this.DstElement = dstElement;
             this.MappingDirection = mappingDirection;
-            this.RelationShips = new List<BinaryRelationship>();
 
             this.WhenAnyValue(x => x.DstElement, x => x.HubElement)
                 .Subscribe(_ => this.UpdateProperties());

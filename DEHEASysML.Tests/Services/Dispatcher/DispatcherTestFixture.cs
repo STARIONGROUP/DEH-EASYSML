@@ -38,6 +38,7 @@ namespace DEHEASysML.Tests.Services.Dispatcher
     using DEHPCommon;
     using DEHPCommon.Services.NavigationService;
     using DEHPCommon.UserInterfaces.ViewModels.Interfaces;
+    using DEHPCommon.UserInterfaces.Views.ExchangeHistory;
 
     using EA;
 
@@ -82,6 +83,8 @@ namespace DEHEASysML.Tests.Services.Dispatcher
 
             this.navigationService.Setup(x =>
                 x.ShowDialog<DstMappingConfigurationDialog, IDstMappingConfigurationDialogViewModel>(this.dstMappingDialog.Object));
+
+            this.navigationService.Setup(x => x.ShowDialog<ExchangeHistory>());
 
             var containerBuilder = new ContainerBuilder();
             containerBuilder.RegisterInstance(this.dstMappingDialog.Object).As<IDstMappingConfigurationDialogViewModel>();
@@ -168,6 +171,13 @@ namespace DEHEASysML.Tests.Services.Dispatcher
 
             Assert.DoesNotThrow(() => this.dispatcher.MapSelectedElementsCommand(this.repository.Object));
             Assert.DoesNotThrow(() => this.dispatcher.MapSelectedPackageCommand(this.repository.Object));
+        }
+
+        [Test]
+        public void VerifyOpenTransferHistory()
+        {
+            this.dispatcher.OpenTransferHistory();
+            this.navigationService.Verify(x => x.ShowDialog<ExchangeHistory>(), Times.Once);
         }
     }
 }
