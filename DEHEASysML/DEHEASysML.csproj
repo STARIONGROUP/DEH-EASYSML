@@ -1,42 +1,60 @@
-<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
-	<PropertyGroup>
-		<OutputType>Library</OutputType>
-		<TargetFramework>net472</TargetFramework>
-		<RootNamespace>DEHEASysML</RootNamespace>
-		<UseWPF>true</UseWPF>
-		<AssemblyTitle>DEHEASysML</AssemblyTitle>
-		<AppDesignerFolder>Properties</AppDesignerFolder>
-		<Company>RHEA System S.A.</Company>
-		<Product>DEHEASysML</Product>
-		<Description>DEHEASysML AddIn</Description>
-		<Copyright>Copyright © RHEA System S.A.</Copyright>
-		<AssemblyVersion>1.0.0</AssemblyVersion>
-		<FileVersion>1.0.0</FileVersion>
-		<LangVersion>latest</LangVersion>
-		<ApplicationIcon>icon.ico</ApplicationIcon>
-		<RegisterForComInterop>true</RegisterForComInterop>
-		<ProjectGuid>{5507BC7E-3E2C-4568-AAC8-FCDEE7914CDA}</ProjectGuid>
-	</PropertyGroup>
-
-	<ItemGroup>
-		<PackageReference Include="DEHPCommon" Version="1.0.236" />
-		<PackageReference Include="NLog" Version="4.6.8" />
-		<PackageReference Include="reactiveui" Version="6.5.0" />
-		<PackageReference Include="Rx-Linq" Version="2.2.5" />
-		<PackageReference Include="Rx-PlatformServices" Version="2.2.5" />
-		<PackageReference Include="Splat" Version="1.6.2" />
-	</ItemGroup>
-
-	<ItemGroup>
-		<Reference Include="Interop.EA">
-			<HintPath>C:\Program Files (x86)\Sparx Systems\EA\Interop.EA.dll</HintPath>
-		</Reference>
-		<Reference Include="System.Web" />
-	</ItemGroup>
-
-	<ItemGroup>
-		<None Update="NLog.config">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</None>
-	</ItemGroup>
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net472</TargetFramework>
+    <RootNamespace>DEHEASysML</RootNamespace>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyTitle>DEHEASysML</AssemblyTitle>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <Company>RHEA System S.A.</Company>
+    <Product>DEHEASysML</Product>
+    <Description>DEHEASysML AddIn</Description>
+    <Copyright>Copyright © RHEA System S.A.</Copyright>
+    <AssemblyVersion>1.1.0</AssemblyVersion>
+    <FileVersion>1.1.0</FileVersion>
+    <LangVersion>latest</LangVersion>
+    <ApplicationIcon>icon.ico</ApplicationIcon>
+    <RegisterForComInterop>true</RegisterForComInterop>
+    <ProjectGuid>{5507BC7E-3E2C-4568-AAC8-FCDEE7914CDA}</ProjectGuid>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Remove="Resources\EnterpriseArchitect.ico" />
+    <None Remove="Resources\icon.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="DEHPCommon" Version="1.0.247" />
+    <PackageReference Include="NLog" Version="4.6.8" />
+    <PackageReference Include="reactiveui" Version="6.5.0" />
+    <PackageReference Include="Rx-Linq" Version="2.2.5" />
+    <PackageReference Include="Rx-PlatformServices" Version="2.2.5" />
+    <PackageReference Include="Splat" Version="1.6.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="Interop.EA">
+      <HintPath>..\lib\Interop.EA.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Web" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="NLog.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\EnterpriseArchitect.ico">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\icon.ico">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Resource>
+  </ItemGroup>
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
+  <Target Name="AfterBuild">
+    <Exec Command="C:\Windows\Microsoft.NET\Framework\v4.0.30319\RegAsm.exe DEHEASysML.dll /codebase" ConsoleToMSBuild="true" WorkingDirectory="$(OutputPath)" />
+  </Target>
+  <Target Name="BeforeBuild">
+	  <Exec Command="C:\Windows\Microsoft.NET\Framework\v4.0.30319\RegAsm.exe ReactiveUI.dll /tlb" ConsoleToMSBuild="true" WorkingDirectory="$(OutputPath)" />
+	  <Exec Command="C:\Windows\Microsoft.NET\Framework\v4.0.30319\RegAsm.exe CDP4Dal.dll /tlb" ConsoleToMSBuild="true" WorkingDirectory="$(OutputPath)" />
+  </Target>
 </Project>

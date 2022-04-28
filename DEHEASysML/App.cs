@@ -26,14 +26,32 @@ namespace DEHEASysML
 {
     using System;
     using System.Diagnostics.CodeAnalysis;
+    using System.Globalization;
     using System.IO;
     using System.Reflection;
+    using System.Threading;
 
     using Autofac;
 
+    using CDP4Common.EngineeringModelData;
+
+    using DEHEASysML.DstController;
     using DEHEASysML.Services.Dispatcher;
+    using DEHEASysML.Services.MappingConfiguration;
+    using DEHEASysML.ViewModel;
+    using DEHEASysML.ViewModel.Dialogs;
+    using DEHEASysML.ViewModel.Dialogs.Interfaces;
+    using DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser;
+    using DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Interfaces;
+    using DEHEASysML.ViewModel.Interfaces;
+    using DEHEASysML.ViewModel.NetChangePreview;
+    using DEHEASysML.ViewModel.NetChangePreview.Interfaces;
+    using DEHEASysML.ViewModel.RequirementsBrowser;
 
     using DEHPCommon;
+    using DEHPCommon.MappingEngine;
+    using DEHPCommon.Services.ObjectBrowserTreeSelectorService;
+    using DEHPCommon.UserInterfaces.ViewModels.Interfaces;
 
     using EA;
 
@@ -50,17 +68,32 @@ namespace DEHEASysML
         /// <summary>
         /// The name of the Menu Header
         /// </summary>
-        private const string MenuHeader = "-&DEHP";
+        private const string MenuHeader = "-&COMET";
 
         /// <summary>
         /// The name of the Hub Panel Menu
         /// </summary>
-        private const string HubPanelMenu = "&Hub Panel";
+        private const string HubPanelMenu = "&Open Hub Panel";
 
         /// <summary>
         /// The name of the Impact Panel Menu
         /// </summary>
-        private const string ImpactPanelMenu = "&Impact Panel";
+        private const string ImpactPanelMenu = "&Open Impact Panel";
+
+        /// <summary>
+        /// The name of the Map Selected Elements command
+        /// </summary>
+        private const string MapSelectedElementsMenu = "&Map selected element(s)";
+
+        /// <summary>
+        /// The name of the Transfer History command
+        /// </summary>
+        private const string TransferHistoryMenu = "&Open Transfer History";
+
+        /// <summary>
+        /// The name of the Map Selected Package command
+        /// </summary>
+        private const string MapSelectedPackage = "&Map selected package";
 
         /// <summary>
         /// The name of the Ribbon Category
@@ -82,6 +115,8 @@ namespace DEHEASysML
         /// </summary>
         public App()
         {
+            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
+            Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
             Directory.SetCurrentDirectory(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!);
             AppDomain.CurrentDomain.AssemblyResolve += this.CurrentDomainOnAssemblyResolve;
             LogManager.LoadConfiguration(Path.Combine(Directory.GetCurrentDirectory(), "NLog.config"));
@@ -101,6 +136,8 @@ namespace DEHEASysML
         {
             using var scope = AppContainer.Container.BeginLifetimeScope();
             this.dispatcher = scope.Resolve<IDispatcher>();
+            this.dispatcher.Connect(repository);
+            scope.Resolve<IObjectBrowserTreeSelectorService>().Add<RequirementsSpecification>();
         }
 
         /// <summary>
@@ -128,26 +165,43 @@ namespace DEHEASysML
         /// <returns>The definition of the menu option</returns>
         public object EA_GetMenuItems(Repository repository, string location, string menuName)
         {
-            switch (menuName)
+            switch (location)
             {
-                case "":
-                    return MenuHeader;
-                case MenuHeader:
-                    string[] subMenuItems = { HubPanelMenu, ImpactPanelMenu };
-                    return subMenuItems;
+                case "MainMenu":
+                    switch (menuName)
+                    {
+                        case "":
+                            return MenuHeader;
+                        case MenuHeader:
+                            string[] subMenuItems = { HubPanelMenu, ImpactPanelMenu, MapSelectedElementsMenu,"-", TransferHistoryMenu };
+                            return subMenuItems;
+                    }
+
+                    break;
+                case "TreeView":
+                    switch (menuName)
+                    {
+                        case "":
+                            return MenuHeader;
+                        case MenuHeader:
+                            string[] subMenuItems = { MapSelectedPackage };
+                            return subMenuItems;
+                    }
+
+                    break;
             }
 
-            return "";
+            return null;
         }
 
         /// <summary>
         /// EA_MenuClick events are received by an Add-In in response to user selection of a menu option.
         /// The event is raised when the user clicks on a particular menu option. When a user clicks on one of your non-parent menu
         /// options, your Add-In receives a <c>MenuClick</c> event.
-        /// Notice that your code can directly access Enterprise Architect data and UI elements using Repository methods.
+        /// Notice that your code can directly access Enterprise Architect data and UI elements using CurrentRepository methods.
         /// </summary>
         /// <param name="repository">
-        /// An EA.Repository object representing the currently open Enterprise Architect model. Poll its
+        /// An EA.CurrentRepository object representing the currently open Enterprise Architect model. Poll its
         /// members to retrieve model data and user interface status information.
         /// </param>
         /// <param name="location">Not used</param>
@@ -158,10 +212,60 @@ namespace DEHEASysML
         /// <param name="itemName">The name of the option actually clicked.</param>
         public void EA_MenuClick(Repository repository, string location, string menuName, string itemName)
         {
-            if (itemName == HubPanelMenu)
+            switch (itemName)
             {
-                this.dispatcher.ShowHubPanel();
+                case HubPanelMenu:
+                    this.dispatcher.ShowHubPanel();
+                    break;
+                case ImpactPanelMenu:
+                    this.dispatcher.ShowImpactPanel();
+                    break;
+                case MapSelectedElementsMenu:
+                    this.dispatcher.MapSelectedElementsCommand(repository);
+                    break;
+                case MapSelectedPackage:
+                    this.dispatcher.MapSelectedPackageCommand(repository);
+                    break;
+                case TransferHistoryMenu:
+                    this.dispatcher.OpenTransferHistory();
+                    break;
             }
+        }
+
+        /// <summary>
+        /// Called once Menu has been opened to see what menu items should active.
+        /// </summary>
+        /// <param name="repository">the repository</param>
+        /// <param name="location">the location of the menu</param>
+        /// <param name="menuName">the name of the menu</param>
+        /// <param name="itemName">the name of the menu item</param>
+        /// <param name="isEnabled">boolean indicating whethe the menu item is enabled</param>
+        /// <param name="isChecked">boolean indicating whether the menu is checked</param>
+        public void EA_GetMenuState(Repository repository, string location, string menuName, string itemName, ref bool isEnabled, ref bool isChecked)
+        {
+            if (this.IsProjectOpen(repository))
+            {
+                isEnabled = itemName switch
+                {
+                    MapSelectedElementsMenu => this.dispatcher.CanMap && repository.GetTreeSelectedElements().Count > 0,
+                    MapSelectedPackage => this.dispatcher.CanMap,
+                    _ => true
+                };
+            }
+            else
+            {
+                isEnabled = false;
+            }
+        }
+
+        /// <summary>
+        /// EA_OnPostInitialized notifies Add-Ins that the repository object has finished loading and any necessary initialization
+        /// steps can now be performed on the object.
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        public void EA_OnPostInitialized(Repository repository)
+        {
+            this.dispatcher.OnPostInitiliazed(repository);
         }
 
         /// <summary>
@@ -169,9 +273,71 @@ namespace DEHEASysML
         /// </summary>
         public void EA_Disconnect()
         {
+            this.dispatcher.Disconnect();
             AppDomain.CurrentDomain.AssemblyResolve -= this.CurrentDomainOnAssemblyResolve;
             GC.Collect();
             GC.WaitForPendingFinalizers();
+        }
+
+        /// <summary>
+        /// The event occurs when the model being viewed by the Enterprise Architect user changes, for whatever reason (through
+        /// user interaction or Add-In activity).
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        public void EA_FileOpen(Repository repository)
+        {
+            this.dispatcher.OnFileOpen(repository);
+        }
+
+        /// <summary>
+        /// This event occurs when the model currently opened within Enterprise Architect is about to be closed (when another model
+        /// is about to be opened
+        /// or when Enterprise Architect is about to shutdown).
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        public void EA_FileClose(Repository repository)
+        {
+            this.dispatcher.OnFileClose(repository);
+        }
+
+        /// <summary>
+        /// The event occurs when the model being viewed by the Enterprise Architect user changes, for whatever reason (through
+        /// user interaction or Add-In activity).
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        public void EA_FileNew(Repository repository)
+        {
+            this.dispatcher.OnFileNew(repository);
+        }
+
+        /// <summary>
+        /// This event occurs when a user has modified the context item. Add-Ins that require knowledge of when an item has been
+        /// modified can subscribe to this broadcast function.
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        /// <param name="guid">The guid of the Item</param>
+        /// <param name="objectType">The <see cref="ObjectType" /> of the item</param>
+        public void EA_OnNotifyContextItemModified(Repository repository, string guid, ObjectType objectType)
+        {
+            this.dispatcher.OnNotifyContextItemModified(repository, guid, objectType);
+        }
+
+        /// <summary>
+        /// Asserts that a project is opened
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        /// <returns>True if a project is opened</returns>
+        private bool IsProjectOpen(Repository repository)
+        {
+            try
+            {
+                var _ = repository.Models;
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         /// <summary>
@@ -211,6 +377,9 @@ namespace DEHEASysML
         private void RegisterTypes(ContainerBuilder containerBuilder)
         {
             containerBuilder.RegisterType<Dispatcher>().As<IDispatcher>().SingleInstance();
+            containerBuilder.RegisterType<DstController.DstController>().As<IDstController>().SingleInstance();
+            containerBuilder.RegisterType<MappingEngine>().As<IMappingEngine>().WithParameter(MappingEngine.ParameterName, Assembly.GetExecutingAssembly());
+            containerBuilder.RegisterType<MappingConfigurationService>().As<IMappingConfigurationService>().SingleInstance();
         }
 
         /// <summary>
@@ -219,6 +388,18 @@ namespace DEHEASysML
         /// <param name="containerBuilder">The <see cref="ContainerBuilder" /></param>
         private void RegisterViewModels(ContainerBuilder containerBuilder)
         {
+            containerBuilder.RegisterType<HubPanelViewModel>().As<IHubPanelViewModel>().SingleInstance();
+            containerBuilder.RegisterType<EnterpriseArchitectStatusBarControlViewModel>().As<IStatusBarControlViewModel>().SingleInstance();
+            containerBuilder.RegisterType<RequirementsBrowserViewModel>().As<IRequirementsBrowserViewModel>();
+            containerBuilder.RegisterType<DstMappingConfigurationDialogViewModel>().As<IDstMappingConfigurationDialogViewModel>();
+            containerBuilder.RegisterType<EnterpriseArchitectObjectBrowserViewModel>().As<IEnterpriseArchitectObjectBrowserViewModel>();
+            containerBuilder.RegisterType<ImpactPanelViewModel>().As<IImpactPanelViewModel>().SingleInstance();
+            containerBuilder.RegisterType<DstNetChangePreviewViewModel>().As<IDstNetChangePreviewViewModel>().SingleInstance();
+            containerBuilder.RegisterType<HubNetChangePreviewViewModel>().As<IHubNetChangePreviewViewModel>().SingleInstance();
+            containerBuilder.RegisterType<HubObjectNetChangePreviewViewModel>().As<IHubObjectNetChangePreviewViewModel>().SingleInstance();
+            containerBuilder.RegisterType<HubRequirementsNetChangePreviewViewModel>().As<IHubRequirementsNetChangePreviewViewModel>().SingleInstance();
+            containerBuilder.RegisterType<EnterpriseArchitectTransferControlViewModel>().As<ITransferControlViewModel>().SingleInstance();
+            containerBuilder.RegisterType<MappingConfigurationServiceDialogViewModel>().As<IMappingConfigurationServiceDialogViewModel>();
         }
     }
 }

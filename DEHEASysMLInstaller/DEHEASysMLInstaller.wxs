@@ -1,0 +1,57 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
+
+	<Product Id="*" Name="DEHEASysMLInstaller" Language="1033" Version="1.1.0.0" Manufacturer="RHEA" UpgradeCode="9c33b1c2-4cb1-4192-a2ac-a9e2816175d9">
+		<Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" />
+
+		<MediaTemplate EmbedCab="yes" />
+
+		<Property Id="RHEAFOLDER">
+			<RegistrySearch Id="APPDIRECTORY" Type="raw" Root="HKLM" Key="Software\RHEA\DEHEASysML" Name="RHEAFolder" />
+		</Property>
+
+		<MajorUpgrade DowngradeErrorMessage="A newer version of DEHEASysML is already installed." />
+
+		<Feature Id="ProductFeature" Title="DEHEASysMLInstaller" Level="1">
+			<ComponentGroupRef Id="DEHEASysMLComponents" />
+			<ComponentGroupRef Id="RegistryKeyComponentGroup" />
+			<ComponentRef Id="InstallFolderComp" />
+			<ComponentRef Id="RHEAcompFolder" />
+		</Feature>
+
+		<WixVariable Id="WixUILicenseRtf" Value="license.rtf" />
+		<Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+		<UIRef Id="WixUI_InstallDir" />
+	</Product>
+
+	<Fragment>
+		<Directory Id="TARGETDIR" Name="SourceDir">
+			<Directory Id="ProgramFilesFolder">
+				<Directory Id="RHEAFOLDER" Name ="RHEA">
+					<Directory Id="INSTALLFOLDER" Name="DEHEASysML">
+						<Component Id="InstallFolderComp" Guid="{40E198F8-9C2C-48CB-94B8-A35F76B4F015}">
+							<CreateFolder>
+								<util:PermissionEx User="Users" GenericAll="yes"/>
+							</CreateFolder>
+							<RegistryValue Root='HKLM' Key='Software\RHEA\DEHEASysML'
+							               Name='DEHEASysML'
+							               Value='[INSTALLFOLDER]'
+							               Type='string'
+							               KeyPath='yes' />
+						<RemoveFolder Id='ProgramMenuDir' On='uninstall' />
+					</Component>
+					</Directory>
+					<Component Id="RHEAcompFolder" Guid="{6860E272-8B1A-4856-A879-508CF855D6A5}">
+						<RegistryValue Root='HKLM' Key='Software\RHEA\DEHEASysML'
+						               Name='RHEAFolder'
+						               Value='[RHEAFOLDER]'
+						               Type='string'
+						               KeyPath='yes' />
+						<RemoveFolder Id='RHEADir' On='uninstall' />
+					</Component>
+				</Directory>
+			</Directory>
+		</Directory>
+	</Fragment>
+
+</Wix>

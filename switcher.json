@@ -1,0 +1,7 @@
+{
+  "solution": "DEHEASysML.sln",
+  "mappings": {
+    "DEHPCommon": "../DEH-Common/DEHPCommon/DEHPCommon.csproj"
+  },
+  "removeProjects": true
+}

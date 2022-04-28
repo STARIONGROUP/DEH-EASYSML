@@ -24,14 +24,86 @@
 
 namespace DEHEASysML.Services.Dispatcher
 {
+    using EA;
+
     /// <summary>
-    /// Interface definition for <see cref="Dispatcher"/>
+    /// Interface definition for <see cref="Dispatcher" />
     /// </summary>
     public interface IDispatcher
     {
         /// <summary>
+        /// Asserts that the mapping is available
+        /// </summary>
+        bool CanMap { get; set; }
+
+        /// <summary>
+        /// Handle the connection to EA
+        /// </summary>
+        /// <param name="repository">The current <see cref="Repository" /></param>
+        void Connect(Repository repository);
+
+        /// <summary>
         /// Show the Hub Panel to the user
         /// </summary>
         void ShowHubPanel();
+
+        /// <summary>
+        /// Handle the disconnetion to EA
+        /// </summary>
+        void Disconnect();
+
+        /// <summary>
+        /// Handle the FileOpen event from EA
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        void OnFileOpen(Repository repository);
+
+        /// <summary>
+        /// Handle the FileClose event from EA
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        void OnFileClose(Repository repository);
+
+        /// <summary>
+        /// Handle the FileNew event from EA
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        void OnFileNew(Repository repository);
+
+        /// <summary>
+        /// Handle the OnNotifyContextItemModified event from EA
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        /// <param name="guid">The guid of the Item</param>
+        /// <param name="objectType">The <see cref="ObjectType" /> of the item</param>
+        void OnNotifyContextItemModified(Repository repository, string guid, ObjectType objectType);
+
+        /// <summary>
+        /// Handle the OnPostInitialized event from EA
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        void OnPostInitiliazed(Repository repository);
+
+        /// <summary>
+        /// Handle the execution of the map selected elements command
+        /// </summary>
+        /// <param name="repository">The working <see cref="Repository"/></param>
+        void MapSelectedElementsCommand(Repository repository);
+
+        /// <summary>
+        /// Handle the execution of the map selected package command
+        /// </summary>
+        /// <param name="repository">The working <see cref="Repository"/></param>
+        void MapSelectedPackageCommand(Repository repository);
+
+        /// <summary>
+        /// Show the Impact Panel to the user
+        /// </summary>
+        void ShowImpactPanel();
+
+        /// <summary>
+        /// Open the Transfer History dialog
+        /// </summary>
+        void OpenTransferHistory();
     }
 }

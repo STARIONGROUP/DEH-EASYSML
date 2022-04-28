@@ -16,4 +16,9 @@
     <ProjectReference Include="..\DEHEASysML\DEHEASysML.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+	  <Reference Include="Interop.EA">
+		  <HintPath>..\lib\Interop.EA.dll</HintPath>
+	  </Reference>
+  </ItemGroup>
 </Project>

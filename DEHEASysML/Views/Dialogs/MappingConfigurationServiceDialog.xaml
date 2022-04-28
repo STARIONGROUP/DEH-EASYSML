@@ -1,0 +1,37 @@
+﻿<dx:DXDialogWindow x:Class="DEHEASysML.Views.Dialogs.MappingConfigurationServiceDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
+        xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+        xmlns:dxmvvm="http://schemas.devexpress.com/winfx/2008/xaml/mvvm"
+        xmlns:behaviors="clr-namespace:DEHPCommon.UserInterfaces.Behaviors;assembly=DEHPCommon"
+        mc:Ignorable="d"
+        Title="Mapping Configuration" Height="130" Width="250" Topmost="True" 
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize">
+    <dxmvvm:Interaction.Behaviors>
+        <behaviors:CloseWindowBehavior />
+    </dxmvvm:Interaction.Behaviors>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <dxe:ComboBoxEdit Grid.Row="0" 
+                          Height="30"
+                          Margin="5"
+                          FontSize="12"
+                          AutoComplete="True"
+                          AllowRejectUnknownValues="False"
+                          IncrementalFiltering="True"
+                          ToolTip="Select or enter a new mapping configuration name"
+                          EditValue="{Binding Path=CurrentMappingConfigurationName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                          ItemsSource="{Binding AvailableExternalIdentifierMap}"/>
+        <StackPanel Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Center" Orientation="Horizontal" >
+            <Button Content="Cancel" FontSize="12" Margin="0 5" ToolTip="Close this dialog" Command="{Binding CloseCommand}"/>
+            <Button Margin="5"  Content="Save/Load Mapping" FontSize="12" ToolTip="Save or load the selected mapping configuration" Command="{Binding SaveOrLoadMappingConfiguration}"/>
+        </StackPanel>
+    </Grid>
+</dx:DXDialogWindow>
