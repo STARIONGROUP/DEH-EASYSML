@@ -37,8 +37,11 @@ namespace DEHEASysML.MappingRules
     using CDP4Dal.Operations;
 
     using DEHEASysML.DstController;
+    using DEHEASysML.Services.MappingConfiguration;
+    using DEHEASysML.ViewModel.Rows;
 
     using DEHPCommon;
+    using DEHPCommon.Enumerators;
     using DEHPCommon.HubController.Interfaces;
     using DEHPCommon.MappingRules.Core;
 
@@ -61,14 +64,19 @@ namespace DEHEASysML.MappingRules
         protected readonly IHubController HubController = AppContainer.Container.Resolve<IHubController>();
 
         /// <summary>
-        /// The <see cref="IDstController" />
-        /// </summary>
-        public IDstController DstController { get; set; }
-
-        /// <summary>
         /// The current <see cref="DomainOfExpertise" />
         /// </summary>
         protected DomainOfExpertise Owner;
+
+        /// <summary>
+        /// The <see cref="IMappingConfigurationService" />
+        /// </summary>
+        protected IMappingConfigurationService MappingConfiguration { get; set; }
+
+        /// <summary>
+        /// The <see cref="IDstController" />
+        /// </summary>
+        public IDstController DstController { get; set; }
 
         /// <summary>
         /// Tries to create the category with the specified <paramref name="categoryNames" />
@@ -145,7 +153,7 @@ namespace DEHEASysML.MappingRules
         /// <param name="target">The target of the <see cref="BinaryRelationship" /></param>
         /// <param name="relationShipName">The name of the <see cref="BinaryRelationship" /></param>
         /// <param name="categoryNames">The category name and shortname for the <see cref="BinaryRelationship" /></param>
-        /// <param name="shouldAddCategory">Asserts if the <see cref="BinaryRelationship"/> will be categorize or not</param>
+        /// <param name="shouldAddCategory">Asserts if the <see cref="BinaryRelationship" /> will be categorize or not</param>
         /// <returns>The created <see cref="BinaryRelationship" /></returns>
         protected BinaryRelationship CreateBinaryRelationShip(Thing source, Thing target, string relationShipName,
             (string shortname, string name) categoryNames, bool shouldAddCategory = true)
@@ -172,6 +180,20 @@ namespace DEHEASysML.MappingRules
             }
 
             return relationship;
+        }
+
+        /// <summary>
+        /// Saves the mapping configuration
+        /// </summary>
+        /// <typeparam name="TThing">A <see cref="Thing" /></typeparam>
+        /// <param name="mappedElements">A collection of <see cref="mappedElements" /></param>
+        protected void SaveMappingConfiguration<TThing>(List<MappedElementRowViewModel<TThing>> mappedElements) where TThing : Thing
+        {
+            foreach (var mappedElement in mappedElements)
+            {
+                this.MappingConfiguration.AddToExternalIdentifierMap(mappedElement.HubElement.Iid, mappedElement.DstElement.ElementGUID,
+                    MappingDirection.FromDstToHub);
+            }
         }
     }
 }

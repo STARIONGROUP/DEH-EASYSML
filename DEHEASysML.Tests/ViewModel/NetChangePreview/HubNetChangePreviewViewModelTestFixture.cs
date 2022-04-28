@@ -51,8 +51,6 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
         private Mock<IHubObjectNetChangePreviewViewModel> objectNetChange;
         private Mock<IHubRequirementsNetChangePreviewViewModel> requirementsNetChange;
         private Mock<IDstController> dstController;
-        private Mock<IHubController> hubController;
-        private Mock<ISession> session;
         private ReactiveList<IMappedElementRowViewModel> dstMapResult;
         private ReactiveList<IMappedElementRowViewModel> requirementsMappedElements;
         private ReactiveList<IMappedElementRowViewModel> objectMappedElements;
@@ -76,13 +74,8 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
             this.dstController.Setup(x => x.DstMapResult).Returns(this.dstMapResult);
             this.dstController.Setup(x => x.CanMap).Returns(false);
 
-            this.session = new Mock<ISession>();
-
-            this.hubController = new Mock<IHubController>();
-            this.hubController.Setup(x => x.Session).Returns(this.session.Object);
-
             this.viewModel = new HubNetChangePreviewViewModel(this.objectNetChange.Object, this.requirementsNetChange.Object,
-                this.dstController.Object, this.hubController.Object);
+                this.dstController.Object);
         }
 
         [TearDown]
@@ -96,16 +89,6 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
         {
             Assert.IsNotNull(this.viewModel.RequirementsNetChangePreview);
             Assert.IsNotNull(this.viewModel.ObjectNetChangePreview);
-        }
-
-        [Test]
-        public void VerifyMessageBusListening()
-        {
-            Assert.DoesNotThrow(() => CDPMessageBus.Current.SendMessage(new SessionEvent(this.hubController.Object.Session, SessionStatus.BeginUpdate), this.hubController.Object.Session));
-            Assert.DoesNotThrow(() => CDPMessageBus.Current.SendMessage(new SessionEvent(this.hubController.Object.Session, SessionStatus.EndUpdate), this.hubController.Object.Session));
-            this.hubController.Setup(x => x.OpenIteration).Returns(new Iteration());
-            Assert.DoesNotThrow(() => CDPMessageBus.Current.SendMessage(new SessionEvent(this.hubController.Object.Session, SessionStatus.BeginUpdate), this.hubController.Object.Session));
-            Assert.DoesNotThrow(() => CDPMessageBus.Current.SendMessage(new SessionEvent(this.hubController.Object.Session, SessionStatus.EndUpdate), this.hubController.Object.Session));
         }
 
         [Test]

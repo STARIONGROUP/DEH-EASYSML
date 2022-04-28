@@ -28,15 +28,10 @@ namespace DEHEASysML.ViewModel.NetChangePreview
     using System.Linq;
     using System.Reactive.Linq;
 
-    using CDP4Dal;
-    using CDP4Dal.Events;
-
     using DEHEASysML.DstController;
     using DEHEASysML.Utils.Stereotypes;
     using DEHEASysML.ViewModel.NetChangePreview.Interfaces;
     using DEHEASysML.ViewModel.Rows;
-
-    using DEHPCommon.HubController.Interfaces;
 
     using ReactiveUI;
 
@@ -51,24 +46,17 @@ namespace DEHEASysML.ViewModel.NetChangePreview
         private readonly IDstController dstController;
 
         /// <summary>
-        /// The <see cref="IHubController" />
-        /// </summary>
-        private readonly IHubController hubController;
-
-        /// <summary>
         /// Initializes a new instance of the <see cref="HubNetChangePreviewViewModel" /> class.
         /// </summary>
         /// <param name="objectNetChangePreview">The <see cref="IHubObjectNetChangePreviewViewModel" /></param>
         /// <param name="requirementsNetChangePreview">The <see cref="IHubRequirementsNetChangePreviewViewModel" /></param>
         /// <param name="dstController">The <see cref="IDstController" /></param>
-        /// <param name="hubController">The <see cref="IHubController" /></param>
         public HubNetChangePreviewViewModel(IHubObjectNetChangePreviewViewModel objectNetChangePreview,
-            IHubRequirementsNetChangePreviewViewModel requirementsNetChangePreview, IDstController dstController, IHubController hubController)
+            IHubRequirementsNetChangePreviewViewModel requirementsNetChangePreview, IDstController dstController)
         {
             this.ObjectNetChangePreview = objectNetChangePreview;
             this.RequirementsNetChangePreview = requirementsNetChangePreview;
             this.dstController = dstController;
-            this.hubController = hubController;
 
             this.InitializeObservable();
 
@@ -94,7 +82,7 @@ namespace DEHEASysML.ViewModel.NetChangePreview
                 .Where(x => !x)
                 .Subscribe(_ => this.ComputeValues());
 
-            this.dstController.DstMapResult.IsEmptyChanged.Where(x => !x).Subscribe(_ => this.ComputeValues());
+            this.dstController.DstMapResult.IsEmptyChanged.Subscribe(_ => this.ComputeValues());
         }
 
         /// <summary>

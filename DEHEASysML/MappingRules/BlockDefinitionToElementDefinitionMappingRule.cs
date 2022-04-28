@@ -38,6 +38,7 @@ namespace DEHEASysML.MappingRules
 
     using DEHEASysML.DstController;
     using DEHEASysML.Extensions;
+    using DEHEASysML.Services.MappingConfiguration;
     using DEHEASysML.Utils.Stereotypes;
     using DEHEASysML.ViewModel.Rows;
 
@@ -129,6 +130,8 @@ namespace DEHEASysML.MappingRules
 
                 this.DstController = AppContainer.Container.Resolve<IDstController>();
 
+                this.MappingConfiguration = AppContainer.Container.Resolve<IMappingConfigurationService>();
+
                 this.Elements = new List<EnterpriseArchitectBlockElement>(elements);
 
                 this.portsToConnect.Clear();
@@ -148,6 +151,7 @@ namespace DEHEASysML.MappingRules
                 {
                     this.MapPorts();
                     this.ProcessInterfaces();
+                    this.SaveMappingConfiguration(new List<MappedElementRowViewModel<ElementDefinition>>(this.Elements));
                 }
 
                 return new List<MappedElementDefinitionRowViewModel>(this.Elements);

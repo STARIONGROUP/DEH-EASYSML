@@ -39,6 +39,7 @@ namespace DEHEASysML.Tests.DstController
 
     using DEHEASysML.DstController;
     using DEHEASysML.Enumerators;
+    using DEHEASysML.Services.MappingConfiguration;
     using DEHEASysML.Tests.Utils.Stereotypes;
     using DEHEASysML.Utils.Stereotypes;
     using DEHEASysML.ViewModel.Rows;
@@ -74,6 +75,7 @@ namespace DEHEASysML.Tests.DstController
         private Mock<IStatusBarControlViewModel> statusBarControlViewModel;
         private Mock<IExchangeHistoryService> exchangeService;
         private Mock<INavigationService> navigationService;
+        private Mock<IMappingConfigurationService> mappingConfiguration;
         private Iteration iteration;
 
         [SetUp]
@@ -142,8 +144,10 @@ namespace DEHEASysML.Tests.DstController
             this.statusBarControlViewModel.Setup(x => 
                 x.Append(It.IsAny<string>(), It.IsAny<StatusBarMessageSeverity>()));
 
+            this.mappingConfiguration = new Mock<IMappingConfigurationService>();
+
             this.dstController = new DstController(this.hubController.Object, this.mappingEngine.Object, this.statusBarControlViewModel.Object,
-                this.exchangeService.Object, this.navigationService.Object);
+                this.exchangeService.Object, this.navigationService.Object, this.mappingConfiguration.Object);
         }
 
         public Mock<Package> CreatePackage(int id, int parentId)
@@ -562,6 +566,35 @@ namespace DEHEASysML.Tests.DstController
             this.hubController.Setup(x => x.GetThingById(parameter.Iid, It.IsAny<Iteration>(), out parameter)).Returns(true);
 
             Assert.DoesNotThrowAsync(async () => await this.dstController.TransferMappedThingsToHub());
+        }
+
+        [Test]
+        public void VerifyLoadMapping()
+        {
+            Assert.DoesNotThrow(() => this.dstController.LoadMapping());
+            this.hubController.Setup(x => x.OpenIteration).Returns((Iteration)null);
+            this.hubController.Setup(x => x.IsSessionOpen).Returns(true);
+            Assert.DoesNotThrow(() => this.dstController.LoadMapping());
+            this.hubController.Setup(x => x.IsSessionOpen).Returns(false);
+            this.hubController.Setup(x => x.OpenIteration).Returns(this.iteration);
+            Assert.DoesNotThrow(() => this.dstController.LoadMapping());
+            this.hubController.Setup(x => x.IsSessionOpen).Returns(true);
+            Assert.DoesNotThrow(() => this.dstController.LoadMapping());
+            Assert.IsEmpty(this.dstController.DstMapResult);
+
+            var mappedElements = new List<IMappedElementRowViewModel>();
+
+            this.mappingConfiguration.Setup(x => x.LoadMappingFromDstToHub(It.IsAny<Repository>()))
+                .Returns(mappedElements);
+
+            Assert.DoesNotThrow(() => this.dstController.LoadMapping());
+            Assert.IsEmpty(this.dstController.DstMapResult);
+
+            mappedElements.Add(new EnterpriseArchitectBlockElement(null, null, MappingDirection.FromDstToHub));
+
+            Assert.AreEqual(1, this.dstController.LoadMapping());
+
+            Assert.DoesNotThrow(() => this.dstController.ResetConfigurationMapping());
         }
     }
 }

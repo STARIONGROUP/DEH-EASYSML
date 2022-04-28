@@ -211,7 +211,7 @@ namespace DEHEASysML.ViewModel.NetChangePreview
             this.DeselectAllCommand.Subscribe(_ => this.SelectDeselectAllForTransfer(false));
 
             this.MappedElements.CountChanged.Subscribe(_ => this.PopulateContextMenu());
-            this.MappedElements.IsEmptyChanged.Where(x => !x).Subscribe(_ => this.UpdateProperties());
+            this.MappedElements.IsEmptyChanged.Subscribe(_ => this.UpdateProperties());
             this.Things.IsEmptyChanged.Where(x => !x).Subscribe(_ => this.ComputeValues(false));
         }
 

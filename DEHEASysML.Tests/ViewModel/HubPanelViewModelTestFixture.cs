@@ -161,6 +161,8 @@ namespace DEHEASysML.Tests.ViewModel
             Assert.IsNotNull(this.viewModel.RequirementsBrowser);
             Assert.AreEqual("Connect", this.viewModel.ConnectButtonText);
             Assert.IsFalse(this.viewModel.IsBusy);
+            Assert.IsFalse(this.viewModel.AllowHubToDstMapping);
+            Assert.DoesNotThrow(() => this.viewModel.AllowHubToDstMapping = true);
         }
 
         [Test]

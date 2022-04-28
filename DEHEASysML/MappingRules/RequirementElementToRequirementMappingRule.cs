@@ -37,6 +37,7 @@ namespace DEHEASysML.MappingRules
 
     using DEHEASysML.DstController;
     using DEHEASysML.Extensions;
+    using DEHEASysML.Services.MappingConfiguration;
     using DEHEASysML.Utils.Stereotypes;
     using DEHEASysML.ViewModel.Rows;
 
@@ -105,7 +106,7 @@ namespace DEHEASysML.MappingRules
                 }
 
                 this.Owner = this.HubController.CurrentDomainOfExpertise;
-
+                this.MappingConfiguration = AppContainer.Container.Resolve<IMappingConfigurationService>();
                 this.DstController = AppContainer.Container.Resolve<IDstController>();
                 var (completeMapping, elements) = input;
 
@@ -119,11 +120,14 @@ namespace DEHEASysML.MappingRules
                 }
 
                 this.requirementsSpecifications.Clear();
+                this.requirementsGroups.Clear();
 
                 foreach (var requirementsSpecification in this.HubController.OpenIteration
                              .RequirementsSpecification.Where(x => !x.IsDeprecated))
                 {
-                    this.requirementsSpecifications.Add(requirementsSpecification.Clone(true));
+                    var requirementsSpecificationsClone = requirementsSpecification.Clone(true);
+                    this.requirementsSpecifications.Add(requirementsSpecificationsClone);
+                    this.PopulateRequirementsGroupCollection(requirementsSpecificationsClone);
                 }
 
                 this.mappedElements = new List<EnterpriseArchitectRequirementElement>(elements);
@@ -136,6 +140,7 @@ namespace DEHEASysML.MappingRules
                 if (completeMapping)
                 {
                     this.CreateRelationShips();
+                    this.SaveMappingConfiguration(new List<MappedElementRowViewModel<Requirement>>(this.mappedElements));
                 }
 
                 return new List<MappedRequirementRowViewModel>(this.mappedElements);
@@ -149,8 +154,22 @@ namespace DEHEASysML.MappingRules
         }
 
         /// <summary>
+        /// Populate the <see cref="requirementsGroups"/> collection
+        /// </summary>
+        /// <param name="container">The <see cref="RequirementsContainer"/></param>
+        private void PopulateRequirementsGroupCollection(RequirementsContainer container)
+        {
+            this.requirementsGroups.AddRange(container.Group);
+
+            foreach (var requirementsGroup in container.Group)
+            {
+                this.PopulateRequirementsGroupCollection(requirementsGroup);
+            }
+        }
+
+        /// <summary>
         /// Creates all <see cref="BinaryRelationship" /> between the mapped
-        /// <see cref="Requirement" />s
+        /// <see cref="CDP4Common.EngineeringModelData.Requirement" />s
         /// </summary>
         private void CreateRelationShips()
         {
@@ -377,7 +396,7 @@ namespace DEHEASysML.MappingRules
             var alreadyCreated = this.requirementsSpecifications
                                      .FirstOrDefault(x => string.Equals(x.ShortName, shortName, StringComparison.InvariantCultureIgnoreCase))
                                  ?? this.HubController.OpenIteration.RequirementsSpecification
-                                     .FirstOrDefault(x => !x.IsDeprecated 
+                                     .FirstOrDefault(x => !x.IsDeprecated
                                                           && string.Equals(x.ShortName, shortName, StringComparison.InvariantCultureIgnoreCase))
                                      ?.Clone(true);
 
@@ -472,10 +491,10 @@ namespace DEHEASysML.MappingRules
         }
 
         /// <summary>
-        /// Update the properties of the <see cref="Requirement"/>
+        /// Update the properties of the <see cref="Requirement" />
         /// </summary>
-        /// <param name="requirementElement">The <see cref="Element"/></param>
-        /// <param name="requirement">The <see cref="Requirement"/></param>
+        /// <param name="requirementElement">The <see cref="Element" /></param>
+        /// <param name="requirement">The <see cref="Requirement" /></param>
         private void UpdateRequirementProperties(Element requirementElement, Requirement requirement)
         {
             requirement.Category.RemoveAll(x => x.Iid == this.requirementCategory.Iid);

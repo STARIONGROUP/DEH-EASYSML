@@ -27,6 +27,7 @@ namespace DEHEASysML.DstController
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Reactive.Linq;
 
     using CDP4Common;
     using CDP4Common.CommonData;
@@ -37,6 +38,7 @@ namespace DEHEASysML.DstController
 
     using DEHEASysML.Enumerators;
     using DEHEASysML.Extensions;
+    using DEHEASysML.Services.MappingConfiguration;
     using DEHEASysML.Utils.Stereotypes;
     using DEHEASysML.ViewModel.Rows;
 
@@ -64,6 +66,11 @@ namespace DEHEASysML.DstController
     /// </summary>
     public class DstController : ReactiveObject, IDstController
     {
+        /// <summary>
+        /// Gets this running tool name
+        /// </summary>
+        public static readonly string ThisToolName = typeof(DstController).Assembly.GetName().Name;
+
         /// <summary>
         /// The <see cref="IHubController" />
         /// </summary>
@@ -95,6 +102,11 @@ namespace DEHEASysML.DstController
         private readonly INavigationService navigationService;
 
         /// <summary>
+        /// The <see cref="IMappingConfigurationService" />
+        /// </summary>
+        private readonly IMappingConfigurationService mappingConfigurationService;
+
+        /// <summary>
         /// Backing field for <see cref="CurrentRepository" />
         /// </summary>
         private Repository currentRepository;
@@ -117,17 +129,18 @@ namespace DEHEASysML.DstController
         /// <param name="statusBar">The <see cref="IStatusBarControlViewModel" /></param>
         /// <param name="exchangeHistory">The <see cref="IExchangeHistoryService" /></param>
         /// <param name="navigationService">The <see cref="INavigationService" /></param>
+        /// <param name="mappingConfigurationService">The <see cref="IMappingConfigurationService" /></param>
         public DstController(IHubController hubController, IMappingEngine mappingEngine, IStatusBarControlViewModel statusBar,
-            IExchangeHistoryService exchangeHistory, INavigationService navigationService)
+            IExchangeHistoryService exchangeHistory, INavigationService navigationService, IMappingConfigurationService mappingConfigurationService)
         {
             this.hubController = hubController;
             this.mappingEngine = mappingEngine;
             this.statusBar = statusBar;
             this.exchangeHistory = exchangeHistory;
             this.navigationService = navigationService;
+            this.mappingConfigurationService = mappingConfigurationService;
 
-            this.hubController.WhenAnyValue(x => x.IsSessionOpen)
-                .Subscribe(_ => this.UpdateProperties());
+            this.InitializesObservables();
         }
 
         /// <summary>
@@ -197,7 +210,7 @@ namespace DEHEASysML.DstController
         /// <param name="repository">The <see cref="Repository" /></param>
         public void OnFileOpen(Repository repository)
         {
-            this.CurrentRepository = repository;
+            this.OnAnyEvent(repository);
         }
 
         /// <summary>
@@ -206,7 +219,7 @@ namespace DEHEASysML.DstController
         /// <param name="repository">The <see cref="Repository" /></param>
         public void OnFileClose(Repository repository)
         {
-            this.CurrentRepository = repository;
+            this.OnAnyEvent(repository);
         }
 
         /// <summary>
@@ -215,7 +228,7 @@ namespace DEHEASysML.DstController
         /// <param name="repository">The <see cref="Repository" /></param>
         public void OnFileNew(Repository repository)
         {
-            this.OnFileOpen(repository);
+            this.OnAnyEvent(repository);
         }
 
         /// <summary>
@@ -226,7 +239,7 @@ namespace DEHEASysML.DstController
         /// <param name="objectType">The <see cref="ObjectType" /> of the item</param>
         public void OnNotifyContextItemModified(Repository repository, string guid, ObjectType objectType)
         {
-            this.OnFileOpen(repository);
+            this.OnAnyEvent(repository);
         }
 
         /// <summary>
@@ -384,23 +397,100 @@ namespace DEHEASysML.DstController
                 }
 
                 this.PrepareThingsForTransfer(iterationClone, transaction);
+                this.mappingConfigurationService.PersistExternalIdentifierMap(transaction, iterationClone);
                 transaction.CreateOrUpdate(iterationClone);
 
                 await this.hubController.Write(transaction);
 
+                this.mappingConfigurationService.RefreshExternalIdentifierMap();
                 await this.hubController.Refresh();
                 await this.UpdateParametersValueSets();
                 await this.hubController.Refresh();
-
-                this.SelectedGroupsForTransfer.Clear();
-                this.SelectedDstMapResultForTransfer.Clear();
-                this.DstMapResult.Clear();
             }
             catch (Exception e)
             {
                 this.logger.Error(e);
                 throw;
             }
+            finally
+            {
+                this.SelectedGroupsForTransfer.Clear();
+                this.SelectedDstMapResultForTransfer.Clear();
+                this.LoadMapping();
+            }
+        }
+
+        /// <summary>
+        /// Loads the saved mapping and applies the mapping rule
+        /// </summary>
+        /// <returns>The number of mapped things loaded</returns>
+        public int LoadMapping()
+        {
+            var elementsLoaded = 0;
+
+            if (this.hubController.IsSessionOpen && this.hubController.OpenIteration != null)
+            {
+                elementsLoaded += this.LoadMappingFromDstToHub();
+            }
+
+            if (elementsLoaded == 0)
+            {
+                this.SelectedDstMapResultForTransfer.Clear();
+                this.SelectedGroupsForTransfer.Clear();
+                this.DstMapResult.Clear();
+            }
+
+            return elementsLoaded;
+        }
+
+        /// <summary>
+        /// Resets the current <see cref="IMappingConfigurationService.ExternalIdentifierMap" />
+        /// </summary>
+        public void ResetConfigurationMapping()
+        {
+            this.mappingConfigurationService.ExternalIdentifierMap = new ExternalIdentifierMap();
+        }
+
+        /// <summary>
+        /// Initializes all <see cref="Observable" />
+        /// </summary>
+        private void InitializesObservables()
+        {
+            this.hubController.WhenAnyValue(x => x.IsSessionOpen)
+                .Subscribe(_ => this.UpdateProperties());
+
+            this.hubController.WhenAnyValue(x => x.OpenIteration)
+                .Where(x => x == null).Subscribe(_ => this.ResetConfigurationMapping());
+        }
+
+        /// <summary>
+        /// Handle the common behavior to all EA Events
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        private void OnAnyEvent(Repository repository)
+        {
+            this.CurrentRepository = repository;
+            this.LoadMapping();
+        }
+
+        /// <summary>
+        /// Loads the saved mapping to the hub and applies the mapping rule
+        /// </summary>
+        /// <returns>The number of mapped things loaded</returns>
+        private int LoadMappingFromDstToHub()
+        {
+            if (this.mappingConfigurationService.LoadMappingFromDstToHub(this.CurrentRepository)
+                    is not { } mappedElements || !mappedElements.Any())
+            {
+                this.SelectedDstMapResultForTransfer.Clear();
+                this.SelectedGroupsForTransfer.Clear();
+                this.DstMapResult.Clear();
+                return 0;
+            }
+
+            this.Map(mappedElements);
+
+            return mappedElements.Count;
         }
 
         /// <summary>
@@ -474,9 +564,9 @@ namespace DEHEASysML.DstController
             foreach (var relationship in relationships.ToList())
             {
                 if (this.SelectedDstMapResultForTransfer.All(x => x.Iid != relationship.Source.Container.Iid && x.Iid != relationship.Source.Iid)
-                    && relationship.Target.Original == null || 
-                    this.SelectedDstMapResultForTransfer.All(x => x.Iid != relationship.Target.Container.Iid 
-                    && x.Iid != relationship.Target.Iid) && relationship.Target.Original == null)
+                    && relationship.Target.Original == null ||
+                    this.SelectedDstMapResultForTransfer.All(x => x.Iid != relationship.Target.Container.Iid
+                                                                  && x.Iid != relationship.Target.Iid) && relationship.Target.Original == null)
                 {
                     relationships.RemoveAll(x => x.Iid == relationship.Iid);
                 }
@@ -649,7 +739,7 @@ namespace DEHEASysML.DstController
             {
                 if (isCompleteMapping)
                 {
-                    this.statusBar.Append($"Mapping of {mappedElements.Count} blocks in progress...");
+                    this.statusBar.Append($"Mapping of {mappedElements.Count} blocks proceed...");
                 }
 
                 return new List<IMappedElementRowViewModel>(mappedElements);
