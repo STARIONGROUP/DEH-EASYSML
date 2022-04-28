@@ -25,13 +25,18 @@
 namespace DEHEASysML.ViewModel
 {
     using System;
+    using System.Reactive.Linq;
 
     using DEHEASysML.DstController;
+    using DEHEASysML.Services.MappingConfiguration;
     using DEHEASysML.ViewModel.Interfaces;
     using DEHEASysML.ViewModel.NetChangePreview.Interfaces;
     using DEHEASysML.Views;
+    using DEHEASysML.Views.Dialogs;
 
     using DEHPCommon.Enumerators;
+    using DEHPCommon.HubController.Interfaces;
+    using DEHPCommon.Services.NavigationService;
     using DEHPCommon.UserInterfaces.ViewModels.Interfaces;
 
     using ReactiveUI;
@@ -47,6 +52,21 @@ namespace DEHEASysML.ViewModel
         private readonly IDstController dstController;
 
         /// <summary>
+        /// The <see cref="IHubController" />
+        /// </summary>
+        private readonly IHubController hubController;
+
+        /// <summary>
+        /// The <see cref="INavigationService" />
+        /// </summary>
+        private readonly INavigationService navigationService;
+
+        /// <summary>
+        /// The <see cref="IMappingConfigurationService" />
+        /// </summary>
+        private readonly IMappingConfigurationService mappingConfiguration;
+
+        /// <summary>
         /// Backing field for <see cref="ArrowDirection" />
         /// </summary>
         private int arrowDirection;
@@ -57,21 +77,33 @@ namespace DEHEASysML.ViewModel
         private int currentMappingDirection;
 
         /// <summary>
+        /// Backing field for <see cref="CurrentMappingConfigurationName" />
+        /// </summary>
+        private string currentMappingConfigurationName;
+
+        /// <summary>
         /// Initializes a new <see cref="ImpactPanelViewModel" />
         /// </summary>
         /// <param name="dstController">The <see cref="IDstController" /></param>
         /// <param name="hubNetChangePreviewViewModel">The <see cref="IHubNetChangePreviewViewModel" /></param>
         /// <param name="dstNetChangePreview">The <see cref="IDstNetChangePreviewViewModel" /></param>
         /// <param name="transferControlViewModel">The <see cref="ITransferControlViewModel" /></param>
+        /// <param name="hubController">The <see cref="IHubController" /></param>
+        /// <param name="navigationService">The <see cref="INavigationService" /></param>
+        /// <param name="mappingConfiguration">The <see cref="IMappingConfigurationService" /></param>
         public ImpactPanelViewModel(IDstController dstController, IHubNetChangePreviewViewModel hubNetChangePreviewViewModel,
-            IDstNetChangePreviewViewModel dstNetChangePreview, ITransferControlViewModel transferControlViewModel)
+            IDstNetChangePreviewViewModel dstNetChangePreview, ITransferControlViewModel transferControlViewModel, IHubController hubController,
+            INavigationService navigationService, IMappingConfigurationService mappingConfiguration)
         {
             this.dstController = dstController;
             this.HubNetChangePreviewViewModel = hubNetChangePreviewViewModel;
             this.DstNetChangePreviewViewModel = dstNetChangePreview;
             this.TransferControlViewModel = transferControlViewModel;
+            this.hubController = hubController;
+            this.navigationService = navigationService;
+            this.mappingConfiguration = mappingConfiguration;
 
-            this.InitializesCommands();
+            this.InitializesCommandsAndObservables();
             this.UpdateProperties();
         }
 
@@ -91,6 +123,15 @@ namespace DEHEASysML.ViewModel
         {
             get => this.currentMappingDirection;
             set => this.RaiseAndSetIfChanged(ref this.currentMappingDirection, value);
+        }
+
+        /// <summary>
+        /// Gets or sets the name of the current <see cref="IMappingConfigurationService.ExternalIdentifierMap" />
+        /// </summary>
+        public string CurrentMappingConfigurationName
+        {
+            get => this.currentMappingConfigurationName;
+            set => this.RaiseAndSetIfChanged(ref this.currentMappingConfigurationName, value);
         }
 
         /// <summary>
@@ -114,6 +155,11 @@ namespace DEHEASysML.ViewModel
         public ReactiveCommand<object> ChangeMappingDirection { get; private set; }
 
         /// <summary>
+        /// Opens a dialog to setup the mapping configuration
+        /// </summary>
+        public ReactiveCommand<object> OpenMappingConfigurationDialog { get; private set; }
+
+        /// <summary>
         /// Executes the <see cref="ChangeMappingDirection" /> command
         /// </summary>
         private void ChangeMappingDirectionExecute()
@@ -126,12 +172,31 @@ namespace DEHEASysML.ViewModel
         }
 
         /// <summary>
-        /// Initiliaze all <see cref="ReactiveCommand{T}" /> of this viewmodel
+        /// Initiliaze all <see cref="ReactiveCommand{T}" /> and <see cref="Observable" /> of this viewmodel
         /// </summary>
-        private void InitializesCommands()
+        private void InitializesCommandsAndObservables()
         {
             this.ChangeMappingDirection = ReactiveCommand.Create();
             this.ChangeMappingDirection.Subscribe(_ => this.ChangeMappingDirectionExecute());
+
+            this.OpenMappingConfigurationDialog = ReactiveCommand.Create(this.WhenAny(x => x.hubController.OpenIteration,
+                iteration => iteration.Value != null));
+
+            this.OpenMappingConfigurationDialog.Subscribe(_ => this.OpenMappingConfigurationDialogExecute());
+
+            this.WhenAnyValue(x => x.hubController.OpenIteration)
+                .Where(x => x == null)
+                .Subscribe(_ => this.UpdateProperties());
+        }
+
+        /// <summary>
+        /// Execute the <see cref="OpenMappingConfigurationDialog" /> Command
+        /// </summary>
+        private void OpenMappingConfigurationDialogExecute()
+        {
+            this.navigationService.ShowDialog<MappingConfigurationServiceDialog>();
+            this.dstController.LoadMapping();
+            this.UpdateProperties();
         }
 
         /// <summary>
@@ -141,6 +206,10 @@ namespace DEHEASysML.ViewModel
         {
             this.CurrentMappingDirection = (int)this.dstController.MappingDirection;
             this.ArrowDirection = this.CurrentMappingDirection * 180;
+
+            this.CurrentMappingConfigurationName = string.IsNullOrWhiteSpace(this.mappingConfiguration.ExternalIdentifierMap.Name) 
+                ? "" 
+                : $"Current Mapping: {this.mappingConfiguration.ExternalIdentifierMap.Name}";
         }
     }
 }

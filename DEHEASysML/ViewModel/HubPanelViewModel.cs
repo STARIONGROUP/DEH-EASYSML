@@ -81,6 +81,11 @@ namespace DEHEASysML.ViewModel
         private string connectButtonText = ConnectText;
 
         /// <summary>
+        /// Backing field for <see cref="AllowHubToDstMapping"/>
+        /// </summary>
+        private bool allowHubToDstMapping;
+
+        /// <summary>
         /// Initializes a new <see cref="HubPanelViewModel" />
         /// </summary>
         /// <param name="navigationService">The <see cref="INavigationService" /></param>
@@ -122,6 +127,15 @@ namespace DEHEASysML.ViewModel
         {
             get => this.isBusy;
             set => this.RaiseAndSetIfChanged(ref this.isBusy, value);
+        }
+
+        /// <summary>
+        /// Gets or sets the value whether the mapping from hub to dst is enabled
+        /// </summary>
+        public bool AllowHubToDstMapping
+        {
+            get => this.allowHubToDstMapping;
+            set => this.RaiseAndSetIfChanged(ref this.allowHubToDstMapping, value);
         }
 
         /// <summary>
@@ -226,6 +240,12 @@ namespace DEHEASysML.ViewModel
 
             this.WhenAnyValue(x => x.ObjectBrowser.IsBusy, 
                 x => x.RequirementsBrowser.IsBusy).Subscribe(_ => this.UpdateIsBusy());
+
+            this.ObjectBrowser.MapCommand = ReactiveCommand.Create(this.WhenAny(x => x.AllowHubToDstMapping,
+                (allow) => allow.Value));
+
+            this.RequirementsBrowser.MapCommand = ReactiveCommand.Create(this.WhenAny(x => x.AllowHubToDstMapping,
+                (allow) => allow.Value));
         }
 
         /// <summary>

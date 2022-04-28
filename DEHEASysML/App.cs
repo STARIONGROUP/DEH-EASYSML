@@ -37,6 +37,7 @@ namespace DEHEASysML
 
     using DEHEASysML.DstController;
     using DEHEASysML.Services.Dispatcher;
+    using DEHEASysML.Services.MappingConfiguration;
     using DEHEASysML.ViewModel;
     using DEHEASysML.ViewModel.Dialogs;
     using DEHEASysML.ViewModel.Dialogs.Interfaces;
@@ -378,6 +379,7 @@ namespace DEHEASysML
             containerBuilder.RegisterType<Dispatcher>().As<IDispatcher>().SingleInstance();
             containerBuilder.RegisterType<DstController.DstController>().As<IDstController>().SingleInstance();
             containerBuilder.RegisterType<MappingEngine>().As<IMappingEngine>().WithParameter(MappingEngine.ParameterName, Assembly.GetExecutingAssembly());
+            containerBuilder.RegisterType<MappingConfigurationService>().As<IMappingConfigurationService>().SingleInstance();
         }
 
         /// <summary>
@@ -397,6 +399,7 @@ namespace DEHEASysML
             containerBuilder.RegisterType<HubObjectNetChangePreviewViewModel>().As<IHubObjectNetChangePreviewViewModel>().SingleInstance();
             containerBuilder.RegisterType<HubRequirementsNetChangePreviewViewModel>().As<IHubRequirementsNetChangePreviewViewModel>().SingleInstance();
             containerBuilder.RegisterType<EnterpriseArchitectTransferControlViewModel>().As<ITransferControlViewModel>().SingleInstance();
+            containerBuilder.RegisterType<MappingConfigurationServiceDialogViewModel>().As<IMappingConfigurationServiceDialogViewModel>();
         }
     }
 }

@@ -187,5 +187,11 @@ namespace DEHEASysML.DstController
         /// </summary>
         /// <returns>A <see cref="Task" /></returns>
         Task TransferMappedThingsToHub();
+
+        /// <summary>
+        /// Loads the saved mapping and applies the mapping rule
+        /// </summary>
+        /// <returns>The number of mapped things loaded</returns>
+        int LoadMapping();
     }
 }

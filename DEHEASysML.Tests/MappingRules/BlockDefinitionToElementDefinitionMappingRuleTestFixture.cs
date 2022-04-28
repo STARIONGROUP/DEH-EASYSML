@@ -41,6 +41,7 @@ namespace DEHEASysML.Tests.MappingRules
     using DEHEASysML.DstController;
     using DEHEASysML.Enumerators;
     using DEHEASysML.MappingRules;
+    using DEHEASysML.Services.MappingConfiguration;
     using DEHEASysML.Tests.Utils.Stereotypes;
     using DEHEASysML.Utils.Stereotypes;
 
@@ -72,6 +73,7 @@ namespace DEHEASysML.Tests.MappingRules
         private ModelReferenceDataLibrary referenceDataLibrary;
         private Mock<Element> block;
         private Mock<Repository> repository;
+        private Mock<IMappingConfigurationService> mappingConfiguration;
 
         [SetUp]
         public void Setup()
@@ -173,9 +175,15 @@ namespace DEHEASysML.Tests.MappingRules
             this.dstController = new Mock<IDstController>();
             this.dstController.Setup(x => x.CurrentRepository).Returns(this.repository.Object);
 
+            this.mappingConfiguration = new Mock<IMappingConfigurationService>();
+
+            this.mappingConfiguration.Setup(x => 
+                x.AddToExternalIdentifierMap(It.IsAny<Guid>(), It.IsAny<string>(), MappingDirection.FromDstToHub));
+
             var containerBuilder = new ContainerBuilder();
             containerBuilder.RegisterInstance(this.hubController.Object).As<IHubController>();
             containerBuilder.RegisterInstance(this.dstController.Object).As<IDstController>();
+            containerBuilder.RegisterInstance(this.mappingConfiguration.Object).As<IMappingConfigurationService>();
             AppContainer.Container = containerBuilder.Build();
 
             this.rule = new BlockDefinitionToElementDefinitionMappingRule();
