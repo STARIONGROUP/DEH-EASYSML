@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
 
-	<Product Id="{2DFDBFC0-3359-4246-B6F0-B7115ED5AEC1}" Name="DEHEASysMLInstaller" Language="1033" Version="1.0.0.0" Manufacturer="RHEA" UpgradeCode="9c33b1c2-4cb1-4192-a2ac-a9e2816175d9">
+	<Product Id="{2DFDBFC0-3359-4246-B6F0-B7115ED5AEC1}" Name="DEHEASysMLInstaller" Language="1033" Version="1.1.0.0" Manufacturer="RHEA" UpgradeCode="9c33b1c2-4cb1-4192-a2ac-a9e2816175d9">
 		<Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" />
 
 		<MediaTemplate EmbedCab="yes" />
