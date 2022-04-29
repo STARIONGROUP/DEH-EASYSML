@@ -82,6 +82,11 @@ namespace DEHEASysML.ViewModel
         private string currentMappingConfigurationName;
 
         /// <summary>
+        /// Backing field for <see cref="IsBusy"/>
+        /// </summary>
+        private bool? isBusy;
+
+        /// <summary>
         /// Initializes a new <see cref="ImpactPanelViewModel" />
         /// </summary>
         /// <param name="dstController">The <see cref="IDstController" /></param>
@@ -105,6 +110,15 @@ namespace DEHEASysML.ViewModel
 
             this.InitializesCommandsAndObservables();
             this.UpdateProperties();
+        }
+
+        /// <summary>
+        /// Asserts if this view model is busy or not
+        /// </summary>
+        public bool? IsBusy
+        {
+            get => this.isBusy;
+            set => this.RaiseAndSetIfChanged(ref this.isBusy, value);
         }
 
         /// <summary>
@@ -184,6 +198,9 @@ namespace DEHEASysML.ViewModel
 
             this.OpenMappingConfigurationDialog.Subscribe(_ => this.OpenMappingConfigurationDialogExecute());
 
+            this.WhenAnyValue(x => x.DstNetChangePreviewViewModel.IsBusy,
+                x => x.HubNetChangePreviewViewModel.IsBusy).Subscribe(_ => this.UpdateIsBusy());
+
             this.WhenAnyValue(x => x.hubController.OpenIteration)
                 .Where(x => x == null)
                 .Subscribe(_ => this.UpdateProperties());
@@ -210,6 +227,18 @@ namespace DEHEASysML.ViewModel
             this.CurrentMappingConfigurationName = string.IsNullOrWhiteSpace(this.mappingConfiguration.ExternalIdentifierMap.Name) 
                 ? "" 
                 : $"Current Mapping: {this.mappingConfiguration.ExternalIdentifierMap.Name}";
+        }
+
+        /// <summary>
+        /// Update the <see cref="IsBusy"/> property
+        /// </summary>
+        private void UpdateIsBusy()
+        {
+            var dstNetChangeBusy = this.DstNetChangePreviewViewModel.IsBusy;
+            var hubNetChangeBusy = this.HubNetChangePreviewViewModel.IsBusy;
+
+            this.IsBusy = dstNetChangeBusy != null && hubNetChangeBusy != null
+                                                   && dstNetChangeBusy.Value && hubNetChangeBusy.Value;
         }
     }
 }

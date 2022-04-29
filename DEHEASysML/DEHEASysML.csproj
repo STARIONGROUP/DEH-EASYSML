@@ -11,8 +11,8 @@
     <Product>DEHEASysML</Product>
     <Description>DEHEASysML AddIn</Description>
     <Copyright>Copyright © RHEA System S.A.</Copyright>
-    <AssemblyVersion>1.1.0</AssemblyVersion>
-    <FileVersion>1.1.0</FileVersion>
+    <AssemblyVersion>1.2.0</AssemblyVersion>
+    <FileVersion>1.2.0</FileVersion>
     <LangVersion>latest</LangVersion>
     <ApplicationIcon>icon.ico</ApplicationIcon>
     <RegisterForComInterop>true</RegisterForComInterop>
@@ -23,7 +23,7 @@
     <None Remove="Resources\icon.ico" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="DEHPCommon" Version="1.0.247" />
+    <PackageReference Include="DEHPCommon" Version="1.0.254" />
     <PackageReference Include="NLog" Version="4.6.8" />
     <PackageReference Include="reactiveui" Version="6.5.0" />
     <PackageReference Include="Rx-Linq" Version="2.2.5" />
@@ -49,12 +49,16 @@
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </Resource>
   </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Events\" />
+    <Folder Include="Extensions\" />
+  </ItemGroup>
   <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
   <Target Name="AfterBuild">
     <Exec Command="C:\Windows\Microsoft.NET\Framework\v4.0.30319\RegAsm.exe DEHEASysML.dll /codebase" ConsoleToMSBuild="true" WorkingDirectory="$(OutputPath)" />
   </Target>
   <Target Name="BeforeBuild">
-	  <Exec Command="C:\Windows\Microsoft.NET\Framework\v4.0.30319\RegAsm.exe ReactiveUI.dll /tlb" ConsoleToMSBuild="true" WorkingDirectory="$(OutputPath)" />
-	  <Exec Command="C:\Windows\Microsoft.NET\Framework\v4.0.30319\RegAsm.exe CDP4Dal.dll /tlb" ConsoleToMSBuild="true" WorkingDirectory="$(OutputPath)" />
+    <Exec Command="C:\Windows\Microsoft.NET\Framework\v4.0.30319\RegAsm.exe ReactiveUI.dll /tlb" ConsoleToMSBuild="true" WorkingDirectory="$(OutputPath)" />
+    <Exec Command="C:\Windows\Microsoft.NET\Framework\v4.0.30319\RegAsm.exe CDP4Dal.dll /tlb" ConsoleToMSBuild="true" WorkingDirectory="$(OutputPath)" />
   </Target>
 </Project>

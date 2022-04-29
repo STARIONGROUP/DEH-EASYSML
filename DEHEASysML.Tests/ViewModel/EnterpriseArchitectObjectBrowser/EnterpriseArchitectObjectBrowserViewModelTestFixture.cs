@@ -58,7 +58,10 @@ namespace DEHEASysML.Tests.ViewModel.EnterpriseArchitectObjectBrowser
             this.requirement.Setup(x => x.Name).Returns("A requirement");
             this.requirement.Setup(x => x.ElementGUID).Returns("0001");
             this.requirement.Setup(x => x.Stereotype).Returns(StereotypeKind.Requirement.ToString());
-
+            var taggedValue = new Mock<TaggedValue>();
+            taggedValue.Setup(x => x.Name).Returns("Text");
+            taggedValue.Setup(x => x.Value).Returns("Requirement Text");
+            this.requirement.Setup(x => x.TaggedValuesEx).Returns(new EnterpriseArchitectCollection() { taggedValue.Object });
             this.block = new Mock<Element>();
             this.block.Setup(x => x.Name).Returns("a Block");
             this.block.Setup(x => x.ElementGUID).Returns("0002");

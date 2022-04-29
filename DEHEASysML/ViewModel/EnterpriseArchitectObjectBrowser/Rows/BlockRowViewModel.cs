@@ -24,6 +24,8 @@
 
 namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
 {
+    using DEHEASysML.Extensions;
+
     using EA;
 
     /// <summary>
@@ -36,9 +38,11 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
         /// </summary>
         /// <param name="parent">The parent row</param>
         /// <param name="eaObject">The object to represent</param>
-        public BlockRowViewModel(EnterpriseArchitectObjectBaseRowViewModel parent, Element eaObject) 
+        /// <param name="shouldShowEverything">A value asserting if the row should display its contained <see cref="Element"/></param>
+        public BlockRowViewModel(EnterpriseArchitectObjectBaseRowViewModel parent, Element eaObject, bool shouldShowEverything) 
             : base(parent, eaObject)
         {
+            this.ShouldShowEverything = shouldShowEverything;
             this.Initialize();
         }
 
@@ -55,6 +59,18 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
         /// </summary>
         public override void ComputeRow()
         {
+            if (this.ShouldShowEverything)
+            {
+                foreach (var valueProperty in this.RepresentedObject.GetAllValuePropertiesOfElement())
+                {
+                    this.ContainedRows.Add(new ValuePropertyRowViewModel(this, valueProperty));
+                }
+
+                foreach (var partProperty in this.RepresentedObject.GetAllPartPropertiesOfElement())
+                {
+                    this.ContainedRows.Add(new PartPropertyRowViewModel(this, partProperty));
+                }
+            }
         }
     }
 }

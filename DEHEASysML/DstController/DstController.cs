@@ -34,9 +34,11 @@ namespace DEHEASysML.DstController
     using CDP4Common.EngineeringModelData;
     using CDP4Common.Types;
 
+    using CDP4Dal;
     using CDP4Dal.Operations;
 
     using DEHEASysML.Enumerators;
+    using DEHEASysML.Events;
     using DEHEASysML.Extensions;
     using DEHEASysML.Services.MappingConfiguration;
     using DEHEASysML.Utils.Stereotypes;
@@ -122,6 +124,11 @@ namespace DEHEASysML.DstController
         private MappingDirection mappingDirection;
 
         /// <summary>
+        /// Backing field for <see cref="IsFileOpen" />
+        /// </summary>
+        private bool isFileOpen;
+
+        /// <summary>
         /// Initializes a new <see cref="DstController" />
         /// </summary>
         /// <param name="hubController">The <see cref="IHubController" /></param>
@@ -171,9 +178,14 @@ namespace DEHEASysML.DstController
         }
 
         /// <summary>
-        /// A collection of <see cref="IMappedElementRowViewModel" />
+        /// A collection of <see cref="IMappedElementRowViewModel" /> resulting of the mapping from dst to hub
         /// </summary>
         public ReactiveList<IMappedElementRowViewModel> DstMapResult { get; } = new();
+
+        /// <summary>
+        /// A collection of <see cref="IMappedElementRowViewModel" /> resulting of the mapping from hub to dst
+        /// </summary>
+        public ReactiveList<IMappedElementRowViewModel> HubMapResult { get; } = new();
 
         /// <summary>
         /// A collection of <see cref="Thing" /> selected for the transfer
@@ -181,9 +193,23 @@ namespace DEHEASysML.DstController
         public ReactiveList<Thing> SelectedDstMapResultForTransfer { get; } = new();
 
         /// <summary>
+        /// A collection of <see cref="Thing" /> selected for the transfer
+        /// </summary>
+        public ReactiveList<Element> SelectedHubMapResultForTransfer { get; } = new();
+
+        /// <summary>
         /// A collection of all <see cref="RequirementsGroup" /> that should be transfered
         /// </summary>
         public ReactiveList<RequirementsGroup> SelectedGroupsForTransfer { get; } = new();
+
+        /// <summary>
+        /// Gets or set the value if a file is open or not
+        /// </summary>
+        public bool IsFileOpen
+        {
+            get => this.isFileOpen;
+            set => this.RaiseAndSetIfChanged(ref this.isFileOpen, value);
+        }
 
         /// <summary>
         /// Handle to clear everything when Enterprise Architect close
@@ -210,6 +236,7 @@ namespace DEHEASysML.DstController
         /// <param name="repository">The <see cref="Repository" /></param>
         public void OnFileOpen(Repository repository)
         {
+            this.IsFileOpen = true;
             this.OnAnyEvent(repository);
         }
 
@@ -219,6 +246,7 @@ namespace DEHEASysML.DstController
         /// <param name="repository">The <see cref="Repository" /></param>
         public void OnFileClose(Repository repository)
         {
+            this.IsFileOpen = false;
             this.OnAnyEvent(repository);
         }
 
@@ -228,6 +256,7 @@ namespace DEHEASysML.DstController
         /// <param name="repository">The <see cref="Repository" /></param>
         public void OnFileNew(Repository repository)
         {
+            this.IsFileOpen = true;
             this.OnAnyEvent(repository);
         }
 
@@ -421,6 +450,15 @@ namespace DEHEASysML.DstController
         }
 
         /// <summary>
+        /// Transfers the mapped variables to the Hub data source
+        /// </summary>
+        /// <returns>A <see cref="Task" /></returns>
+        public Task TransferMappedThingsToDst()
+        {
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
         /// Loads the saved mapping and applies the mapping rule
         /// </summary>
         /// <returns>The number of mapped things loaded</returns>
@@ -471,6 +509,8 @@ namespace DEHEASysML.DstController
         {
             this.CurrentRepository = repository;
             this.LoadMapping();
+
+            CDPMessageBus.Current.SendMessage(new UpdateDstNetChangePreview());
         }
 
         /// <summary>

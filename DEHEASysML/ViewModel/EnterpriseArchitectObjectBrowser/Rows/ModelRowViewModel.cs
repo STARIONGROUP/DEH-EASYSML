@@ -43,5 +43,13 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
             : base(null, eaObject, visibleElements, packagesId)
         {
         }
+
+        /// <summary>
+        /// Initialize a new <see cref="ModelRowViewModel"/>
+        /// </summary>
+        /// <param name="eaObject">A <see cref="Package"/></param>
+        public ModelRowViewModel(Package eaObject): base(null, eaObject)
+        {
+        }
     }
 }

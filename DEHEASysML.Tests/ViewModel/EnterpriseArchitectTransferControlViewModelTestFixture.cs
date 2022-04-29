@@ -37,6 +37,8 @@ namespace DEHEASysML.Tests.ViewModel
     using DEHPCommon.Services.ExchangeHistory;
     using DEHPCommon.UserInterfaces.ViewModels.Interfaces;
 
+    using EA;
+
     using Moq;
 
     using NUnit.Framework;
@@ -51,13 +53,16 @@ namespace DEHEASysML.Tests.ViewModel
         private Mock<IStatusBarControlViewModel> statusBar;
         private Mock<IExchangeHistoryService> exchangeHistory;
         private ReactiveList<Thing> selectedDstMapResultForTransfer;
+        private ReactiveList<Element> selectedHubMapResultForTransfer;
 
         [SetUp]
         public void Setup()
         {
+            this.selectedHubMapResultForTransfer = new ReactiveList<Element>();
             this.selectedDstMapResultForTransfer = new ReactiveList<Thing>();
             this.dstController = new Mock<IDstController>();
             this.dstController.Setup(x => x.SelectedDstMapResultForTransfer).Returns(this.selectedDstMapResultForTransfer);
+            this.dstController.Setup(x => x.SelectedHubMapResultForTransfer).Returns(this.selectedHubMapResultForTransfer);
             this.dstController.Setup(x => x.DstMapResult).Returns(new ReactiveList<IMappedElementRowViewModel>());
             this.dstController.Setup(x => x.MappingDirection).Returns(MappingDirection.FromDstToHub);
 

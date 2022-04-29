@@ -117,7 +117,7 @@ namespace DEHEASysML.ViewModel
         {
             this.NumberOfThing = this.dstController.MappingDirection == MappingDirection.FromDstToHub
                 ? this.dstController.SelectedDstMapResultForTransfer.Count
-                : 0;
+                : this.dstController.SelectedHubMapResultForTransfer.Count;
 
             this.CanTransfer = this.NumberOfThing > 0;
         }
@@ -142,6 +142,7 @@ namespace DEHEASysML.ViewModel
         private void InitializesCommandsAndObservables()
         {
             this.dstController.SelectedDstMapResultForTransfer.CountChanged.Subscribe(_ => this.UpdateNumberOfThingsToTransfer());
+            this.dstController.SelectedHubMapResultForTransfer.CountChanged.Subscribe(_ => this.UpdateNumberOfThingsToTransfer());
 
             this.WhenAnyValue(x => x.dstController.MappingDirection)
                 .Subscribe(_ => this.UpdateNumberOfThingsToTransfer());
@@ -179,6 +180,10 @@ namespace DEHEASysML.ViewModel
             if (this.dstController.MappingDirection is MappingDirection.FromDstToHub)
             {
                 await this.dstController.TransferMappedThingsToHub();
+            }
+            else
+            {
+                await this.dstController.TransferMappedThingsToDst();
             }
 
             await this.exchangeHistoryService.Write();

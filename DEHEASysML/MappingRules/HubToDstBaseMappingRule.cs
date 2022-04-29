@@ -1,5 +1,5 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
-// <copyright file="IHubNetChangePreviewViewModel.cs" company="RHEA System S.A.">
+// <copyright file="HubToDstBaseMappingRule.cs" company="RHEA System S.A.">
 // Copyright (c) 2020-2022 RHEA System S.A.
 // 
 // Author: Sam Gerené, Alex Vorobiev, Alexander van Delft, Nathanael Smiechowski, Antoine Théate.
@@ -22,16 +22,13 @@
 // </copyright>
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace DEHEASysML.ViewModel.NetChangePreview.Interfaces
+namespace DEHEASysML.MappingRules
 {
     /// <summary>
-    /// Interface definition for <see cref="HubNetChangePreviewViewModel"/>
+    /// The <see cref="HubToDstBaseMappingRule{TInput,TOuput}" /> provides some methods common for all
+    /// <see cref="MappingRules" /> from Hub to Dst
     /// </summary>
-    public interface IHubNetChangePreviewViewModel
+    public abstract class HubToDstBaseMappingRule<TInput, TOuput> : CommonBaseMappingRule<TInput, TOuput>
     {
-        /// <summary>
-        /// Gets or sets a value indicating whether the browser is busy
-        /// </summary>
-        bool? IsBusy { get; set; }
     }
 }

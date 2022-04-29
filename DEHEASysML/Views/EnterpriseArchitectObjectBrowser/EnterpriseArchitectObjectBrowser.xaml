@@ -7,6 +7,8 @@
              xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
              xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
              xmlns:requirementsBrowser="clr-namespace:DEHEASysML.ViewModel.RequirementsBrowser"
+             xmlns:behaviors="clr-namespace:DEHPCommon.UserInterfaces.Behaviors;assembly=DEHPCommon"
+             xmlns:dxmvvm="http://schemas.devexpress.com/winfx/2008/xaml/mvvm"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800">
     <UserControl.Resources>
@@ -63,6 +65,32 @@
                     </StackPanel>
                 </dx:MeasurePixelSnapper>
             </HierarchicalDataTemplate>
+            <HierarchicalDataTemplate DataType="{x:Type rows:PartPropertyRowViewModel}" ItemsSource="{Binding ContainedRows}">
+                <dx:MeasurePixelSnapper>
+                    <StackPanel Orientation="Horizontal">
+                        <dx:PixelSnapper>
+                            <Image Style="{StaticResource ThingIcon}" Source="{dx:DXImage 'SvgImages/Business Objects/BO_Note.svg'}"/>
+                        </dx:PixelSnapper>
+
+                        <ContentPresenter x:Name="defaultRowPresenter"
+                                          Content="{Binding}"
+                                          ContentTemplate="{Binding View.DefaultDataRowTemplate}"/>
+                    </StackPanel>
+                </dx:MeasurePixelSnapper>
+            </HierarchicalDataTemplate>
+            <HierarchicalDataTemplate DataType="{x:Type rows:ValuePropertyRowViewModel}" ItemsSource="{Binding ContainedRows}">
+                <dx:MeasurePixelSnapper>
+                    <StackPanel Orientation="Horizontal">
+                        <dx:PixelSnapper>
+                            <Image Style="{StaticResource ThingIcon}" Source="{dx:DXImage 'SvgImages/Business Objects/BO_Note.svg'}"/>
+                        </dx:PixelSnapper>
+
+                        <ContentPresenter x:Name="defaultRowPresenter"
+                                          Content="{Binding}"
+                                          ContentTemplate="{Binding View.DefaultDataRowTemplate}"/>
+                    </StackPanel>
+                </dx:MeasurePixelSnapper>
+            </HierarchicalDataTemplate>
             <HierarchicalDataTemplate DataType="{x:Type requirementsBrowser:RequirementRowViewModel}" ItemsSource="{Binding ContainedRows}">
                 <dx:MeasurePixelSnapper>
                     <StackPanel Orientation="Horizontal">
@@ -80,10 +108,13 @@
     </UserControl.Resources>
     <Grid>
         <dxg:TreeListControl Grid.Column="0" Margin="0 0 2.5 0" ItemsSource="{Binding Things}" 
-                             ToolTip="All selected elements for the mapping"
+                             ToolTip="{Binding ToolTip}"
                              SelectedItem="{Binding SelectedThing}"
                              SelectedItems="{Binding SelectedThings}"
                              SelectionMode="MultipleRow">
+            <dxmvvm:Interaction.Behaviors>
+                <behaviors:ContextMenuBehavior/>
+            </dxmvvm:Interaction.Behaviors>
             <dxg:TreeListControl.View>
                 <dxg:TreeListView Name="View"
                                   AllowEditing="False"
@@ -100,7 +131,24 @@
                                   ShowVerticalLines="False"
                                   TreeDerivationMode="HierarchicalDataTemplate"
                                   TreeLineStyle="Solid"
-                                  VerticalScrollbarVisibility="Auto"/>
+                                  VerticalScrollbarVisibility="Auto">
+                    <dxg:TreeListView.RowStyle>
+                        <Style TargetType="{x:Type dxg:RowControl}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Path=Row.IsHighlighted}" Value="True">
+                                    <Setter Property="Background" Value="Yellow"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Path=Row.IsSelectedForTransfer}" Value="True">
+                                    <Setter Property="Background" Value="LightGreen"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                            <Setter Property="ToolTip" Value="{Binding Row.Tooltip}" />
+                        </Style>
+                    </dxg:TreeListView.RowStyle>
+                    <dxg:TreeListView.ContextMenu>
+                        <ContextMenu />
+                    </dxg:TreeListView.ContextMenu>
+                </dxg:TreeListView>
             </dxg:TreeListControl.View>
             <dxg:TreeListControl.Columns>
                 <dxg:TreeListColumn FieldName="Name" Header="Nodes"  Fixed="Left"/>

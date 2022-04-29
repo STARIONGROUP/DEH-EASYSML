@@ -40,12 +40,12 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
         /// <summary>
         /// The collection of <see cref="Element"/> that as to be visible
         /// </summary>
-        protected IEnumerable<Element> VisibleElements;
+        protected List<Element> VisibleElements;
 
         /// <summary>
         /// The collection of id of <see cref="Package"/> that will be displayed
         /// </summary>
-        protected IEnumerable<int> PackagesId;
+        protected List<int> PackagesId;
 
         /// <summary>
         /// Initializes a new <see cref="PackageRowViewModel" />
@@ -58,8 +58,19 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
             IEnumerable<int> packagesId) 
             : base(parent, eaObject)
         {
-            this.VisibleElements = visibleElements;
-            this.PackagesId = packagesId;
+            this.VisibleElements = visibleElements.ToList();
+            this.PackagesId = packagesId.ToList();
+            this.Initialize();
+        }
+
+        /// <summary>
+        /// Initializes a new <see cref="PackageRowViewModel"/>
+        /// </summary>
+        /// <param name="parent">The parent row</param>
+        /// <param name="eaObject">The object to represent</param>
+        public PackageRowViewModel(EnterpriseArchitectObjectBaseRowViewModel parent, Package eaObject): base(parent, eaObject)
+        {
+            this.ShouldShowEverything = true;
             this.Initialize();
         }
 
@@ -85,6 +96,46 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
         /// </summary>
         public override void ComputeRow()
         {
+            if (!this.ShouldShowEverything)
+            {
+                this.ShowPartialTree();
+            }
+            else
+            {
+                this.ShowCompleteTree();
+            }
+        }
+
+        /// <summary>
+        /// Compute the row including all <see cref="Element"/>s contained inside it
+        /// </summary>
+        private void ShowCompleteTree()
+        {
+            var requirements = this.RepresentedObject.GetElementsOfStereotypeInPackage(StereotypeKind.Requirement);
+            var blocks = this.RepresentedObject.GetElementsOfStereotypeInPackage(StereotypeKind.Block);
+            var packages = this.RepresentedObject.Packages.OfType<Package>();
+
+            foreach (var package in packages)
+            {
+                this.ContainedRows.Add(new PackageRowViewModel(this, package));
+            }
+
+            foreach (var requirement in requirements)
+            {
+                this.ContainedRows.Add(new ElementRequirementRowViewModel(this, requirement));
+            }
+
+            foreach (var block in blocks)
+            {
+                this.ContainedRows.Add(new BlockRowViewModel(this, block,true));
+            }
+        }
+
+        /// <summary>
+        /// Compute the row including a p <see cref="Element"/>s contained inside it
+        /// </summary>
+        private void ShowPartialTree()
+        {
             var requirements = this.RepresentedObject.GetElementsOfStereotypeInPackage(StereotypeKind.Requirement);
             var blocks = this.RepresentedObject.GetElementsOfStereotypeInPackage(StereotypeKind.Block);
             var packages = this.RepresentedObject.Packages.OfType<Package>();
@@ -100,9 +151,39 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
             }
 
             foreach (var block in blocks.Where(x => this.VisibleElements.Any(vx => x.ElementGUID == vx.ElementGUID)))
-            { 
-                this.ContainedRows.Add(new BlockRowViewModel(this, block));
+            {
+                this.ContainedRows.Add(new BlockRowViewModel(this, block, false));
             }
+        }
+
+        /// <summary>
+        /// Gets or create an <see cref="ElementRowViewModel"/> to represents the <see cref="Element"/>
+        /// </summary>
+        /// <param name="element">The <see cref="Element"/></param>
+        /// <param name="packagesId">The collection of package that contains the element</param>
+        /// <returns></returns>
+        public ElementRowViewModel GetOrCreateElementRowViewModel(Element element, List<int> packagesId)
+        {
+            foreach (var containedPackage in this.ContainedRows.OfType<PackageRowViewModel>())
+            {
+                if (packagesId.Contains(containedPackage.RepresentedObject.PackageID))
+                {
+                    return containedPackage.GetOrCreateElementRowViewModel(element, packagesId);
+                }
+            }
+
+            foreach (var containedElement in this.ContainedRows.OfType<ElementRowViewModel>())
+            {
+                if (containedElement.RepresentedObject.ElementGUID == element.ElementGUID)
+                {
+                    containedElement.UpdateElement(element);
+                    return containedElement;
+                }
+            }
+
+            return element.Stereotype.AreEquals(StereotypeKind.Block) 
+                ? new BlockRowViewModel(this, element, true) 
+                : new ElementRequirementRowViewModel(this, element);
         }
     }
 }
