@@ -28,55 +28,22 @@ namespace DEHEASysML.MappingRules
     using System.Collections.Generic;
     using System.Threading.Tasks;
 
-    using Autofac;
-
     using CDP4Common.CommonData;
     using CDP4Common.EngineeringModelData;
     using CDP4Common.SiteDirectoryData;
 
     using CDP4Dal.Operations;
 
-    using DEHEASysML.DstController;
-    using DEHEASysML.Services.MappingConfiguration;
-    using DEHEASysML.ViewModel.Rows;
-
-    using DEHPCommon;
-    using DEHPCommon.Enumerators;
-    using DEHPCommon.HubController.Interfaces;
-    using DEHPCommon.MappingRules.Core;
-
-    using NLog;
-
     /// <summary>
     /// The <see cref="DstToHubBaseMappingRule{TInput,TOuput}" /> provides some methods common for all
     /// <see cref="MappingRules" /> from DST to Hub
     /// </summary>
-    public abstract class DstToHubBaseMappingRule<TInput, TOuput> : MappingRule<TInput, TOuput>
+    public abstract class DstToHubBaseMappingRule<TInput, TOuput> : CommonBaseMappingRule<TInput, TOuput>
     {
-        /// <summary>
-        /// The current class logger
-        /// </summary>
-        protected readonly Logger Logger = LogManager.GetCurrentClassLogger();
-
-        /// <summary>
-        /// The <see cref="IHubController" />
-        /// </summary>
-        protected readonly IHubController HubController = AppContainer.Container.Resolve<IHubController>();
-
         /// <summary>
         /// The current <see cref="DomainOfExpertise" />
         /// </summary>
         protected DomainOfExpertise Owner;
-
-        /// <summary>
-        /// The <see cref="IMappingConfigurationService" />
-        /// </summary>
-        protected IMappingConfigurationService MappingConfiguration { get; set; }
-
-        /// <summary>
-        /// The <see cref="IDstController" />
-        /// </summary>
-        public IDstController DstController { get; set; }
 
         /// <summary>
         /// Tries to create the category with the specified <paramref name="categoryNames" />
@@ -180,20 +147,6 @@ namespace DEHEASysML.MappingRules
             }
 
             return relationship;
-        }
-
-        /// <summary>
-        /// Saves the mapping configuration
-        /// </summary>
-        /// <typeparam name="TThing">A <see cref="Thing" /></typeparam>
-        /// <param name="mappedElements">A collection of <see cref="mappedElements" /></param>
-        protected void SaveMappingConfiguration<TThing>(List<MappedElementRowViewModel<TThing>> mappedElements) where TThing : Thing
-        {
-            foreach (var mappedElement in mappedElements)
-            {
-                this.MappingConfiguration.AddToExternalIdentifierMap(mappedElement.HubElement.Iid, mappedElement.DstElement.ElementGUID,
-                    MappingDirection.FromDstToHub);
-            }
         }
     }
 }

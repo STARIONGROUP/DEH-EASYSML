@@ -61,7 +61,6 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser
         {
             this.Caption = "Enterprise Architect Object Browser";
             this.ToolTip = "This Object Browser displays the Enterprise Architect objects";
-            this.PopulateContextMenu();
         }
 
         /// <summary>
@@ -137,9 +136,21 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser
         }
 
         /// <summary>
+        /// Build the tree to display all <see cref="Element"/>
+        /// </summary>
+        /// <param name="models">The collection of <see cref="Package"/></param>
+        public void BuildTree(IEnumerable<Package> models)
+        {
+            foreach (var model in models)
+            {
+                this.Things.Add(new ModelRowViewModel(model));
+            }
+        }
+
+        /// <summary>
         /// Populate the context menu for the implementing view model
         /// </summary>
-        public void PopulateContextMenu()
+        public virtual void PopulateContextMenu()
         {
             this.ContextMenu.Clear();
         }

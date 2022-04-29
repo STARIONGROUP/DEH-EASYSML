@@ -1,5 +1,5 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
-// <copyright file="IHubNetChangePreviewViewModel.cs" company="RHEA System S.A.">
+// <copyright file="ValuePropertyRowViewModel.cs" company="RHEA System S.A.">
 // Copyright (c) 2020-2022 RHEA System S.A.
 // 
 // Author: Sam Gerené, Alex Vorobiev, Alexander van Delft, Nathanael Smiechowski, Antoine Théate.
@@ -22,16 +22,42 @@
 // </copyright>
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace DEHEASysML.ViewModel.NetChangePreview.Interfaces
+namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
 {
+    using DEHEASysML.Extensions;
+
+    using EA;
+
     /// <summary>
-    /// Interface definition for <see cref="HubNetChangePreviewViewModel"/>
+    /// The <see cref="ValuePropertyRowViewModel" /> represents an <see cref="Element"/> of stereotype ValueProperty
     /// </summary>
-    public interface IHubNetChangePreviewViewModel
+    public class ValuePropertyRowViewModel : ElementRowViewModel
     {
         /// <summary>
-        /// Gets or sets a value indicating whether the browser is busy
+        /// Initializes a new <see cref="ValuePropertyRowViewModel" />
         /// </summary>
-        bool? IsBusy { get; set; }
+        /// <param name="parent">The parent row</param>
+        /// <param name="eaObject">The object to represent</param>
+        public ValuePropertyRowViewModel(EnterpriseArchitectObjectBaseRowViewModel parent, Element eaObject)
+            : base(parent, eaObject)
+        {
+            this.Initialize();
+        }
+
+        /// <summary>
+        /// Initializes this row properties
+        /// </summary>
+        private void Initialize()
+        {
+            this.UpdateProperties();
+        }
+
+        /// <summary>
+        /// Compute the current row to initializes properties
+        /// </summary>
+        public override void ComputeRow()
+        {
+            this.Value = this.RepresentedObject.GetValueOfPropertyValue();
+        }
     }
 }

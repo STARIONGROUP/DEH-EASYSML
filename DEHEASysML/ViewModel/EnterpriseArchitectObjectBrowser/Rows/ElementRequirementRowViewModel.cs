@@ -24,6 +24,8 @@
 
 namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
 {
+    using DEHEASysML.Extensions;
+
     using EA;
 
     /// <summary>
@@ -55,6 +57,7 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
         /// </summary>
         public override void ComputeRow()
         {
+            this.Value = this.RepresentedObject.GetRequirementText();
         }
     }
 }

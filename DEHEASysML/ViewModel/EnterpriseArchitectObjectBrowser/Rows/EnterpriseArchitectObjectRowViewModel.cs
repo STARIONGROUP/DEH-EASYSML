@@ -29,21 +29,37 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
     using ReactiveUI;
 
     /// <summary>
-    /// The <see cref="EnterpriseArchitectObjectRowViewModel{TEAClass}"/> represents a <see cref="EnterpriseArchitectObjectBaseRowViewModel"/>
+    /// The <see cref="EnterpriseArchitectObjectRowViewModel{TEAClass}" /> represents a
+    /// <see cref="EnterpriseArchitectObjectBaseRowViewModel" />
     /// with a dedicated object contained
     /// </summary>
     /// <typeparam name="TEaClass">Any class</typeparam>
     public abstract class EnterpriseArchitectObjectRowViewModel<TEaClass> : EnterpriseArchitectObjectBaseRowViewModel where TEaClass : class
     {
         /// <summary>
-        /// Backing field for <see cref="RepresentedObject"/>
+        /// Backing field for <see cref="RepresentedObject" />
         /// </summary>
         private TEaClass representedObject;
+
+        /// <summary>
+        /// Backing field for <see cref="IsSelectedForTransfer"/>
+        /// </summary>
+        private bool isSelectedForTransfer;
+
+        /// <summary>
+        /// Backing field for <see cref="IsHighlighted"/>
+        /// </summary>
+        private bool isHighlighted;
 
         /// <summary>
         /// Backing field for <see cref="Parent" />
         /// </summary>
         private EnterpriseArchitectObjectBaseRowViewModel parent;
+
+        /// <summary>
+        /// Backing field for <see cref="ToolTip"/>
+        /// </summary>
+        private string toolTip;
 
         /// <summary>
         /// Initializes a new <see cref="EnterpriseArchitectObjectBaseRowViewModel" />
@@ -57,6 +73,11 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
         }
 
         /// <summary>
+        /// Asserts that the tree has to show every element
+        /// </summary>
+        protected bool ShouldShowEverything { get; set; }
+
+        /// <summary>
         /// The object that the row represents
         /// </summary>
         public TEaClass RepresentedObject
@@ -66,7 +87,34 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
         }
 
         /// <summary>
-        /// Gets or sets the parent of this row 
+        /// Gets or sets the value if the row is highlighted
+        /// </summary>
+        public bool IsHighlighted
+        {
+            get => this.isHighlighted;
+            set => this.RaiseAndSetIfChanged(ref this.isHighlighted, value);
+        }
+
+        /// <summary>
+        /// Gets or sets the value if the row is selected for transfer
+        /// </summary>
+        public bool IsSelectedForTransfer
+        {
+            get => this.isSelectedForTransfer;
+            set => this.RaiseAndSetIfChanged(ref this.isSelectedForTransfer, value);
+        }
+
+        /// <summary>
+        /// Gets or sets the Tooltip of the row
+        /// </summary>
+        public string ToolTip
+        {
+            get => this.toolTip;
+            set => this.RaiseAndSetIfChanged(ref this.toolTip, value);
+        }
+
+        /// <summary>
+        /// Gets or sets the parent of this row
         /// </summary>
         public EnterpriseArchitectObjectBaseRowViewModel Parent
         {
@@ -90,6 +138,8 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
                     this.RowType = element.Stereotype;
                     break;
             }
+
+            this.ToolTip = $"Row resprensenting : {this.Name} of type {this.RowType}";
         }
     }
 }
