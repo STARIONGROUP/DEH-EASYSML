@@ -38,12 +38,17 @@ namespace DEHEASysML.ViewModel.NetChangePreview
     /// <summary>
     /// View model for this hub net change preview panel for Hub Elements
     /// </summary>
-    public class HubNetChangePreviewViewModel : IHubNetChangePreviewViewModel
+    public class HubNetChangePreviewViewModel : ReactiveObject, IHubNetChangePreviewViewModel
     {
         /// <summary>
         /// The <see cref="IDstController" />
         /// </summary>
         private readonly IDstController dstController;
+
+        /// <summary>
+        /// Backing field for <see cref="IsBusy"/>
+        /// </summary>
+        private bool? isBusy;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="HubNetChangePreviewViewModel" /> class.
@@ -61,6 +66,15 @@ namespace DEHEASysML.ViewModel.NetChangePreview
             this.InitializeObservable();
 
             this.ComputeValues();
+        }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the browser is busy
+        /// </summary>
+        public bool? IsBusy
+        {
+            get => this.isBusy;
+            set => this.RaiseAndSetIfChanged(ref this.isBusy, value);
         }
 
         /// <summary>
@@ -91,8 +105,10 @@ namespace DEHEASysML.ViewModel.NetChangePreview
         /// </summary>
         private void ComputeValues()
         {
+            this.IsBusy = true;
             this.ComputeValues<EnterpriseArchitectBlockElement>(this.ObjectNetChangePreview);
             this.ComputeValues<EnterpriseArchitectRequirementElement>(this.RequirementsNetChangePreview);
+            this.IsBusy = false;
         }
 
         /// <summary>

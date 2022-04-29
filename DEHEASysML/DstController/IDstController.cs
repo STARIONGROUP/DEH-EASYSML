@@ -76,6 +76,21 @@ namespace DEHEASysML.DstController
         ReactiveList<RequirementsGroup> SelectedGroupsForTransfer { get; }
 
         /// <summary>
+        /// A collection of <see cref="IMappedElementRowViewModel" /> resulting of the mapping from hub to dst
+        /// </summary>
+        ReactiveList<IMappedElementRowViewModel> HubMapResult { get; }
+
+        /// <summary>
+        /// Gets or set the value if a file is open or not
+        /// </summary>
+        bool IsFileOpen { get; set; }
+
+        /// <summary>
+        /// A collection of <see cref="Thing" /> selected for the transfer
+        /// </summary>
+        ReactiveList<Element> SelectedHubMapResultForTransfer { get; }
+
+        /// <summary>
         /// Handle to clear everything when Enterprise Architect close
         /// </summary>
         void Disconnect();
@@ -187,6 +202,12 @@ namespace DEHEASysML.DstController
         /// </summary>
         /// <returns>A <see cref="Task" /></returns>
         Task TransferMappedThingsToHub();
+
+        /// <summary>
+        /// Transfers the mapped variables to the Hub data source
+        /// </summary>
+        /// <returns>A <see cref="Task" /></returns>
+        Task TransferMappedThingsToDst();
 
         /// <summary>
         /// Loads the saved mapping and applies the mapping rule

@@ -29,5 +29,9 @@ namespace DEHEASysML.ViewModel.NetChangePreview.Interfaces
     /// </summary>
     public interface IDstNetChangePreviewViewModel
     {
+        /// <summary>
+        /// Gets or sets a value indicating whether the browser is busy
+        /// </summary>
+        bool? IsBusy { get; set; }
     }
 }

@@ -49,5 +49,16 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
             base.UpdateProperties();
             this.ComputeRow();
         }
+
+        /// <summary>
+        /// Update the current <see cref="Element"/>
+        /// </summary>
+        /// <param name="element">The new <see cref="Element"/></param>
+        public void UpdateElement(Element element)
+        {
+            this.ContainedRows.Clear();
+            this.RepresentedObject = element;
+            this.UpdateProperties();
+        }
     }
 }

@@ -251,8 +251,9 @@ namespace DEHEASysML.Tests.ViewModel.Dialogs
 
             var block = this.CreateElement(StereotypeKind.Block);
             var requirementElement = this.CreateElement(StereotypeKind.Requirement);
+            requirementElement.Setup(x => x.TaggedValuesEx).Returns(new EnterpriseArchitectCollection());
 
-            this.eaObjectBrowserSelectedThings.Add(new BlockRowViewModel(null, block.Object));
+            this.eaObjectBrowserSelectedThings.Add(new BlockRowViewModel(null, block.Object, false));
             this.eaObjectBrowserSelectedThings.Add(new ElementRequirementRowViewModel(null, requirementElement.Object));
             Assert.AreEqual(1, this.objectBrowserSelectedThings.Count);
             Assert.IsNull(this.viewModel.SelectedItem);
@@ -260,11 +261,13 @@ namespace DEHEASysML.Tests.ViewModel.Dialogs
             this.viewModel.MappedElements.Add(new EnterpriseArchitectRequirementElement(null, requirementElement.Object, MappingDirection.FromDstToHub));
             this.viewModel.MappedElements.Add(new EnterpriseArchitectBlockElement(null, block.Object, MappingDirection.FromDstToHub));
 
-            this.eaObjectBrowserSelectedThings.Add(new BlockRowViewModel(null, block.Object));
+            this.eaObjectBrowserSelectedThings.Add(new BlockRowViewModel(null, block.Object, false));
             Assert.AreEqual(this.viewModel.MappedElements[1], this.viewModel.SelectedItem);
             this.eaObjectBrowserSelectedThings.Add(new ElementRequirementRowViewModel(null, requirementElement.Object));
             Assert.AreEqual(this.viewModel.MappedElements[0], this.viewModel.SelectedItem);
-            this.eaObjectBrowserSelectedThings.Add(new ElementRequirementRowViewModel(null, this.CreateElement(StereotypeKind.ValueProperty).Object));
+            var valueProperty = this.CreateElement(StereotypeKind.ValueProperty);
+            valueProperty.Setup(x => x.CustomProperties).Returns(new EnterpriseArchitectCollection());
+            this.eaObjectBrowserSelectedThings.Add(new ValuePropertyRowViewModel(null, valueProperty.Object));
             Assert.IsNull(this.viewModel.SelectedItem);
 
             this.requirementBrowserSelectedThings.Add(new RequirementRowViewModel(new CDP4Common.EngineeringModelData.Requirement(), session.Object, null));

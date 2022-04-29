@@ -50,6 +50,7 @@ namespace DEHEASysML
 
     using DEHPCommon;
     using DEHPCommon.MappingEngine;
+    using DEHPCommon.Services.AdapterVersionService;
     using DEHPCommon.Services.ObjectBrowserTreeSelectorService;
     using DEHPCommon.UserInterfaces.ViewModels.Interfaces;
 
@@ -137,6 +138,7 @@ namespace DEHEASysML
             using var scope = AppContainer.Container.BeginLifetimeScope();
             this.dispatcher = scope.Resolve<IDispatcher>();
             this.dispatcher.Connect(repository);
+            scope.Resolve<IAdapterVersionService>().CurrentAdapterVersion = Assembly.GetExecutingAssembly().GetName().Version;
             scope.Resolve<IObjectBrowserTreeSelectorService>().Add<RequirementsSpecification>();
         }
 
