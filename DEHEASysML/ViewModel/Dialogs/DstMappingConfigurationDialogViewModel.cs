@@ -210,7 +210,7 @@ namespace DEHEASysML.ViewModel.Dialogs
                 .Select(block => new EnterpriseArchitectBlockElement(null, block, MappingDirection.FromDstToHub))
                 .Cast<IMappedElementRowViewModel>().ToList());
 
-            var newMappingCollection = this.DstController.PreMap(newElementsToMap);
+            var newMappingCollection = this.DstController.PreMap(newElementsToMap, MappingDirection.FromDstToHub);
 
             foreach (var mappedElement in newMappingCollection)
             {
@@ -230,7 +230,7 @@ namespace DEHEASysML.ViewModel.Dialogs
 
             this.ContinueCommand.Subscribe(_ => this.ExecuteContinueCommand(() =>
             {
-                this.DstController.Map(this.MappedElements.ToList());
+                this.DstController.Map(this.MappedElements.ToList(), MappingDirection.FromDstToHub);
             }));
 
             this.MapToNewElementCommand = ReactiveCommand.Create(this.WhenAnyValue(x => x.CanExecuteMapToNewElement));

@@ -6,7 +6,6 @@
              xmlns:rows="clr-namespace:DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows"
              xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
              xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
-             xmlns:requirementsBrowser="clr-namespace:DEHEASysML.ViewModel.RequirementsBrowser"
              xmlns:behaviors="clr-namespace:DEHPCommon.UserInterfaces.Behaviors;assembly=DEHPCommon"
              xmlns:dxmvvm="http://schemas.devexpress.com/winfx/2008/xaml/mvvm"
              mc:Ignorable="d" 
@@ -91,7 +90,7 @@
                     </StackPanel>
                 </dx:MeasurePixelSnapper>
             </HierarchicalDataTemplate>
-            <HierarchicalDataTemplate DataType="{x:Type requirementsBrowser:RequirementRowViewModel}" ItemsSource="{Binding ContainedRows}">
+            <HierarchicalDataTemplate DataType="{x:Type rows:ElementRequirementRowViewModel}" ItemsSource="{Binding ContainedRows}">
                 <dx:MeasurePixelSnapper>
                     <StackPanel Orientation="Horizontal">
                         <dx:PixelSnapper>

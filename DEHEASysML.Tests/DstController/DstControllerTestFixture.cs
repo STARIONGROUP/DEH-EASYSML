@@ -112,6 +112,7 @@ namespace DEHEASysML.Tests.DstController
             this.hubController.Setup(x => x.RegisterNewLogEntryToTransaction(It.IsAny<string>(), It.IsAny<ThingTransaction>()));
 
             this.repository = new Mock<Repository>();
+            this.repository.Setup(x => x.EnableUIUpdates);
             this.package = new Mock<Package>();
             this.package.Setup(x => x.Elements).Returns(new EnterpriseArchitectCollection());
 
@@ -320,9 +321,9 @@ namespace DEHEASysML.Tests.DstController
             this.mappingEngine.Setup(x => x.Map(It.IsAny<(bool, List<EnterpriseArchitectRequirementElement>)>()))
                 .Returns(null);
 
-            Assert.DoesNotThrow(() => this.dstController.PreMap(elementsToMap));
+            Assert.DoesNotThrow(() => this.dstController.PreMap(elementsToMap, MappingDirection.FromDstToHub));
             Assert.IsEmpty(this.dstController.DstMapResult);
-            Assert.DoesNotThrow(() => this.dstController.Map(elementsToMap));
+            Assert.DoesNotThrow(() => this.dstController.Map(elementsToMap, MappingDirection.FromDstToHub));
             Assert.IsEmpty(this.dstController.DstMapResult);
 
             this.mappingEngine.Setup(x => x.Map(It.IsAny<(bool, List<EnterpriseArchitectBlockElement>)>()))
@@ -331,9 +332,9 @@ namespace DEHEASysML.Tests.DstController
             this.mappingEngine.Setup(x => x.Map(It.IsAny<(bool, List<EnterpriseArchitectRequirementElement>)>()))
                 .Returns(new List<MappedRequirementRowViewModel>());
 
-            Assert.DoesNotThrow(() => this.dstController.PreMap(elementsToMap));
+            Assert.DoesNotThrow(() => this.dstController.PreMap(elementsToMap, MappingDirection.FromDstToHub));
             Assert.IsEmpty(this.dstController.DstMapResult);
-            Assert.DoesNotThrow(() => this.dstController.Map(elementsToMap));
+            Assert.DoesNotThrow(() => this.dstController.Map(elementsToMap, MappingDirection.FromDstToHub));
             Assert.IsEmpty(this.dstController.DstMapResult);
 
             this.mappingEngine.Setup(x => x.Map(It.IsAny<(bool, List<EnterpriseArchitectBlockElement>)>()))
@@ -348,9 +349,9 @@ namespace DEHEASysML.Tests.DstController
                     new MappedRequirementRowViewModel(null, null, MappingDirection.FromDstToHub)
                 });
 
-            Assert.DoesNotThrow(() => this.dstController.PreMap(elementsToMap));
+            Assert.DoesNotThrow(() => this.dstController.PreMap(elementsToMap, MappingDirection.FromDstToHub));
             Assert.IsEmpty(this.dstController.DstMapResult);
-            Assert.DoesNotThrow(() => this.dstController.Map(elementsToMap));
+            Assert.DoesNotThrow(() => this.dstController.Map(elementsToMap, MappingDirection.FromDstToHub));
             Assert.AreEqual(2,this.dstController.DstMapResult.Count);
 
             this.statusBarControlViewModel.Verify(x => 
@@ -360,6 +361,8 @@ namespace DEHEASysML.Tests.DstController
         [Test]
         public void VerifyTransferToHub()
         {
+            this.dstController.CurrentRepository = this.repository.Object;
+
             Assert.DoesNotThrowAsync(async () => await this.dstController.TransferMappedThingsToHub());
 
             this.navigationService.Setup(x =>
@@ -571,6 +574,7 @@ namespace DEHEASysML.Tests.DstController
         [Test]
         public void VerifyLoadMapping()
         {
+            this.dstController.CurrentRepository = this.repository.Object;
             Assert.DoesNotThrow(() => this.dstController.LoadMapping());
             this.hubController.Setup(x => x.OpenIteration).Returns((Iteration)null);
             this.hubController.Setup(x => x.IsSessionOpen).Returns(true);

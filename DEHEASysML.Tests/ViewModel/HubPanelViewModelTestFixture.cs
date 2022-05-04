@@ -35,6 +35,7 @@ namespace DEHEASysML.Tests.ViewModel
     using CDP4Dal;
     using CDP4Dal.Permission;
 
+    using DEHEASysML.DstController;
     using DEHEASysML.ViewModel;
     using DEHEASysML.ViewModel.RequirementsBrowser;
 
@@ -69,6 +70,7 @@ namespace DEHEASysML.Tests.ViewModel
         private Person person;
         private Participant participant;
         private Iteration iteration;
+        private Mock<IDstController> dstController;
 
         [SetUp]
         public void Setup()
@@ -137,16 +139,24 @@ namespace DEHEASysML.Tests.ViewModel
 
             this.objectBrowser = new Mock<IObjectBrowserViewModel>();
             this.objectBrowser.Setup(x => x.Things).Returns(new ReactiveList<BrowserViewModelBase>());
+            this.objectBrowser.Setup(x => x.CanMap).Returns(new Mock<IObservable<bool>>().Object);
+            this.objectBrowser.Setup(x => x.MapCommand).Returns(ReactiveCommand.Create());
 
             this.publicationBrowser = new Mock<IPublicationBrowserViewModel>();
             this.hubBrowserHeader = new Mock<IHubBrowserHeaderViewModel>();
             this.sessionControl = new Mock<IHubSessionControlViewModel>();
             this.statusBar = new Mock<IStatusBarControlViewModel>();
             this.requirementsBrowser = new Mock<IRequirementsBrowserViewModel>();
+            this.requirementsBrowser.Setup(x => x.CanMap).Returns(new Mock<IObservable<bool>>().Object);
+            this.requirementsBrowser.Setup(x => x.MapCommand).Returns(ReactiveCommand.Create());
+
+            this.dstController = new Mock<IDstController>();
+            this.dstController.Setup(x => x.IsFileOpen).Returns(true);
+            this.dstController.Setup(x => x.MappingDirection).Returns(MappingDirection.FromHubToDst);
 
             this.viewModel = new HubPanelViewModel(this.navigationService.Object, this.hubController.Object,
                 this.sessionControl.Object, this.hubBrowserHeader.Object, this.publicationBrowser.Object,
-                this.objectBrowser.Object, this.statusBar.Object, this.requirementsBrowser.Object);
+                this.objectBrowser.Object, this.statusBar.Object, this.requirementsBrowser.Object, this.dstController.Object);
         }
 
         [Test]
@@ -161,8 +171,6 @@ namespace DEHEASysML.Tests.ViewModel
             Assert.IsNotNull(this.viewModel.RequirementsBrowser);
             Assert.AreEqual("Connect", this.viewModel.ConnectButtonText);
             Assert.IsFalse(this.viewModel.IsBusy);
-            Assert.IsFalse(this.viewModel.AllowHubToDstMapping);
-            Assert.DoesNotThrow(() => this.viewModel.AllowHubToDstMapping = true);
         }
 
         [Test]

@@ -1,5 +1,5 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
-// <copyright file="IHubPanelViewModel.cs" company="RHEA System S.A.">
+// <copyright file="HubMappingConfigurationDialog.xaml.cs" company="RHEA System S.A.">
 // Copyright (c) 2020-2022 RHEA System S.A.
 // 
 // Author: Sam Gerené, Alex Vorobiev, Alexander van Delft, Nathanael Smiechowski, Antoine Théate.
@@ -22,16 +22,22 @@
 // </copyright>
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace DEHEASysML.ViewModel.Interfaces
+namespace DEHEASysML.Views.Dialogs
 {
+    using System.Diagnostics.CodeAnalysis;
+
     /// <summary>
-    /// Interface definition for <see cref="HubPanelViewModel" />
+    /// Interaction logic for HubMappingConfigurationDialog.xaml
     /// </summary>
-    public interface IHubPanelViewModel
+    [ExcludeFromCodeCoverage]
+    public partial class HubMappingConfigurationDialog
     {
         /// <summary>
-        /// Asserts if this view model is busy or not
+        /// Initializes a new <see cref="HubMappingConfigurationDialog" />
         /// </summary>
-        bool? IsBusy { get; set; }
+        public HubMappingConfigurationDialog()
+        {
+            this.InitializeComponent();
+        }
     }
 }

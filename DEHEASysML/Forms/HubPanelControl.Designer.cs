@@ -25,6 +25,7 @@
 namespace DEHEASysML.Forms
 {
     using System.Diagnostics.CodeAnalysis;
+    using System.Windows.Forms;
     using System.Windows.Forms.Integration;
 
     using Autofac;
@@ -33,11 +34,15 @@ namespace DEHEASysML.Forms
 
     using DEHPCommon;
 
+    using ReactiveUI;
+
+    using System;
+
     /// <summary>
     /// Interaction logic for the <see cref="HubPanelControl" />
     /// </summary>
     [ExcludeFromCodeCoverage]
-    partial class HubPanelControl
+    partial class HubPanelControl 
     {
         /// <summary> 
         /// Required designer variable.
@@ -48,6 +53,11 @@ namespace DEHEASysML.Forms
         /// The <see cref="ElementHost"/>
         /// </summary>
         private ElementHost hubPanelHost;
+
+        /// <summary>
+        /// The <see cref="IHubPanelViewModel"/>
+        /// </summary>
+        private IHubPanelViewModel hubPanelViewModel;
 
         /// <summary> 
         /// Clean up any resources being used.
@@ -70,6 +80,7 @@ namespace DEHEASysML.Forms
         /// </summary>
         private void InitializeComponent()
         {
+            Cursor.Current = Cursors.WaitCursor;
             this.hubPanelHost = new System.Windows.Forms.Integration.ElementHost();
             this.SuspendLayout();
             // 
@@ -82,7 +93,7 @@ namespace DEHEASysML.Forms
             this.hubPanelHost.TabIndex = 0;
             this.hubPanelHost.Text = "hubPanelHost";
             var hubPanel = new HubPanel();
-            var hubPanelViewModel = AppContainer.Container.Resolve<IHubPanelViewModel>();
+            this.hubPanelViewModel = AppContainer.Container.Resolve<IHubPanelViewModel>();
             hubPanel.DataContext = hubPanelViewModel;
             this.hubPanelHost.Child = hubPanel;
             // 
@@ -92,9 +103,24 @@ namespace DEHEASysML.Forms
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.Controls.Add(this.hubPanelHost);
             this.Name = "HubPanelControl";
+            Cursor.Current = Cursors.Default;
+            this.WhenAnyValue(x => x.hubPanelViewModel.IsBusy).Subscribe(this.SetCursor);
             this.ResumeLayout(false);
         }
 
         #endregion
+
+        /// <summary>
+        /// Sets the <see cref="Cursor"/> based on the value
+        /// </summary>
+        /// <param name="isBusy"></param>
+        public void SetCursor(bool? isBusy)
+        {
+            if (isBusy.HasValue)
+            {
+                var isBusyValue = isBusy.Value;
+                Cursor.Current = isBusyValue ? Cursors.WaitCursor : Cursors.Default;
+            }
+        }
     }
 }

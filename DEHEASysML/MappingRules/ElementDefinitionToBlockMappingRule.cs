@@ -26,27 +26,47 @@ namespace DEHEASysML.MappingRules
 {
     using System;
     using System.Collections.Generic;
+    using System.Linq;
     using System.Runtime.ExceptionServices;
 
     using Autofac;
 
+    using CDP4Common.CommonData;
+    using CDP4Common.EngineeringModelData;
+    using CDP4Common.SiteDirectoryData;
+
     using DEHEASysML.DstController;
+    using DEHEASysML.Enumerators;
+    using DEHEASysML.Extensions;
     using DEHEASysML.Services.MappingConfiguration;
     using DEHEASysML.Utils.Stereotypes;
     using DEHEASysML.ViewModel.Rows;
 
     using DEHPCommon;
+    using DEHPCommon.Enumerators;
     using DEHPCommon.MappingEngine;
     using DEHPCommon.MappingRules.Core;
+
+    using EA;
 
     /// <summary>
     /// The <see cref="ElementDefinitionToBlockMappingRule" /> is a <see cref="IMappingRule" /> for the
     /// <see cref="MappingEngine" />
-    /// that takes a <see cref="List{T}" /> of <see cref="EnterpriseArchitectBlockElement" /> as input and
+    /// that takes a <see cref="List{T}" /> of <see cref="ElementDefinitionMappedElement" /> as input and
     /// outputs a E-TM-10-25 collection of <see cref="MappedElementDefinitionRowViewModel" />
     /// </summary>
-    public class ElementDefinitionToBlockMappingRule : HubToDstBaseMappingRule<List<ElementDefinitionMappedElement>, List<MappedElementDefinitionRowViewModel>>
+    public class ElementDefinitionToBlockMappingRule : HubToDstBaseMappingRule<(bool complete, List<ElementDefinitionMappedElement> elements), List<MappedElementDefinitionRowViewModel>>
     {
+        /// <summary>
+        /// A collection of <see cref="Element" /> representing ValueType that has been created during this mapping
+        /// </summary>
+        private readonly List<Element> temporaryValueTypes = new();
+
+        /// <summary>
+        /// A collection of <see cref="Element" /> representing Unit that has been created during this mapping
+        /// </summary>
+        private readonly List<Element> temporaryUnits = new();
+
         /// <summary>
         /// The collection of <see cref="EnterpriseArchitectBlockElement" />
         /// </summary>
@@ -55,27 +75,45 @@ namespace DEHEASysML.MappingRules
         /// <summary>
         /// Transform a <see cref="List{T}" /> of <see cref="ElementDefinitionMappedElement" /> into a
         /// <see cref="List{T}" /> of
-        /// <see cref="MappedRequirementRowViewModel" />
+        /// <see cref="MappedElementDefinitionRowViewModel" />
         /// </summary>
         /// <param name="input">
-        /// A <see cref="List{T}" /> of <see cref="EnterpriseArchitectRequirementElement " />
+        /// Tuple of <see cref="bool" />, The <see cref="List{T}" /> of <see cref="ElementDefinitionMappedElement " />
+        /// The <see cref="bool" /> handles the fact that it the mapping has to map everything
         /// </param>
-        /// <returns>A collection of <see cref="MappedRequirementRowViewModel" /></returns>
-        public override List<MappedElementDefinitionRowViewModel> Transform(List<ElementDefinitionMappedElement> input)
+        /// <returns>A collection of <see cref="MappedElementDefinitionRowViewModel" /></returns>
+        public override List<MappedElementDefinitionRowViewModel> Transform((bool complete, List<ElementDefinitionMappedElement> elements) input)
         {
             try
             {
-                if (!this.HubController.IsSessionOpen)
+                this.MappingConfiguration = AppContainer.Container.Resolve<IMappingConfigurationService>();
+                this.DstController = AppContainer.Container.Resolve<IDstController>();
+
+                if (!this.HubController.IsSessionOpen || !this.DstController.IsFileOpen)
                 {
                     return default;
                 }
 
-                this.MappingConfiguration = AppContainer.Container.Resolve<IMappingConfigurationService>();
-                this.DstController = AppContainer.Container.Resolve<IDstController>();
+                var (complete, elements) = input;
+                this.Elements = new List<ElementDefinitionMappedElement>(elements);
 
-                this.Elements = new List<ElementDefinitionMappedElement>(input);
+                foreach (var mappedElement in this.Elements.ToList())
+                {
+                    mappedElement.DstElement ??= this.GetOrCreateElement(mappedElement.HubElement);
 
+                    if (complete)
+                    {
+                        this.MapContainedElement(mappedElement);
+                        this.MapProperties(mappedElement.HubElement, mappedElement.DstElement);
+                    }
+                }
 
+                if (complete)
+                {
+                    this.DstController.UpdatedElements.AddRange(this.temporaryUnits);
+                    this.DstController.UpdatedElements.AddRange(this.temporaryValueTypes);
+                    this.SaveMappingConfiguration(new List<MappedElementRowViewModel<ElementDefinition>>(this.Elements));
+                }
 
                 return new List<MappedElementDefinitionRowViewModel>(this.Elements);
             }
@@ -85,6 +123,270 @@ namespace DEHEASysML.MappingRules
                 ExceptionDispatchInfo.Capture(exception).Throw();
                 return default;
             }
+        }
+
+        /// <summary>
+        /// Maps the properties to the provided <see cref="ElementDefinition" />
+        /// </summary>
+        /// <param name="hubElement">The <see cref="ElementDefinition" /></param>
+        /// <param name="element">The <see cref="Element" /></param>
+        private void MapProperties(ElementDefinition hubElement, Element element)
+        {
+            this.MapProperties(hubElement.Parameter, element);
+        }
+
+        /// <summary>
+        /// Maps the properties of the provided <see cref="ElementUsage" />
+        /// </summary>
+        /// <param name="elementUsage">The <see cref="ElementUsage" /></param>
+        /// <param name="dstElement">The <see cref="Element" /></param>
+        private void MapProperties(ElementUsage elementUsage, Element dstElement)
+        {
+            var parametersAndOverrides = elementUsage.ElementDefinition.Parameter
+                .Where(x => elementUsage.ParameterOverride.All(parameterOverride => x.Iid != parameterOverride.Iid)).Cast<ParameterOrOverrideBase>().ToList();
+
+            parametersAndOverrides.AddRange(elementUsage.ParameterOverride);
+            this.MapProperties(parametersAndOverrides, dstElement);
+        }
+
+        /// <summary>
+        /// Maps the properties of the provided the collection of <see cref="ParameterOrOverrideBase" />
+        /// </summary>
+        /// <param name="parameters">The collection of <see cref="ParameterOrOverrideBase" /></param>
+        /// <param name="element">The <see cref="Element" /></param>
+        private void MapProperties(IEnumerable<ParameterOrOverrideBase> parameters, Element element)
+        {
+            foreach (var parameter in parameters)
+            {
+                if (!this.TryGetExistingProperty(element, parameter, out var property))
+                {
+                    this.GetOrCreateValueType(parameter, out var valueType);
+                    this.CreateProperty(parameter, element, valueType, out property);
+                }
+
+                this.DstController.UpdatedElements.Add(property);
+                this.UpdateValue(parameter, property);
+            }
+        }
+
+        /// <summary>
+        /// Update the value of the ValueProperty
+        /// </summary>
+        /// <param name="parameter">The <see cref="ParameterOrOverrideBase" /> that contins the value to transfer</param>
+        /// <param name="property">The <see cref="Element" /> for the ValueProperty</param>
+        private void UpdateValue(ParameterOrOverrideBase parameter, Element property)
+        {
+            var valueToAssign = parameter.QueryParameterBaseValueSet(null, null).ActualValue[0];
+
+            if (valueToAssign == "-")
+            {
+                valueToAssign = string.Empty;
+            }
+
+            this.DstController.UpdatedValuePropretyValues[property.ElementGUID] = valueToAssign;
+        }
+
+        /// <summary>
+        /// Creates an ValueProperty inside the given <see cref="Element" /> based on the <see cref="ParameterOrOverrideBase" />
+        /// </summary>
+        /// <param name="parameter">The <see cref="ParameterOrOverrideBase" /></param>
+        /// <param name="container">The <see cref="Element" /> container</param>
+        /// <param name="valueType">The <see cref="Element" /> for the ValueType</param>
+        /// <param name="property">The <see cref="Element" /> for the ValueProperty</param>
+        private void CreateProperty(ParameterOrOverrideBase parameter, Element container, Element valueType, out Element property)
+        {
+            property = this.DstController.AddNewElement(container.EmbeddedElements, parameter.ParameterType.Name, "Property", StereotypeKind.ValueProperty);
+            property.PropertyType = valueType.ElementID;
+
+            property.Update();
+        }
+
+        /// <summary>
+        /// Gets or create the <see cref="Element" /> representing a ValueType for the provided
+        /// <see cref="ParameterOrOverrideBase" />
+        /// </summary>
+        /// <param name="parameter">The <see cref="ParameterOrOverrideBase" /> </param>
+        /// <param name="element">The <see cref="Element" /></param>
+        private void GetOrCreateValueType(ParameterOrOverrideBase parameter, out Element element)
+        {
+            if (parameter.Scale != null && parameter.Scale.Unit.ShortName != "1")
+            {
+                this.GetOrCreateValueType(parameter.ParameterType, parameter.Scale, out element);
+            }
+            else
+            {
+                this.GetOrCreateValueType(parameter.ParameterType, out element);
+            }
+        }
+
+        /// <summary>
+        /// Gets or create the <see cref="Element" /> representing a ValueType for the provided <see cref="ParameterType" />
+        /// </summary>
+        /// <param name="parameterType">The <see cref="ParameterType" /> </param>
+        /// <param name="element">The <see cref="Element" /></param>
+        private void GetOrCreateValueType(ParameterType parameterType, out Element element)
+        {
+            this.QueryCollectionByNameAndShortname(parameterType, this.temporaryValueTypes, out element);
+
+            if (element == null && !this.DstController.TryGetValueType(parameterType, null, out element))
+            {
+                var collection = this.DstController.GetDefaultBlocksPackage().Elements;
+                var newValueType = this.DstController.AddNewElement(collection, parameterType.Name, "DataType", StereotypeKind.ValueType);
+
+                this.temporaryValueTypes.Add(newValueType);
+                newValueType.Update();
+                element = newValueType;
+                collection.Refresh();
+            }
+        }
+
+        /// <summary>
+        /// Gets or creates the <see cref="Element" /> that matches the propvided <see cref="MeasurementScale" />
+        /// </summary>
+        /// <param name="parameterType">The <see cref="ParameterType" /> to map to</param>
+        /// <param name="scale">The <see cref="MeasurementScale" /></param>
+        /// <param name="element">The <see cref="Element" /></param>
+        private void GetOrCreateValueType(ParameterType parameterType, MeasurementScale scale, out Element element)
+        {
+            this.QueryCollectionByNameAndShortname(scale, this.temporaryValueTypes, out element);
+
+            if (element == null && !this.DstController.TryGetValueType(parameterType, scale, out element))
+            {
+                var collection = this.DstController.GetDefaultBlocksPackage().Elements;
+
+                var newValueType = this.DstController.AddNewElement(collection, parameterType.Name,
+                    "DataType", StereotypeKind.ValueType);
+
+                this.DstController.UpdatedElements.Add(newValueType);
+
+                if (scale.Unit != null)
+                {
+                    var newUnit = this.GetOrCreateUnit(scale.Unit);
+                    var taggedValues = newValueType.TaggedValuesEx.AddNew("unit", StereotypeKind.TaggedValue.ToString()) as TaggedValue;
+                    taggedValues.Value = newUnit.ElementGUID;
+                    newValueType.Name = $"{newValueType.Name}[{scale.Unit.ShortName}]";
+                    taggedValues.Update();
+                    newUnit.Update();
+                    newValueType.TaggedValuesEx.Refresh();
+                }
+
+                this.temporaryValueTypes.Add(newValueType);
+                newValueType.Update();
+                collection.Refresh();
+                element = newValueType;
+            }
+        }
+
+        /// <summary>
+        /// Gets or creates the Unit that matches the provides <see cref="MeasurementUnit" />
+        /// </summary>
+        /// <param name="scaleUnit">The <see cref="MeasurementUnit" /></param>
+        /// <returns>The <see cref="Element" /></returns>
+        private Element GetOrCreateUnit(MeasurementUnit scaleUnit)
+        {
+            this.QueryCollectionByNameAndShortname(scaleUnit, this.temporaryUnits, out var unitElement);
+
+            if (unitElement == null && !this.DstController.TryGetElement(scaleUnit.Name, StereotypeKind.Unit, out unitElement))
+            {
+                var collection = this.DstController.GetDefaultBlocksPackage().Elements;
+                unitElement = this.DstController.AddNewElement(collection, scaleUnit.Name, "Unit", StereotypeKind.Unit);
+
+                unitElement.Update();
+                collection.Refresh();
+                this.temporaryUnits.Add(unitElement);
+            }
+
+            return unitElement;
+        }
+
+        /// <summary>
+        /// Tries to get an exisitng <see cref="Element" /> representing a ValueProperty contained into an <see cref="Element" />
+        /// that matches with the provided <see cref="ParameterOrOverrideBase" />
+        /// </summary>
+        /// <param name="element">The <see cref="Element" /></param>
+        /// <param name="parameter">The <see cref="ParameterOrOverrideBase" /></param>
+        /// <param name="property">The <see cref="Element" /> representing the ValueProperty</param>
+        /// <returns>A value indicating whether the ValueProperty could be found</returns>
+        private bool TryGetExistingProperty(Element element, ParameterOrOverrideBase parameter, out Element property)
+        {
+            property = element.GetValuePropertyOfElement(parameter.ParameterType.Name) ?? element.GetValuePropertyOfElement(parameter.ParameterType.ShortName);
+
+            return property != null;
+        }
+
+        /// <summary>
+        /// Maps the contained element of the provided <see cref="ElementDefinitionMappedElement" />
+        /// </summary>
+        /// <param name="mappedElement">The <see cref="ElementDefinitionMappedElement" /></param>
+        private void MapContainedElement(ElementDefinitionMappedElement mappedElement)
+        {
+            foreach (var elementUsage in mappedElement.HubElement.ContainedElement.Where(x => x.InterfaceEnd == InterfaceEndKind.NONE).ToList())
+            {
+                var usageDefinitionMappedElement = this.Elements.FirstOrDefault(x =>
+                    string.Equals(x.DstElement.Name, elementUsage.Name, StringComparison.InvariantCultureIgnoreCase));
+
+                if (usageDefinitionMappedElement == null)
+                {
+                    usageDefinitionMappedElement = new ElementDefinitionMappedElement(elementUsage.ElementDefinition, this.GetOrCreateElement(elementUsage), MappingDirection.FromHubToDst);
+                    this.Elements.Add(usageDefinitionMappedElement);
+                }
+
+                this.MapProperties(elementUsage, usageDefinitionMappedElement.DstElement);
+                this.UpdateContainement(mappedElement.DstElement, usageDefinitionMappedElement.DstElement);
+                this.MapContainedElement(usageDefinitionMappedElement);
+            }
+        }
+
+        /// <summary>
+        /// Updates the containment information of the provided parent and element
+        /// </summary>
+        /// <param name="parent">The parent <see cref="Element" /></param>
+        /// <param name="element">The child <see cref="Element" /></param>
+        private void UpdateContainement(Element parent, Element element)
+        {
+            var partProperty = parent.GetAllPartPropertiesOfElement().FirstOrDefault(x => x.PropertyType == element.ElementID)
+                               ?? this.DstController.AddNewElement(parent.EmbeddedElements, element.Name, "Property", StereotypeKind.PartProperty);
+
+            partProperty.PropertyType = element.ElementID;
+            partProperty.Update();
+        }
+
+        /// <summary>
+        /// Gets or creates an <see cref="Element" /> based on a <see cref="ElementBase" />
+        /// </summary>
+        /// <param name="elementBase">The <see cref="ElementBase" /></param>
+        /// <returns>An existing <see cref="Element" /> or a new  one</returns>
+        private Element GetOrCreateElement(ElementBase elementBase)
+        {
+            return this.GetOrCreateElement(elementBase.Name);
+        }
+
+        /// <summary>
+        /// Gets or creates an <see cref="Element" /> based on a name
+        /// </summary>
+        /// <param name="elementBaseName">The name</param>
+        /// <returns>An existing <see cref="Element" /> or a new  one</returns>
+        private Element GetOrCreateElement(string elementBaseName)
+        {
+            if (!this.DstController.TryGetElement(elementBaseName, StereotypeKind.Block, out var element))
+            {
+                var package = this.DstController.GetDefaultBlocksPackage();
+                element = this.DstController.AddNewElement(package.Elements, elementBaseName, "block", StereotypeKind.Block);
+            }
+
+            return element;
+        }
+
+        /// <summary>
+        /// Searches an <see cref="Element" /> where the name matched the <see cref="DefinedThing.Name" /> or
+        /// the <see cref="DefinedThing.ShortName" /> and where the given <see cref="StereotypeKind" /> is applied to
+        /// </summary>
+        /// <param name="definedThing">The <see cref="DefinedThing" /></param>
+        /// <param name="collection">The collection to look into</param>
+        /// <param name="element">The <see cref="Element" /></param>
+        private void QueryCollectionByNameAndShortname(DefinedThing definedThing, IEnumerable<Element> collection, out Element element)
+        {
+            element = collection.FirstOrDefault(x => x.Name == definedThing.Name || x.Name == definedThing.ShortName);
         }
     }
 }
