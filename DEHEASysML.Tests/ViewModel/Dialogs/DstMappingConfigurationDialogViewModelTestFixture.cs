@@ -92,8 +92,8 @@ namespace DEHEASysML.Tests.ViewModel.Dialogs
             this.dstController = new Mock<IDstController>();
             this.dstController.Setup(x => x.CurrentRepository).Returns(repository.Object);
             this.dstController.Setup(x => x.DstMapResult).Returns(this.dstMapResult);
-            this.dstController.Setup(x => x.PreMap(It.IsAny<List<IMappedElementRowViewModel>>())).Returns(this.premapResult);
-            this.dstController.Setup(x => x.Map(It.IsAny<List<IMappedElementRowViewModel>>()));
+            this.dstController.Setup(x => x.PreMap(It.IsAny<List<IMappedElementRowViewModel>>(), MappingDirection.FromDstToHub)).Returns(this.premapResult);
+            this.dstController.Setup(x => x.Map(It.IsAny<List<IMappedElementRowViewModel>>(), MappingDirection.FromDstToHub));
 
             this.eaObjectBrowser = new Mock<IEnterpriseArchitectObjectBrowserViewModel>();
             this.eaObjectBrowser.Setup(x => x.SelectedThings).Returns(this.eaObjectBrowserSelectedThings);

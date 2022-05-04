@@ -93,6 +93,16 @@ namespace DEHEASysML.Extensions
         }
 
         /// <summary>
+        /// Gets all ValueProperty elements of an <see cref="Element" />
+        /// </summary>
+        /// <param name="collection">The <see cref="Collection"/> of an Element</param>
+        /// <returns>A collection of <see cref="Element" /> containing ValueProperty</returns>
+        public static IEnumerable<Element> GetAllValuePropertiesOfElement(this Collection collection)
+        {
+            return collection.OfType<Element>().Where(x => x.Stereotype.AreEquals(StereotypeKind.ValueProperty));
+        }
+
+        /// <summary>
         /// Gets all PartPoperty elements of an <see cref="Element" />
         /// </summary>
         /// <param name="element">The <see cref="Element"/></param>
@@ -100,6 +110,16 @@ namespace DEHEASysML.Extensions
         public static IEnumerable<Element> GetAllPartPropertiesOfElement(this Element element)
         {
             return element.EmbeddedElements.OfType<Element>().Where(x => x.Stereotype.AreEquals(StereotypeKind.PartProperty));
+        }
+
+        /// <summary>
+        /// Gets all PartPoperty elements of an <see cref="Element" />
+        /// </summary>
+        /// <param name="collection">The <see cref="Collection"/> of an Element</param>
+        /// <returns>A collection of <see cref="Element" /> containing PartPoperty</returns>
+        public static IEnumerable<Element> GetAllPartPropertiesOfElement(this Collection collection)
+        {
+            return collection.OfType<Element>().Where(x => x.Stereotype.AreEquals(StereotypeKind.PartProperty));
         }
 
         /// <summary>
@@ -161,6 +181,25 @@ namespace DEHEASysML.Extensions
         public static IEnumerable<Element> GetElementsOfStereotypeInPackage(this IDualPackage package, StereotypeKind stereotype)
         {
             return package.Elements.OfType<Element>().Where(x => x.Stereotype.AreEquals(stereotype));
+        }
+
+        /// <summary>
+        /// Get the fully qualified stereotype of the provided <see cref="StereotypeKind"/>
+        /// </summary>
+        /// <param name="stereotype">The <see cref="StereotypeKind"/></param>
+        /// <returns>The Fully Qualified stereotype</returns>
+        public static string GetFQStereotype(this StereotypeKind stereotype)
+        {
+            switch (stereotype)
+            {
+                case StereotypeKind.Unit:
+                    return "SysML1.3::unit";
+                case StereotypeKind.Block:
+                    return "SysML1.3::block";
+                case StereotypeKind.Requirement:
+                    return "SysML1.4::requirement";
+                default: return stereotype.ToString();
+            }
         }
 
         /// <summary>

@@ -58,6 +58,11 @@ namespace DEHEASysML.ViewModel.NetChangePreview
         private readonly IDstController dstController;
 
         /// <summary>
+        /// A collection of <see cref="ElementRowViewModel" /> that are highlighted
+        /// </summary>
+        private List<ElementRowViewModel> highlightedRows = new();
+
+        /// <summary>
         /// Initializes a new <see cref="DstNetChangePreviewViewModel" />
         /// </summary>
         /// <param name="dstController">The <see cref="IDstController" /></param>
@@ -111,8 +116,8 @@ namespace DEHEASysML.ViewModel.NetChangePreview
             }
 
             this.IsBusy = true;
+            this.highlightedRows.Clear();
             this.BuildNetChangeTree();
-
             this.ComputeRows();
             this.IsBusy = false;
         }
@@ -129,11 +134,11 @@ namespace DEHEASysML.ViewModel.NetChangePreview
 
                 switch (mappedElement)
                 {
-                    case EnterpriseArchitectRequirementElement requirement:
-                        dstElement = requirement.DstElement;
-                        break;
-                    case EnterpriseArchitectBlockElement block:
+                    case ElementDefinitionMappedElement block:
                         dstElement = block.DstElement;
+                        break;
+                    case RequirementMappedElement requirement:
+                        dstElement = requirement.DstElement;
                         break;
                     default:
                         return;
@@ -153,9 +158,13 @@ namespace DEHEASysML.ViewModel.NetChangePreview
         {
             switch (row)
             {
-                case ElementRowViewModel elementRow when this.IsThingTransferable(elementRow.RepresentedObject):
+                case BlockRowViewModel elementRow when this.IsThingTransferable(elementRow.RepresentedObject):
                     elementRow.IsSelectedForTransfer = !elementRow.IsSelectedForTransfer;
                     this.AddOrRemoveToSelectedThingsToTransfer(elementRow);
+                    break;
+                case ElementRequirementRowViewModel requirementRow when this.IsThingTransferable(requirementRow.RepresentedObject):
+                    requirementRow.IsSelectedForTransfer = !requirementRow.IsSelectedForTransfer;
+                    this.AddOrRemoveToSelectedThingsToTransfer(requirementRow);
                     break;
             }
         }
@@ -171,10 +180,10 @@ namespace DEHEASysML.ViewModel.NetChangePreview
 
                 switch (mappedElementRowViewModel)
                 {
-                    case EnterpriseArchitectRequirementElement requirementElement:
+                    case RequirementMappedElement requirementElement:
                         mappedElement = requirementElement.DstElement;
                         break;
-                    case EnterpriseArchitectBlockElement blockElement:
+                    case ElementDefinitionMappedElement blockElement:
                         mappedElement = blockElement.DstElement;
                         break;
                     default: return;
@@ -182,6 +191,22 @@ namespace DEHEASysML.ViewModel.NetChangePreview
 
                 var row = this.GetOrCreateRow(mappedElement);
                 row.IsHighlighted = true;
+
+                this.highlightedRows.Add(row);
+
+                foreach (var valuePropertyRow in row.ContainedRows.OfType<ValuePropertyRowViewModel>())
+                {
+                    if (this.dstController.UpdatedValuePropretyValues.TryGetValue(mappedElement.ElementGUID, out var newValue))
+                    {
+                        valuePropertyRow.OverrideValue(newValue);
+                    }
+                }
+
+                if (row is ElementRequirementRowViewModel requirementRow 
+                    && this.dstController.UpdatedRequirementValues.TryGetValue(mappedElement.ElementGUID, out var newRequirementValue))
+                {
+                    requirementRow.OverrideValue(newRequirementValue.text);
+                }
             }
         }
 
@@ -192,6 +217,13 @@ namespace DEHEASysML.ViewModel.NetChangePreview
         /// <returns>A <see cref="ElementRowViewModel" /></returns>
         private ElementRowViewModel GetOrCreateRow(Element mappedElement)
         {
+            var highlightedRow = this.highlightedRows.FirstOrDefault(x => x.RepresentedObject.ElementGUID == mappedElement.ElementGUID);
+
+            if (highlightedRow != null)
+            {
+                return highlightedRow;
+            }
+
             var packagesId = this.dstController.RetrieveAllParentsIdPackage(new List<Element> { mappedElement }).ToList();
 
             foreach (var modelRow in this.Things.OfType<ModelRowViewModel>())
@@ -275,9 +307,9 @@ namespace DEHEASysML.ViewModel.NetChangePreview
         /// <returns>Asserts if the <see cref="Element" /> is transferable</returns>
         private bool IsThingTransferable(Element element)
         {
-            return this.dstController.HubMapResult.OfType<EnterpriseArchitectBlockElement>()
+            return this.dstController.HubMapResult.OfType<ElementDefinitionMappedElement>()
                        .Any(x => x.DstElement.ElementGUID == element.ElementGUID)
-                   || this.dstController.HubMapResult.OfType<EnterpriseArchitectRequirementElement>()
+                   || this.dstController.HubMapResult.OfType<RequirementMappedElement>()
                        .Any(x => x.DstElement.ElementGUID == element.ElementGUID);
         }
     }

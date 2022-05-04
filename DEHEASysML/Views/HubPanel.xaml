@@ -11,8 +11,7 @@
              x:Class="DEHEASysML.Views.HubPanel"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800">
-    <dx:LoadingDecorator BorderEffect="Default" BorderEffectColor="Blue" IsSplashScreenShown="{Binding IsBusy}" OwnerLock="LoadingContent">
-            <Grid>
+        <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition/>
@@ -63,5 +62,4 @@
                     </dx:DXTabControl>
                 </Grid>
         </Grid>
-    </dx:LoadingDecorator>
 </UserControl>

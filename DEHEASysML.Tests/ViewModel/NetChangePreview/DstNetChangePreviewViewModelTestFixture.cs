@@ -55,16 +55,22 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
         private Mock<Element> block;
         private Mock<Element> valueType;
         private Mock<Repository> repository;
+        private Dictionary<string, string> updatedValues;
+        private Dictionary<string, (string,string)> updatedRequirementValues;
 
         [SetUp]
         public void Setup()
         {
+            this.updatedValues = new Dictionary<string, string>();
+            this.updatedRequirementValues = new Dictionary<string, (string, string)>();
             this.hubMapResult = new ReactiveList<IMappedElementRowViewModel>();
             this.selectedMapElements = new ReactiveList<Element>();
             this.dstController = new Mock<IDstController>();
             this.dstController.Setup(x => x.HubMapResult).Returns(this.hubMapResult);
             this.dstController.Setup(x => x.SelectedHubMapResultForTransfer).Returns(this.selectedMapElements);
             this.dstController.Setup(x => x.IsFileOpen).Returns(false);
+            this.dstController.Setup(x => x.UpdatedValuePropretyValues).Returns(this.updatedValues);
+            this.dstController.Setup(x => x.UpdatedRequirementValues).Returns(this.updatedRequirementValues);
 
             this.viewModel = new DstNetChangePreviewViewModel(this.dstController.Object);
             this.models = new List<Package>();
@@ -92,7 +98,7 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
             this.block.Setup(x => x.ElementGUID).Returns("0002");
             this.block.Setup(x => x.Stereotype).Returns(StereotypeKind.Block.ToString());
             
-            this.block.Setup(x => x.EmbeddedElements).Returns(new EnterpriseArchitectCollection()
+            this.block.Setup(x => x.Elements).Returns(new EnterpriseArchitectCollection()
             {
                 valueProperty.Object, partProperty.Object
             });
@@ -133,6 +139,7 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
             this.repository.Setup(x => x.Models).Returns(collection);
 
             this.dstController.Setup(x => x.CurrentRepository).Returns(this.repository.Object);
+            this.dstController.Setup(x => x.RetrieveAllParentsIdPackage(It.IsAny<IEnumerable<Element>>())).Returns(new List<int>() { 1, 3 });
         }
 
         [Test]
@@ -156,8 +163,23 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
         {
             Assert.DoesNotThrow(() => this.viewModel.ComputeValues());
             this.dstController.Setup(x => x.IsFileOpen).Returns(true);
-
             Assert.DoesNotThrow(() => this.viewModel.ComputeValues());
+        }
+
+        [Test]
+        public void VerifySelectDeselectCommands()
+        {
+            Assert.DoesNotThrow(() => this.viewModel.SelectAllCommand.Execute(null));
+            Assert.IsEmpty(this.selectedMapElements);
+            Assert.DoesNotThrow(() => this.viewModel.DeselectAllCommand.Execute(null));
+            this.hubMapResult.Add(new ElementDefinitionMappedElement(null, this.block.Object, MappingDirection.FromHubToDst));
+            this.hubMapResult.Add(new RequirementMappedElement(null, this.requirement.Object, MappingDirection.FromHubToDst));
+            this.dstController.Setup(x => x.IsFileOpen).Returns(true);
+            this.viewModel.ComputeValues();
+            Assert.DoesNotThrow(() => this.viewModel.SelectAllCommand.Execute(null));
+            Assert.IsNotEmpty(this.selectedMapElements);
+            Assert.DoesNotThrow(() => this.viewModel.DeselectAllCommand.Execute(null));
+            Assert.IsEmpty(this.selectedMapElements);
         }
     }
 }

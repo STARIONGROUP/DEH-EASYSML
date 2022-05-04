@@ -10,7 +10,6 @@
              xmlns:views="clr-namespace:DEHPCommon.UserInterfaces.Views;assembly=DEHPCommon"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800">
-    <dx:LoadingDecorator BorderEffect="Default" BorderEffectColor="Blue" IsSplashScreenShown="{Binding IsBusy}" OwnerLock="LoadingContent">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -77,5 +76,4 @@
             </dx:DXTabControl>
             <views:TransferControl Grid.Row="3" DataContext="{Binding TransferControlViewModel}"></views:TransferControl>
         </Grid>
-    </dx:LoadingDecorator>
 </UserControl>

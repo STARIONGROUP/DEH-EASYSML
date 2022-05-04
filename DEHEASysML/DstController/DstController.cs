@@ -32,6 +32,7 @@ namespace DEHEASysML.DstController
     using CDP4Common;
     using CDP4Common.CommonData;
     using CDP4Common.EngineeringModelData;
+    using CDP4Common.SiteDirectoryData;
     using CDP4Common.Types;
 
     using CDP4Dal;
@@ -109,6 +110,11 @@ namespace DEHEASysML.DstController
         private readonly IMappingConfigurationService mappingConfigurationService;
 
         /// <summary>
+        /// Correspondance between the Id of a <see cref="Package" /> and all parents package id. Used to reduice calculation
+        /// </summary>
+        private readonly Dictionary<int, List<int>> parentPackagesId = new();
+
+        /// <summary>
         /// Backing field for <see cref="CurrentRepository" />
         /// </summary>
         private Repository currentRepository;
@@ -127,6 +133,16 @@ namespace DEHEASysML.DstController
         /// Backing field for <see cref="IsFileOpen" />
         /// </summary>
         private bool isFileOpen;
+
+        /// <summary>
+        /// Reference to the <see cref="Package" /> where Blocks are stores, to not recalculate it each time
+        /// </summary>
+        private Package defaultBlocksPackage;
+
+        /// <summary>
+        /// A value indicating if the next notifyContext event should be ignore
+        /// </summary>
+        private bool shouldIgnoreNextEvent;
 
         /// <summary>
         /// Initializes a new <see cref="DstController" />
@@ -188,7 +204,7 @@ namespace DEHEASysML.DstController
         public ReactiveList<IMappedElementRowViewModel> HubMapResult { get; } = new();
 
         /// <summary>
-        /// A collection of <see cref="Thing" /> selected for the transfer
+        /// A collection of <see cref="CDP4Common.CommonData.Thing" /> selected for the transfer
         /// </summary>
         public ReactiveList<Thing> SelectedDstMapResultForTransfer { get; } = new();
 
@@ -198,9 +214,39 @@ namespace DEHEASysML.DstController
         public ReactiveList<Element> SelectedHubMapResultForTransfer { get; } = new();
 
         /// <summary>
-        /// A collection of all <see cref="RequirementsGroup" /> that should be transfered
+        /// A collection of all <see cref="CDP4Common.EngineeringModelData.RequirementsGroup" /> that should be transfered
         /// </summary>
         public ReactiveList<RequirementsGroup> SelectedGroupsForTransfer { get; } = new();
+
+        /// <summary>
+        /// A collection of <see cref="Element" /> that has been updated
+        /// </summary>
+        public List<Element> UpdatedElements { get; } = new();
+
+        /// <summary>
+        /// A collection of <see cref="Element" /> that has been created
+        /// </summary>
+        public List<Element> CreatedElements { get; } = new();
+
+        /// <summary>
+        /// A collection of <see cref="Element" /> that has been created
+        /// </summary>
+        public List<Package> CreatedPackages { get; } = new();
+
+        /// <summary>
+        /// A collection of <see cref="Collection" /> that has beeen updated
+        /// </summary>
+        public HashSet<Collection> UpdatedCollections { get; } = new();
+
+        /// <summary>
+        /// Gets the correspondance to the new value of a ValueProperty
+        /// </summary>
+        public Dictionary<string, string> UpdatedValuePropretyValues { get; } = new();
+
+        /// <summary>
+        /// Gets the correspondance to the new value of a ValueProperty
+        /// </summary>
+        public Dictionary<string, (string id, string text)> UpdatedRequirementValues { get; } = new();
 
         /// <summary>
         /// Gets or set the value if a file is open or not
@@ -246,6 +292,7 @@ namespace DEHEASysML.DstController
         /// <param name="repository">The <see cref="Repository" /></param>
         public void OnFileClose(Repository repository)
         {
+            this.CleanProject();
             this.IsFileOpen = false;
             this.OnAnyEvent(repository);
         }
@@ -268,7 +315,135 @@ namespace DEHEASysML.DstController
         /// <param name="objectType">The <see cref="ObjectType" /> of the item</param>
         public void OnNotifyContextItemModified(Repository repository, string guid, ObjectType objectType)
         {
-            this.OnAnyEvent(repository);
+            if (!this.shouldIgnoreNextEvent)
+            {
+                this.OnAnyEvent(repository);
+            }
+
+            this.shouldIgnoreNextEvent = false;
+        }
+
+        /// <summary>
+        /// Tries to get an <see cref="Element" />
+        /// </summary>
+        /// <param name="name">The name of the <see cref="Element" /></param>
+        /// <param name="stereotype">The stereotype applied to the <see cref="Element" /></param>
+        /// <param name="element">The <see cref="Element" /></param>
+        /// <returns>A value asserting if the Element has been found</returns>
+        public bool TryGetElement(string name, StereotypeKind stereotype, out Element element)
+        {
+            var queryResult = this.CurrentRepository.GetElementsByQuery("Simple", name);
+            element = queryResult.OfType<Element>().FirstOrDefault(x => x.Name == name && x.Stereotype.AreEquals(stereotype));
+            return element != null;
+        }
+
+        /// <summary>
+        /// Tries to get a <see cref="Package" />
+        /// </summary>
+        /// <param name="name">The name of the <see cref="Package" /></param>
+        /// <param name="package">The <see cref="Package" /></param>
+        /// <returns>A value indicating if the <see cref="Package" /> has been found</returns>
+        public bool TryGetPackage(string name, out Package package)
+        {
+            package = null;
+
+            var elementPackage = this.CurrentRepository.GetElementsByQuery("Simple", name)
+                .OfType<Element>().FirstOrDefault(x => x.Type == "Package" && x.Name == name);
+
+            if (elementPackage != null)
+            {
+                package = this.CurrentRepository.GetPackageByGuid(elementPackage.ElementGUID);
+            }
+
+            return package != null;
+        }
+
+        /// <summary>
+        /// Tries to get a ValueType
+        /// </summary>
+        /// <param name="parameterType">The <see cref="ParameterType" /></param>
+        /// <param name="scale">The <see cref="MeasurementScale" /></param>
+        /// <param name="valueType">The <see cref="Element" /> representing the ValueType</param>
+        /// <returns>A value indicating if the <see cref="Element" /> has been found</returns>
+        public bool TryGetValueType(ParameterType parameterType, MeasurementScale scale, out Element valueType)
+        {
+            QuantityKind generalQuantityKind = null;
+
+            if (parameterType is SpecializedQuantityKind specialized)
+            {
+                generalQuantityKind = specialized.General;
+            }
+
+            var valueTypes = this.CurrentRepository.GetElementsByQuery("Extended", StereotypeKind.ValueType.ToString())
+                .OfType<Element>().Where(x => x.Stereotype.AreEquals(StereotypeKind.ValueType)).ToList();
+
+            valueType = valueTypes.FirstOrDefault(x => this.VerifyNames(parameterType, scale, x) || this.VerifyNames(generalQuantityKind, scale, x));
+            return valueType != null;
+        }
+
+        /// <summary>
+        /// Adds a new <see cref="Element" /> to the given <see cref="Collection" />
+        /// </summary>
+        /// <param name="collection">The collection where to add the element</param>
+        /// <param name="name">The <see cref="name" /> of the <see cref="Element" /></param>
+        /// <param name="type">The type of the <see cref="Element" /></param>
+        /// <param name="stereotypeKind">The <see cref="Stereotype" /> to apply</param>
+        /// <returns>The added <see cref="Element" /></returns>
+        public Element AddNewElement(Collection collection, string name, string type, StereotypeKind stereotypeKind)
+        {
+            var element = collection.AddNew(name, type) as Element;
+            element.StereotypeEx = stereotypeKind.GetFQStereotype();
+
+            this.UpdatedCollections.Add(collection);
+            this.CreatedElements.Add(element);
+
+            return element;
+        }
+
+        /// <summary>
+        /// Adds a new <see cref="Package" /> under the given <see cref="Package" />
+        /// </summary>
+        /// <param name="parentPackage">The parent <see cref="Package" /></param>
+        /// <param name="name">The name of the new package</param>
+        /// <returns></returns>
+        public Package AddNewPackage(Package parentPackage, string name)
+        {
+            this.shouldIgnoreNextEvent = true;
+            var newPackage = parentPackage.Packages.AddNew(name, "Package") as Package;
+            this.CreatedPackages.Add(newPackage);
+            newPackage.Update();
+            return newPackage;
+        }
+
+        /// <summary>
+        /// Gets the default <see cref="Package" /> where Blocks are stored
+        /// </summary>
+        /// <returns>The default package</returns>
+        public Package GetDefaultBlocksPackage()
+        {
+            if (this.defaultBlocksPackage == null)
+            {
+                foreach (var package in this.CurrentRepository.Models.OfType<Package>())
+                {
+                    var defaultPackage = this.GetDefaultBlocksPackage(package);
+
+                    if (defaultPackage != null)
+                    {
+                        this.defaultBlocksPackage = defaultPackage;
+                        break;
+                    }
+                }
+
+                if (this.defaultBlocksPackage == null)
+                {
+                    var collection = this.CurrentRepository.Models.OfType<Package>().First().Packages;
+                    this.defaultBlocksPackage = collection.AddNew("COMET", "Package") as Package;
+                    this.defaultBlocksPackage.Update();
+                    collection.Refresh();
+                }
+            }
+
+            return this.defaultBlocksPackage;
         }
 
         /// <summary>
@@ -388,24 +563,46 @@ namespace DEHEASysML.DstController
         /// Map all <see cref="IMappedElementRowViewModel" />
         /// </summary>
         /// <param name="elements">The collection of <see cref="IMappedElementRowViewModel" /></param>
-        public void Map(List<IMappedElementRowViewModel> elements)
+        /// <param name="mappingDirectionToMap">The <see cref="MappingDirection"/></param>
+        public void Map(List<IMappedElementRowViewModel> elements, MappingDirection mappingDirectionToMap)
         {
-            this.DstMapResult.Clear();
-            var mappedElement = this.Map(elements.OfType<EnterpriseArchitectBlockElement>().ToList(), true);
-            mappedElement.AddRange(this.Map(elements.OfType<EnterpriseArchitectRequirementElement>().ToList(), true));
-            this.DstMapResult.AddRange(mappedElement);
+            if (mappingDirectionToMap == MappingDirection.FromDstToHub)
+            {
+                this.DstMapResult.Clear();
+                var mappedElement = this.Map(elements.OfType<EnterpriseArchitectBlockElement>().ToList(), true);
+                mappedElement.AddRange(this.Map(elements.OfType<EnterpriseArchitectRequirementElement>().ToList(), true));
+                this.DstMapResult.AddRange(mappedElement);
+            }
+            else
+            {
+                this.HubMapResult.Clear();
+                var hubMappedElement = this.Map(elements.OfType<ElementDefinitionMappedElement>().ToList(), true);
+                hubMappedElement.AddRange(this.Map(elements.OfType<RequirementMappedElement>().ToList(), true));
+                CDPMessageBus.Current.SendMessage(new UpdateDstNetChangePreview());
+            }
         }
 
         /// <summary>
         /// Premaps all <see cref="IMappedElementRowViewModel" />
         /// </summary>
         /// <param name="elements">The collection of <see cref="IMappedElementRowViewModel" /> to premap</param>
+        /// <param name="mappingDirectionToMap">The <see cref="MappingDirection"/></param>
         /// <returns>The collection of premapped <see cref="IMappedElementRowViewModel" /></returns>
-        public List<IMappedElementRowViewModel> PreMap(List<IMappedElementRowViewModel> elements)
+        public List<IMappedElementRowViewModel> PreMap(List<IMappedElementRowViewModel> elements, MappingDirection mappingDirectionToMap)
         {
             var premappedElements = new List<IMappedElementRowViewModel>();
-            premappedElements.AddRange(this.Map(elements.OfType<EnterpriseArchitectBlockElement>().ToList(), false));
-            premappedElements.AddRange(this.Map(elements.OfType<EnterpriseArchitectRequirementElement>().ToList(), false));
+
+            if (mappingDirectionToMap == MappingDirection.FromDstToHub)
+            {
+                premappedElements.AddRange(this.Map(elements.OfType<EnterpriseArchitectBlockElement>().ToList(), false));
+                premappedElements.AddRange(this.Map(elements.OfType<EnterpriseArchitectRequirementElement>().ToList(), false));
+            }
+            else
+            {
+                premappedElements.AddRange(this.Map(elements.OfType<ElementDefinitionMappedElement>().ToList(), false));
+                premappedElements.AddRange(this.Map(elements.OfType<RequirementMappedElement>().ToList(), false));
+            }
+
             return premappedElements;
         }
 
@@ -476,7 +673,11 @@ namespace DEHEASysML.DstController
                 this.SelectedDstMapResultForTransfer.Clear();
                 this.SelectedGroupsForTransfer.Clear();
                 this.DstMapResult.Clear();
+                this.HubMapResult.Clear();
             }
+
+            this.CurrentRepository.EnableUIUpdates = !this.HubMapResult.IsEmpty;
+            CDPMessageBus.Current.SendMessage(new UpdateDstNetChangePreview());
 
             return elementsLoaded;
         }
@@ -487,6 +688,152 @@ namespace DEHEASysML.DstController
         public void ResetConfigurationMapping()
         {
             this.mappingConfigurationService.ExternalIdentifierMap = new ExternalIdentifierMap();
+        }
+
+        /// <summary>
+        /// Delete all created <see cref="Element" /> that has not been transfered
+        /// </summary>
+        private void CleanProject()
+        {
+            foreach (var createdElement in this.CreatedElements)
+            {
+                Collection collection = null;
+
+                if (createdElement.Stereotype.AreEquals(StereotypeKind.Block) || createdElement.Stereotype.AreEquals(StereotypeKind.Requirement))
+                {
+                    collection = this.CurrentRepository.GetPackageByID(createdElement.PackageID).Elements;
+                }
+                else if (createdElement.Stereotype.AreEquals(StereotypeKind.ValueProperty) || createdElement.Stereotype.AreEquals(StereotypeKind.PartProperty))
+                {
+                    collection = this.CurrentRepository.GetElementByID(createdElement.ParentID).Elements;
+                }
+
+                if (collection == null)
+                {
+                    continue;
+                }
+
+                for (short collectionIndex = 0; collectionIndex < collection.Count; collectionIndex++)
+                {
+                    if (collection.GetAt(collectionIndex) is Element element && element.ElementGUID == createdElement.ElementGUID)
+                    {
+                        collection.DeleteAt(collectionIndex, false);
+                        break;
+                    }
+                }
+            }
+
+            foreach (var createdPackage in this.CreatedPackages)
+            {
+                try
+                {
+                    if (this.CreatedPackages.Any(x => x.PackageID == createdPackage.ParentID))
+                    {
+                        continue;
+                    }
+
+                    var collection = this.CurrentRepository.GetPackageByID(createdPackage.ParentID).Packages;
+
+                    if (collection == null)
+                    {
+                        continue;
+                    }
+
+                    for (short collectionIndex = 0; collectionIndex < collection.Count; collectionIndex++)
+                    {
+                        if (collection.GetAt(collectionIndex) is not Package package || package.PackageGUID != createdPackage.PackageGUID)
+                        {
+                            continue;
+                        }
+
+                        collection.DeleteAt(collectionIndex, false);
+                        break;
+                    }
+                }
+                catch (Exception)
+                {
+                    this.logger.Warn($"Tries to delete an Package that does not exist anymore : {createdPackage.Name}");
+                }
+            }
+
+            foreach (var updatedCollection in this.UpdatedCollections)
+            {
+                updatedCollection.Refresh();
+            }
+
+            this.CreatedPackages.Clear();
+            this.UpdatedCollections.Clear();
+            this.CreatedElements.Clear();
+            this.UpdatedElements.Clear();
+        }
+
+        /// <summary>
+        /// Verifies that the provided <see cref="ParameterType" /> and <see cref="Element" /> have matching names
+        /// </summary>
+        /// <param name="parameterType">The <see cref="ParameterType" /></param>
+        /// <param name="scale">The <see cref="MeasurementScale" /> of reference</param>
+        /// <param name="valueType">The <see cref="Element" /></param>
+        /// <returns>The result of the match</returns>
+        private bool VerifyNames(ParameterType parameterType, MeasurementScale scale, Element valueType)
+        {
+            var unit = valueType.GetUnitOfValueProperty();
+
+            if (parameterType is QuantityKind quantityKind && scale != null && !string.IsNullOrEmpty(scale.Name) && unit != null)
+            {
+                return this.VerifyQuantityKindNameAndUnit(quantityKind, scale, valueType, this.CurrentRepository.GetElementByGuid(unit.Value));
+            }
+
+            return scale == null && this.VerifyNames(parameterType, valueType.Name);
+        }
+
+        /// <summary>
+        /// Verifies that the provided <see cref="DefinedThing" /> matches with the names
+        /// </summary>
+        /// <param name="parameterType">The <see cref="ParameterType" /></param>
+        /// <param name="valueTypeName">The name to check</param>
+        /// <returns>The result of the match</returns>
+        private bool VerifyNames(DefinedThing parameterType, string valueTypeName)
+        {
+            return parameterType.Name == valueTypeName || parameterType.ShortName == valueTypeName;
+        }
+
+        /// <summary>
+        /// Verifies that the provided <see cref="ParameterType" /> and ValueType have matching names
+        /// and alos that the provided <see cref="MeasurementScale" /> matches the Unit
+        /// </summary>
+        /// <param name="quantityKind">The <see cref="QuantityKind" /></param>
+        /// <param name="scale">The <see cref="MeasurementScale" /></param>
+        /// <param name="valueType">The <see cref="Element" /> for the ValueType</param>
+        /// <param name="unit">The <see cref="Element" /> for the unit</param>
+        /// <returns>The result of the match</returns>
+        private bool VerifyQuantityKindNameAndUnit(QuantityKind quantityKind, MeasurementScale scale, Element valueType, Element unit)
+        {
+            return this.VerifyNames(quantityKind, valueType.Name.Split('[')[0]) && this.VerifyNames(scale, unit.Name);
+        }
+
+        /// <summary>
+        /// Gets the default <see cref="Package" /> where Blocks are stored
+        /// </summary>
+        /// <param name="containerPackage">The <see cref="Package" /> to look into</param>
+        /// <returns>The default package</returns>
+        private Package GetDefaultBlocksPackage(Package containerPackage)
+        {
+            foreach (var package in containerPackage.Packages.OfType<Package>())
+            {
+                if (package.Elements.OfType<Element>().Any(x => x.Stereotype.AreEquals(StereotypeKind.Block)))
+                {
+                    return package;
+                }
+
+                var subPackage = this.GetDefaultBlocksPackage(package);
+
+                if (subPackage != null)
+                {
+                    return subPackage;
+                }
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -508,9 +855,9 @@ namespace DEHEASysML.DstController
         private void OnAnyEvent(Repository repository)
         {
             this.CurrentRepository = repository;
+            this.defaultBlocksPackage = null;
             this.LoadMapping();
-
-            CDPMessageBus.Current.SendMessage(new UpdateDstNetChangePreview());
+            this.CurrentRepository.EnableUIUpdates = false;
         }
 
         /// <summary>
@@ -528,7 +875,7 @@ namespace DEHEASysML.DstController
                 return 0;
             }
 
-            this.Map(mappedElements);
+            this.Map(mappedElements, MappingDirection.FromDstToHub);
 
             return mappedElements.Count;
         }
@@ -568,10 +915,10 @@ namespace DEHEASysML.DstController
         }
 
         /// <summary>
-        /// Update the <see cref="ParameterValueSet" />
+        /// Update the <see cref="CDP4Common.EngineeringModelData.ParameterValueSet" />
         /// </summary>
-        /// <param name="toUpdate">The <see cref="ParameterValueSet" /> to update</param>
-        /// <param name="valueSet">The <see cref="ParameterValueSet" /> containing new values</param>
+        /// <param name="toUpdate">The <see cref="CDP4Common.EngineeringModelData.ParameterValueSet" /> to update</param>
+        /// <param name="valueSet">The <see cref="CDP4Common.EngineeringModelData.ParameterValueSet" /> containing new values</param>
         private void UpdateValueSet(ParameterValueSet toUpdate, IValueSet valueSet)
         {
             this.exchangeHistory.Append(toUpdate, valueSet);
@@ -583,7 +930,7 @@ namespace DEHEASysML.DstController
         /// <summary>
         /// Prepares all <see cref="Thing" /> that are selected for transfer
         /// </summary>
-        /// <param name="iterationClone">The <see cref="Iteration" /> clone</param>
+        /// <param name="iterationClone">The <see cref="CDP4Common.EngineeringModelData.Iteration" /> clone</param>
         /// <param name="transaction">The <see cref="IThingTransaction" /></param>
         private void PrepareThingsForTransfer(Iteration iterationClone, IThingTransaction transaction)
         {
@@ -813,6 +1160,48 @@ namespace DEHEASysML.DstController
         }
 
         /// <summary>
+        /// Maps a collection of <see cref="ElementDefinitionMappedElement" />
+        /// </summary>
+        /// <param name="mappedElement">The collection of <see cref="ElementDefinitionMappedElement" /></param>
+        /// <param name="isComplete">A value indicating if the mapping has to be complete</param>
+        /// <returns>The result of the mapping</returns>
+        private List<IMappedElementRowViewModel> Map(List<ElementDefinitionMappedElement> mappedElement, bool isComplete)
+        {
+            if (this.mappingEngine.Map((isComplete,mappedElement)) is List<MappedElementDefinitionRowViewModel> mappedElements && mappedElements.Any())
+            {
+                if (isComplete)
+                {
+                    this.statusBar.Append($"Mapping of {mappedElements.Count} Element Defintion in progress...");
+                }
+
+                return new List<IMappedElementRowViewModel>(mappedElements);
+            }
+
+            return new List<IMappedElementRowViewModel>();
+        }
+
+        /// <summary>
+        /// Maps a collection of <see cref="RequirementMappedElement" />
+        /// </summary>
+        /// <param name="requirementElements">The collection of <see cref="RequirementMappedElement" /></param>
+        /// <param name="isComplete">A value indicating if the mapping has to be complete</param>
+        /// <returns>The result of the mapping</returns>
+        private List<IMappedElementRowViewModel> Map(List<RequirementMappedElement> requirementElements, bool isComplete)
+        {
+            if (this.mappingEngine.Map((isComplete, requirementElements)) is List<MappedRequirementRowViewModel> mappedElements && mappedElements.Any())
+            {
+                if (isComplete)
+                {
+                    this.statusBar.Append($"Mapping of {mappedElements.Count} Requirement in progress...");
+                }
+
+                return new List<IMappedElementRowViewModel>(mappedElements);
+            }
+
+            return new List<IMappedElementRowViewModel>();
+        }
+
+        /// <summary>
         /// Gets the Id of each parent of the given <see cref="Package" /> Id
         /// </summary>
         /// <param name="packageId">The <see cref="Package" /> id</param>
@@ -821,6 +1210,12 @@ namespace DEHEASysML.DstController
         {
             while (true)
             {
+                if (this.parentPackagesId.ContainsKey(packageId))
+                {
+                    packagesId = this.parentPackagesId[packageId];
+                    return;
+                }
+
                 var package = this.CurrentRepository.GetPackageByID(packageId);
 
                 if (!packagesId.Contains(package.PackageID))
@@ -834,6 +1229,7 @@ namespace DEHEASysML.DstController
                     }
                 }
 
+                this.parentPackagesId[packagesId[0]] = new List<int>(packagesId);
                 break;
             }
         }

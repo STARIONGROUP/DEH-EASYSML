@@ -25,6 +25,7 @@
 namespace DEHEASysML.Forms
 {
     using System.Diagnostics.CodeAnalysis;
+    using System.Windows.Forms;
     using System.Windows.Forms.Integration;
 
     using Autofac;
@@ -32,6 +33,10 @@ namespace DEHEASysML.Forms
     using DEHEASysML.Views;
 
     using DEHPCommon;
+
+    using ReactiveUI;
+
+    using System;
 
     /// <summary>
     /// Interaction logic for the <see cref="ImpactPanelControl" />
@@ -48,6 +53,11 @@ namespace DEHEASysML.Forms
         /// The <see cref="ElementHost"/>
         /// </summary>
         private ElementHost impactPanelHost;
+
+        /// <summary>
+        /// The <see cref="IImpactPanelViewModel"/>
+        /// </summary>
+        private IImpactPanelViewModel impactPanelViewModel;
 
         /// <summary> 
         /// Clean up any resources being used.
@@ -70,6 +80,7 @@ namespace DEHEASysML.Forms
         /// </summary>
         private void InitializeComponent()
         {
+            Cursor.Current = Cursors.WaitCursor;
             this.impactPanelHost = new System.Windows.Forms.Integration.ElementHost();
             this.SuspendLayout();
             // 
@@ -82,7 +93,7 @@ namespace DEHEASysML.Forms
             this.impactPanelHost.TabIndex = 0;
             this.impactPanelHost.Text = "impactPanelHost";
             var impactPanel = new ImpactPanel();
-            var impactPanelViewModel = AppContainer.Container.Resolve<IImpactPanelViewModel>();
+            this.impactPanelViewModel = AppContainer.Container.Resolve<IImpactPanelViewModel>();
             impactPanel.DataContext = impactPanelViewModel;
             this.impactPanelHost.Child = impactPanel;
             // 
@@ -92,9 +103,24 @@ namespace DEHEASysML.Forms
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.Controls.Add(this.impactPanelHost);
             this.Name = "ImpactPanelControl";
+            Cursor.Current = Cursors.Default;
+            this.WhenAnyValue(x => x.impactPanelViewModel.IsBusy).Subscribe(this.SetCursor);
             this.ResumeLayout(false);
         }
 
         #endregion
+
+        /// <summary>
+        /// Sets the <see cref="Cursor"/> based on the value
+        /// </summary>
+        /// <param name="isBusy"></param>
+        public void SetCursor(bool? isBusy)
+        {
+            if (isBusy.HasValue)
+            {
+                var isBusyValue = isBusy.Value;
+                Cursor.Current = isBusyValue ? Cursors.WaitCursor : Cursors.Default;
+            }
+        }
     }
 }

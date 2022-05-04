@@ -22,50 +22,56 @@
 // </copyright>
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace DEHEASysML.Enumerators;
-
-/// <summary>
-/// An enumeration data type used to identify the kind of used Enterprise Architect Stereotype
-/// </summary>
-public enum StereotypeKind
+namespace DEHEASysML.Enumerators
 {
     /// <summary>
-    /// Used to represent a block Stereotype
+    /// An enumeration data type used to identify the kind of used Enterprise Architect Stereotype
     /// </summary>
-    Block,
+    public enum StereotypeKind
+    {
+        /// <summary>
+        /// Used to represent a block Stereotype
+        /// </summary>
+        Block,
 
-    /// <summary>
-    /// Used to represent a RelationShip between requirement
-    /// </summary>
-    DeriveReqt,
+        /// <summary>
+        /// Used to represent a RelationShip between requirement
+        /// </summary>
+        DeriveReqt,
 
-    /// <summary>
-    /// Used to represent a PartProperty Stereotype
-    /// </summary>
-    PartProperty,
+        /// <summary>
+        /// Used to represent a PartProperty Stereotype
+        /// </summary>
+        PartProperty,
 
-    /// <summary>
-    /// Used to represent a ValueProperty Stereotype
-    /// </summary>
-    ValueProperty,
+        /// <summary>
+        /// Used to represent a ValueProperty Stereotype
+        /// </summary>
+        ValueProperty,
 
-    /// <summary>
-    /// Used to represent a ValueType Stereotype
-    /// </summary>
-    ValueType,
+        /// <summary>
+        /// Used to represent a ValueType Stereotype
+        /// </summary>
+        ValueType,
 
-    /// <summary>
-    /// Used to represent a Requirement Stereotype
-    /// </summary>
-    Requirement,
+        /// <summary>
+        /// Used to represent a Requirement Stereotype
+        /// </summary>
+        Requirement,
 
-    /// <summary>
-    /// Used to represent the Port MetaType
-    /// </summary>
-    Port,
+        /// <summary>
+        /// Used to represent the Port MetaType
+        /// </summary>
+        Port,
 
-    /// <summary>
-    /// Used to represent the Unit Stereotype
-    /// </summary>
-    Unit
+        /// <summary>
+        /// Used to represent the Unit Stereotype
+        /// </summary>
+        Unit,
+
+        /// <summary>
+        /// Used to represent the TaggedValue Stereotype
+        /// </summary>
+        TaggedValue
+    }
 }

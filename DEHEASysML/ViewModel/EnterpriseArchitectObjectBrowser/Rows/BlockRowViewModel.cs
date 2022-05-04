@@ -61,12 +61,12 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
         {
             if (this.ShouldShowEverything)
             {
-                foreach (var valueProperty in this.RepresentedObject.GetAllValuePropertiesOfElement())
+                foreach (var valueProperty in this.RepresentedObject.Elements.GetAllValuePropertiesOfElement())
                 {
                     this.ContainedRows.Add(new ValuePropertyRowViewModel(this, valueProperty));
                 }
 
-                foreach (var partProperty in this.RepresentedObject.GetAllPartPropertiesOfElement())
+                foreach (var partProperty in this.RepresentedObject.Elements.GetAllPartPropertiesOfElement())
                 {
                     this.ContainedRows.Add(new PartPropertyRowViewModel(this, partProperty));
                 }

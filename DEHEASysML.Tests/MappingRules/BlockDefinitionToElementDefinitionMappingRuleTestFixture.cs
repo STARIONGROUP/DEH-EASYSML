@@ -65,6 +65,7 @@ namespace DEHEASysML.Tests.MappingRules
         private BlockDefinitionToElementDefinitionMappingRule rule;
         private Mock<IHubController> hubController;
         private Mock<IDstController> dstController;
+        private Mock<IMappingConfigurationService> mappingConfiguration;
         private Uri uri;
         private Assembler assembler;
         private DomainOfExpertise domain;
@@ -73,7 +74,6 @@ namespace DEHEASysML.Tests.MappingRules
         private ModelReferenceDataLibrary referenceDataLibrary;
         private Mock<Element> block;
         private Mock<Repository> repository;
-        private Mock<IMappingConfigurationService> mappingConfiguration;
 
         [SetUp]
         public void Setup()
