@@ -110,11 +110,6 @@ namespace DEHEASysML.DstController
         private readonly IMappingConfigurationService mappingConfigurationService;
 
         /// <summary>
-        /// Correspondance between the Id of a <see cref="Package" /> and all parents package id. Used to reduice calculation
-        /// </summary>
-        private readonly Dictionary<int, List<int>> parentPackagesId = new();
-
-        /// <summary>
         /// Backing field for <see cref="CurrentRepository" />
         /// </summary>
         private Repository currentRepository;

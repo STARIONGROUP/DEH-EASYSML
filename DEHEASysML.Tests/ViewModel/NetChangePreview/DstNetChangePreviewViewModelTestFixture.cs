@@ -33,6 +33,8 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
 
     using CDP4Dal;
 
+    using CDP4Dal;
+
     using DEHEASysML.DstController;
     using DEHEASysML.Enumerators;
     using DEHEASysML.Events;
