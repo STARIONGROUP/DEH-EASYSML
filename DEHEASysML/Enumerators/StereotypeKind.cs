@@ -72,6 +72,26 @@ namespace DEHEASysML.Enumerators
         /// <summary>
         /// Used to represent the TaggedValue Stereotype
         /// </summary>
-        TaggedValue
+        TaggedValue,
+
+        /// <summary>
+        /// Used to represent the RequiredInterface MetaType
+        /// </summary>
+        RequiredInterface,
+
+        /// <summary>
+        /// Used to represent the ProvidedInterface MetaType
+        /// </summary>
+        ProvidedInterface,
+
+        /// <summary>
+        /// Used to represent the Interface MetaType
+        /// </summary>
+        Interface, 
+
+        /// <summary>
+        /// Used to represent the Usage MetaType
+        /// </summary>
+        Usage
     }
 }

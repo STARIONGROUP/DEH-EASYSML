@@ -26,7 +26,8 @@
                 <Setter Property="HorizontalAlignment" Value="Center" />
             </Style>
 
-            <HierarchicalDataTemplate DataType="{x:Type viewModels1:BrowserViewModelBase}" ItemsSource="{Binding ContainedRows, UpdateSourceTrigger=PropertyChanged}">
+            <HierarchicalDataTemplate DataType="{x:Type viewModels1:BrowserViewModelBase}" ItemsSource="{Binding ContainedRows,
+                UpdateSourceTrigger=PropertyChanged}">
                 <dx:MeasurePixelSnapper>
                     <StackPanel Orientation="Horizontal">
                         <dx:PixelSnapper>

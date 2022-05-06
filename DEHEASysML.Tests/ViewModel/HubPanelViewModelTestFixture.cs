@@ -141,6 +141,7 @@ namespace DEHEASysML.Tests.ViewModel
             this.objectBrowser.Setup(x => x.Things).Returns(new ReactiveList<BrowserViewModelBase>());
             this.objectBrowser.Setup(x => x.CanMap).Returns(new Mock<IObservable<bool>>().Object);
             this.objectBrowser.Setup(x => x.MapCommand).Returns(ReactiveCommand.Create());
+            this.objectBrowser.Setup(x => x.ContextMenu).Returns(new ReactiveList<ContextMenuItemViewModel>());
 
             this.publicationBrowser = new Mock<IPublicationBrowserViewModel>();
             this.hubBrowserHeader = new Mock<IHubBrowserHeaderViewModel>();

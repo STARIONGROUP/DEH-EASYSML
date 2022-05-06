@@ -402,6 +402,7 @@ namespace DEHEASysML
             containerBuilder.RegisterType<HubRequirementsNetChangePreviewViewModel>().As<IHubRequirementsNetChangePreviewViewModel>().SingleInstance();
             containerBuilder.RegisterType<EnterpriseArchitectTransferControlViewModel>().As<ITransferControlViewModel>().SingleInstance();
             containerBuilder.RegisterType<MappingConfigurationServiceDialogViewModel>().As<IMappingConfigurationServiceDialogViewModel>();
+            containerBuilder.RegisterType<HubMappingConfigurationDialogViewModel>().As<IHubMappingConfigurationDialogViewModel>();
         }
     }
 }

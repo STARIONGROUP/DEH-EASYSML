@@ -128,7 +128,10 @@ namespace DEHEASysML.ViewModel
         /// <returns>A <see cref="Task" /></returns>
         private async Task CancelTransfer()
         {
+            this.dstController.HubMapResult.Clear();
+            this.dstController.SelectedHubMapResultForTransfer.Clear();
             this.dstController.DstMapResult.Clear();
+            this.dstController.SelectedGroupsForTransfer.Clear();
             this.dstController.SelectedDstMapResultForTransfer.Clear();
             this.exchangeHistoryService.ClearPending();
             await Task.Delay(1);

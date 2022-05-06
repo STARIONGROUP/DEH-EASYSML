@@ -1,5 +1,5 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
-// <copyright file="BlockRowViewModel.cs" company="RHEA System S.A.">
+// <copyright file="PortRowViewModel.cs" company="RHEA System S.A.">
 // Copyright (c) 2020-2022 RHEA System S.A.
 // 
 // Author: Sam Gerené, Alex Vorobiev, Alexander van Delft, Nathanael Smiechowski, Antoine Théate.
@@ -24,25 +24,23 @@
 
 namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
 {
-    using DEHEASysML.Extensions;
+    using DEHEASysML.Enumerators;
 
     using EA;
 
     /// <summary>
-    /// The <see cref="BlockRowViewModel" /> represents an <see cref="Element"/> of Stereotype Block
+    /// The <see cref="PortRowViewModel" /> represents an <see cref="Element"/> of stereotype Port
     /// </summary>
-    public class BlockRowViewModel : ElementRowViewModel
+    public class PortRowViewModel : ElementRowViewModel
     {
         /// <summary>
-        /// Initializes a new <see cref="BlockRowViewModel" />
+        /// Initializes a new <see cref="PortRowViewModel" />
         /// </summary>
         /// <param name="parent">The parent row</param>
         /// <param name="eaObject">The object to represent</param>
-        /// <param name="shouldShowEverything">A value asserting if the row should display its contained <see cref="Element"/></param>
-        public BlockRowViewModel(EnterpriseArchitectObjectBaseRowViewModel parent, Element eaObject, bool shouldShowEverything) 
+        public PortRowViewModel(EnterpriseArchitectObjectBaseRowViewModel parent, Element eaObject)
             : base(parent, eaObject)
         {
-            this.ShouldShowEverything = shouldShowEverything;
             this.Initialize();
         }
 
@@ -59,23 +57,8 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
         /// </summary>
         public override void ComputeRow()
         {
-            if (this.ShouldShowEverything)
-            {
-                foreach (var valueProperty in this.RepresentedObject.Elements.GetAllValuePropertiesOfElement())
-                {
-                    this.ContainedRows.Add(new ValuePropertyRowViewModel(this, valueProperty));
-                }
-
-                foreach (var partProperty in this.RepresentedObject.Elements.GetAllPartPropertiesOfElement())
-                {
-                    this.ContainedRows.Add(new PartPropertyRowViewModel(this, partProperty));
-                }
-
-                foreach (var port in this.RepresentedObject.Elements.GetAllPortsOfElement())
-                {
-                    this.ContainedRows.Add(new PortRowViewModel(this, port));
-                }
-            }
+            this.Name = (string)this.RepresentedObject.PropertyTypeName;
+            this.RowType = StereotypeKind.Port.ToString();
         }
     }
 }

@@ -1,5 +1,5 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
-// <copyright file="DstMappingConfigurationDialogViewModel.cs" company="RHEA System S.A.">
+// <copyright file="HubMappingConfigurationDialogViewModel.cs" company="RHEA System S.A.">
 // Copyright (c) 2020-2022 RHEA System S.A.
 // 
 // Author: Sam Gerené, Alex Vorobiev, Alexander van Delft, Nathanael Smiechowski, Antoine Théate.
@@ -54,14 +54,19 @@ namespace DEHEASysML.ViewModel.Dialogs
     using Requirement = CDP4Common.EngineeringModelData.Requirement;
 
     /// <summary>
-    /// This view model let the user configure the mapping from the dst to the hub source
+    /// This view model let the user configure the mapping from the hub to the dst source
     /// </summary>
-    public class DstMappingConfigurationDialogViewModel : MappingConfigurationDialogViewModel, IDstMappingConfigurationDialogViewModel, IHaveContextMenuViewModel
+    public class HubMappingConfigurationDialogViewModel : MappingConfigurationDialogViewModel, IHubMappingConfigurationDialogViewModel, IHaveContextMenuViewModel
     {
         /// <summary>
-        /// The collection of <see cref="Element" /> to map
+        /// A collection of <see cref="Thing" />
         /// </summary>
-        private List<Element> elements;
+        private List<Thing> things;
+
+        /// <summary>
+        /// Backing field for <see cref="SelectedElement" />
+        /// </summary>
+        private Element selectedElement;
 
         /// <summary>
         /// Initializes a new <see cref="MappingConfigurationDialogViewModel" />
@@ -71,7 +76,7 @@ namespace DEHEASysML.ViewModel.Dialogs
         /// <param name="enterpriseArchitectObject">The <see cref="IEnterpriseArchitectObjectBrowserViewModel" /></param>
         /// <param name="objectBrowser">The <see cref="IObjectBrowserViewModel" /></param>
         /// <param name="requirementsBrowser">The <see cref="IObjectBrowserViewModel" /></param>
-        public DstMappingConfigurationDialogViewModel(IHubController hubController, IDstController dstController,
+        public HubMappingConfigurationDialogViewModel(IHubController hubController, IDstController dstController,
             IEnterpriseArchitectObjectBrowserViewModel enterpriseArchitectObject, IObjectBrowserViewModel objectBrowser,
             IRequirementsBrowserViewModel requirementsBrowser) : base(hubController, dstController, enterpriseArchitectObject, objectBrowser, requirementsBrowser)
         {
@@ -79,22 +84,18 @@ namespace DEHEASysML.ViewModel.Dialogs
         }
 
         /// <summary>
+        /// Gets or sets the selected <see cref="Element" />
+        /// </summary>
+        public Element SelectedElement
+        {
+            get => this.selectedElement;
+            set => this.RaiseAndSetIfChanged(ref this.selectedElement, value);
+        }
+
+        /// <summary>
         /// Gets the Context Menu for the implementing view model
         /// </summary>
         public ReactiveList<ContextMenuItemViewModel> ContextMenu { get; } = new();
-
-        /// <summary>
-        /// Initializes this view model properties
-        /// </summary>
-        /// <param name="selectedElements">The collection of <see cref="Element" /> to display</param>
-        /// <param name="packageIds">The collection of <see cref="Package" /> to display</param>
-        public void Initialize(IEnumerable<Element> selectedElements, IEnumerable<int> packageIds)
-        {
-            this.elements = selectedElements.ToList();
-            this.EnterpriseArchitectObjectBrowser.BuildTree(this.DstController.CurrentRepository.Models.OfType<Package>(), this.elements, packageIds);
-
-            this.PreMap();
-        }
 
         /// <summary>
         /// Populate the context menu for the implementing view model
@@ -108,38 +109,53 @@ namespace DEHEASysML.ViewModel.Dialogs
                 return;
             }
 
-            this.ContextMenu.Add(new ContextMenuItemViewModel("Map select row to a new Hub Element", "", this.MapToNewElementCommand,
+            this.ContextMenu.Add(new ContextMenuItemViewModel("Map select row to a new Dst Element", "", this.MapToNewElementCommand,
                 MenuItemKind.Edit, ClassKind.NotThing));
         }
 
         /// <summary>
-        /// Premap all <see cref="Element" /> to map
+        /// Initializes this view model properties
+        /// </summary>
+        /// <param name="selectedThings">A collection of <see cref="Thing" /> that has been selected for mapping</param>
+        public void Initialize(List<Thing> selectedThings)
+        {
+            this.things = selectedThings;
+
+            var allElements = this.DstController.GetAllBlocksAndRequirementsOfRepository();
+            var packageIds = this.DstController.RetrieveAllParentsIdPackage(allElements);
+
+            this.EnterpriseArchitectObjectBrowser.BuildTree(this.DstController.CurrentRepository.Models.OfType<Package>(), allElements, packageIds);
+
+            this.PreMap();
+        }
+
+        /// <summary>
+        /// Premaps the elements that has been selected for the mapping
         /// </summary>
         protected override void PreMap()
         {
             this.IsBusy = true;
             this.MappedElements.Clear();
-            this.MappedElements.AddRange(this.DstController.DstMapResult);
+            this.MappedElements.AddRange(this.DstController.HubMapResult);
 
             foreach (var alreadyMapped in this.MappedElements)
             {
                 alreadyMapped.MappedRowStatus = MappedRowStatus.ExistingMapping;
             }
 
-            var newElementsToMap = this.elements.Where(x => this.MappedElements
-                                                                .OfType<EnterpriseArchitectRequirementElement>()
-                                                                .All(mapped => mapped.DstElement.ElementGUID != x.ElementGUID) &&
-                                                            x.Stereotype.AreEquals(StereotypeKind.Requirement))
-                .Select(requirement => new EnterpriseArchitectRequirementElement(null, requirement, MappingDirection.FromDstToHub))
+            var newElementsToMap = this.things.Where(x => this.MappedElements
+                    .OfType<ElementDefinitionMappedElement>()
+                    .All(mapped => mapped.HubElement.Iid != x.Iid) && x is ElementDefinition)
+                .Select(elementDefinition => new ElementDefinitionMappedElement((ElementDefinition)elementDefinition, null, MappingDirection.FromHubToDst))
                 .Cast<IMappedElementRowViewModel>().ToList();
 
-            newElementsToMap.AddRange(this.elements.Where(x => this.MappedElements
-                    .OfType<EnterpriseArchitectBlockElement>()
-                    .All(mapped => mapped.DstElement.ElementGUID != x.ElementGUID) && x.Stereotype.AreEquals(StereotypeKind.Block))
-                .Select(block => new EnterpriseArchitectBlockElement(null, block, MappingDirection.FromDstToHub))
+            newElementsToMap.AddRange(this.things.Where(x => this.MappedElements
+                    .OfType<RequirementMappedElement>()
+                    .All(mapped => mapped.HubElement.Iid != x.Iid) && x is Requirement)
+                .Select(requirement => new RequirementMappedElement((Requirement)requirement, null, MappingDirection.FromHubToDst))
                 .Cast<IMappedElementRowViewModel>().ToList());
 
-            var newMappingCollection = this.DstController.PreMap(newElementsToMap, MappingDirection.FromDstToHub);
+            var newMappingCollection = this.DstController.PreMap(newElementsToMap, MappingDirection.FromHubToDst);
 
             foreach (var mappedElement in newMappingCollection)
             {
@@ -157,13 +173,13 @@ namespace DEHEASysML.ViewModel.Dialogs
         {
             this.ContinueCommand = ReactiveCommand.Create();
 
-            this.ContinueCommand.Subscribe(_ => this.ExecuteContinueCommand(() => { this.DstController.Map(this.MappedElements.ToList(), MappingDirection.FromDstToHub); }));
+            this.ContinueCommand.Subscribe(_ => this.ExecuteContinueCommand(() => { this.DstController.Map(this.MappedElements.ToList(), MappingDirection.FromHubToDst); }));
 
             this.MapToNewElementCommand = ReactiveCommand.Create(this.WhenAnyValue(x => x.CanExecuteMapToNewElement));
             this.MapToNewElementCommand.Subscribe(_ => this.ExecuteMapToNewElementCommand());
 
             this.WhenAnyValue(x => x.SelectedItem,
-                x => x.SelectedObjectBrowserThing).Subscribe(_ => this.UpdateCanExecute());
+                x => x.SelectedElement).Subscribe(_ => this.UpdateCanExecute());
 
             this.WhenAnyValue(x => x.SelectedItem)
                 .Subscribe(_ => this.PopulateContextMenu());
@@ -176,6 +192,42 @@ namespace DEHEASysML.ViewModel.Dialogs
 
             this.EnterpriseArchitectObjectBrowser.SelectedThings.CountChanged.Where(x => x >= 1)
                 .Subscribe(_ => this.ReduiceCollectionAndUpdateSelectedThing(this.EnterpriseArchitectObjectBrowser.SelectedThings));
+        }
+
+        /// <summary>
+        /// Update the DstElement that the <see cref="SelectedElement" /> will be mapped to
+        /// </summary>
+        private void ExecuteMapToNewElementCommand()
+        {
+            switch (this.SelectedItem)
+            {
+                case ElementDefinitionMappedElement elementDefinitionMappedElement:
+                    elementDefinitionMappedElement.DstElement = this.SelectedElement;
+                    elementDefinitionMappedElement.ShouldCreateNewTargetElement = false;
+                    elementDefinitionMappedElement.MappedRowStatus = MappedRowStatus.ExistingElement;
+                    break;
+                case RequirementMappedElement requirementMappedElement:
+                    requirementMappedElement.DstElement = this.SelectedElement;
+                    requirementMappedElement.ShouldCreateNewTargetElement = false;
+                    requirementMappedElement.MappedRowStatus = MappedRowStatus.ExistingElement;
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Verifies the compatibility of Type of <see cref="MappingConfigurationDialogViewModel.SelectedItem" /> and
+        /// <see cref="SelectedElement" />
+        /// </summary>
+        private void UpdateCanExecute()
+        {
+            if (this.SelectedItem == null || this.SelectedElement == null)
+            {
+                this.CanExecuteMapToNewElement = false;
+                return;
+            }
+
+            this.CanExecuteMapToNewElement = this.SelectedElement.Stereotype.AreEquals(StereotypeKind.Requirement) && this.SelectedItem is RequirementMappedElement ||
+                                             this.SelectedElement.Stereotype.AreEquals(StereotypeKind.Block) && this.SelectedItem is ElementDefinitionMappedElement;
         }
 
         /// <summary>
@@ -197,55 +249,7 @@ namespace DEHEASysML.ViewModel.Dialogs
         }
 
         /// <summary>
-        /// Verifies the compatibility of Type of <see cref="SelectedItem" /> and <see cref="SelectedObjectBrowserThing" />
-        /// </summary>
-        private void UpdateCanExecute()
-        {
-            if (this.SelectedItem == null || this.SelectedObjectBrowserThing == null)
-            {
-                this.CanExecuteMapToNewElement = false;
-                return;
-            }
-
-            this.CanExecuteMapToNewElement = this.SelectedObjectBrowserThing is Requirement && this.SelectedItem is EnterpriseArchitectRequirementElement ||
-                                             this.SelectedObjectBrowserThing is ElementDefinition && this.SelectedItem is EnterpriseArchitectBlockElement;
-        }
-
-        /// <summary>
-        /// Update the HubElement that the <see cref="SelectedItem" /> will be mapped to
-        /// </summary>
-        private void ExecuteMapToNewElementCommand()
-        {
-            switch (this.SelectedItem)
-            {
-                case EnterpriseArchitectRequirementElement requirement:
-                    var requirementsSpecification = requirement.HubElement.Container as RequirementsSpecification;
-
-                    if (requirement.HubElement.Original == null)
-                    {
-                        requirementsSpecification.Requirement.Remove(requirement.HubElement);
-                    }
-                    else
-                    {
-                        var originalRequirement = requirement.HubElement.Original as Requirement;
-                        requirementsSpecification.Requirement.RemoveAll(x => x.Iid == requirement.HubElement.Iid);
-                        requirementsSpecification.Requirement.Add(originalRequirement);
-                    }
-
-                    requirement.HubElement = (Requirement)this.SelectedObjectBrowserThing.Clone(true);
-                    requirement.ShouldCreateNewTargetElement = false;
-                    requirement.MappedRowStatus = MappedRowStatus.ExistingElement;
-                    break;
-                case EnterpriseArchitectBlockElement block:
-                    block.HubElement = (ElementDefinition)this.SelectedObjectBrowserThing.Clone(true);
-                    block.ShouldCreateNewTargetElement = false;
-                    block.MappedRowStatus = MappedRowStatus.ExistingElement;
-                    break;
-            }
-        }
-
-        /// <summary>
-        /// Update the <see cref="SelectedObjectBrowserThing" />
+        /// Update the <see cref="MappingConfigurationDialogViewModel.SelectedObjectBrowserThing" />
         /// </summary>
         /// <param name="newSelectedRow">The new selected </param>
         private void UpdateHubSelectedThing(object newSelectedRow)
@@ -256,10 +260,12 @@ namespace DEHEASysML.ViewModel.Dialogs
                 IRowViewModelBase<ElementDefinition> elementDefinitionRow => elementDefinitionRow.Thing,
                 _ => null
             };
+
+            this.SetHubSelectedThing(this.SelectedObjectBrowserThing);
         }
 
         /// <summary>
-        /// Update the <see cref="SelectedItem" /> depending on the selected row inside the
+        /// Update the <see cref="MappingConfigurationDialogViewModel.SelectedItem" /> depending on the selected row inside the
         /// <see cref="EnterpriseArchitectObjectBrowser" />
         /// </summary>
         /// <param name="newSelectedRow">The selected row inside the <see cref="EnterpriseArchitectObjectBrowser" /></param>
@@ -268,7 +274,7 @@ namespace DEHEASysML.ViewModel.Dialogs
             switch (newSelectedRow)
             {
                 case ElementRowViewModel elementRow:
-                    this.SetDstSelectedThing(elementRow.RepresentedObject);
+                    this.SelectedElement = elementRow.RepresentedObject;
                     break;
                 default:
                     this.SelectedItem = null;
@@ -277,25 +283,19 @@ namespace DEHEASysML.ViewModel.Dialogs
         }
 
         /// <summary>
-        /// Find the correct <see cref="IMappedElementRowViewModel" /> corresponding to the given <see cref="Element" />
+        /// Find the correct <see cref="IMappedElementRowViewModel" /> corresponding to the given <see cref="Thing" />
         /// </summary>
-        /// <param name="element">The <see cref="Element" /></param>
-        private void SetDstSelectedThing(Element element)
+        /// <param name="thing">The <see cref="Thing" /></param>
+        private void SetHubSelectedThing(Thing thing)
         {
-            if (element.Stereotype.AreEquals(StereotypeKind.Requirement))
+            this.SelectedItem = thing switch
             {
-                this.SelectedItem = this.MappedElements.OfType<EnterpriseArchitectRequirementElement>()
-                    .FirstOrDefault(x => x.DstElement.ElementGUID == element.ElementGUID);
-            }
-            else if (element.Stereotype.AreEquals(StereotypeKind.Block))
-            {
-                this.SelectedItem = this.MappedElements.OfType<EnterpriseArchitectBlockElement>()
-                    .FirstOrDefault(x => x.DstElement.ElementGUID == element.ElementGUID);
-            }
-            else
-            {
-                this.SelectedItem = null;
-            }
+                ElementDefinition elementDefinition => this.MappedElements.OfType<ElementDefinitionMappedElement>()
+                    .FirstOrDefault(x => x.HubElement.Iid == elementDefinition.Iid),
+                Requirement requirement => this.MappedElements.OfType<RequirementMappedElement>()
+                    .FirstOrDefault(x => x.HubElement.Iid == requirement.Iid),
+                _ => null
+            };
         }
     }
 }

@@ -24,7 +24,10 @@
 
 namespace DEHEASysML.Tests.ViewModel.NetChangePreview
 {
+    using System;
     using System.Collections.Generic;
+
+    using CDP4Dal;
 
     using DEHEASysML.DstController;
     using DEHEASysML.Enumerators;
@@ -82,10 +85,12 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
             this.requirement.Setup(x => x.ElementGUID).Returns("0001");
             this.requirement.Setup(x => x.Stereotype).Returns(StereotypeKind.Requirement.ToString());
             this.requirement.Setup(x => x.TaggedValuesEx).Returns(new EnterpriseArchitectCollection() { taggedValue.Object });
+            this.requirement.Setup(x => x.ElementGUID).Returns(Guid.NewGuid().ToString());
 
             var valueProperty = new Mock<Element>();
             valueProperty.Setup(x => x.Stereotype).Returns(StereotypeKind.ValueProperty.ToString());
             valueProperty.Setup(x => x.Name).Returns("mass");
+            valueProperty.Setup(x => x.ElementGUID).Returns(Guid.NewGuid().ToString());
             var partProperty = new Mock<Element>();
             partProperty.Setup(x => x.Stereotype).Returns(StereotypeKind.PartProperty.ToString());
             partProperty.Setup(x => x.Name).Returns("a contained element");
@@ -140,6 +145,12 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
 
             this.dstController.Setup(x => x.CurrentRepository).Returns(this.repository.Object);
             this.dstController.Setup(x => x.RetrieveAllParentsIdPackage(It.IsAny<IEnumerable<Element>>())).Returns(new List<int>() { 1, 3 });
+        }
+
+        [TearDown]
+        public void Teardown()
+        {
+            CDPMessageBus.Current.ClearSubscriptions();
         }
 
         [Test]

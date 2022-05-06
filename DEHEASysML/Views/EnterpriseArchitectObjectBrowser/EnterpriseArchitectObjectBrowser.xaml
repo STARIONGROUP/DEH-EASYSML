@@ -103,6 +103,19 @@
                     </StackPanel>
                 </dx:MeasurePixelSnapper>
             </HierarchicalDataTemplate>
+            <HierarchicalDataTemplate DataType="{x:Type rows:PortRowViewModel}" ItemsSource="{Binding ContainedRows}">
+                <dx:MeasurePixelSnapper>
+                    <StackPanel Orientation="Horizontal">
+                        <dx:PixelSnapper>
+                            <Image Style="{StaticResource ThingIcon}" Source="{dx:DXImage 'SvgImages/XAF/Action_LinkUnlink_Link.svg'}"/>
+                        </dx:PixelSnapper>
+
+                        <ContentPresenter x:Name="defaultRowPresenter"
+                                          Content="{Binding}"
+                                          ContentTemplate="{Binding View.DefaultDataRowTemplate}"/>
+                    </StackPanel>
+                </dx:MeasurePixelSnapper>
+            </HierarchicalDataTemplate>
         </ResourceDictionary>
     </UserControl.Resources>
     <Grid>

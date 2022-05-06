@@ -199,7 +199,8 @@ namespace DEHEASysML.ViewModel
             this.OpenMappingConfigurationDialog.Subscribe(_ => this.OpenMappingConfigurationDialogExecute());
 
             this.WhenAnyValue(x => x.DstNetChangePreviewViewModel.IsBusy,
-                x => x.HubNetChangePreviewViewModel.IsBusy).Subscribe(_ => this.UpdateIsBusy());
+                x => x.HubNetChangePreviewViewModel.IsBusy,
+                x => x.dstController.IsBusy).Subscribe(_ => this.UpdateIsBusy());
 
             this.WhenAnyValue(x => x.hubController.OpenIteration)
                 .Where(x => x == null)
@@ -236,9 +237,11 @@ namespace DEHEASysML.ViewModel
         {
             var dstNetChangeBusy = this.DstNetChangePreviewViewModel.IsBusy;
             var hubNetChangeBusy = this.HubNetChangePreviewViewModel.IsBusy;
+            var dstControllerBusy = this.dstController.IsBusy;
 
-            this.IsBusy = dstNetChangeBusy != null && hubNetChangeBusy != null
-                                                   && (dstNetChangeBusy.Value || hubNetChangeBusy.Value);
+            this.IsBusy = dstNetChangeBusy != null && hubNetChangeBusy != null && dstControllerBusy != null
+                                                   && (dstNetChangeBusy.Value || hubNetChangeBusy.Value 
+                                                       || dstControllerBusy.Value);
         }
     }
 }

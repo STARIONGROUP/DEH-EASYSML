@@ -64,6 +64,8 @@ namespace DEHEASysML.Tests.ViewModel
             this.dstController.Setup(x => x.SelectedDstMapResultForTransfer).Returns(this.selectedDstMapResultForTransfer);
             this.dstController.Setup(x => x.SelectedHubMapResultForTransfer).Returns(this.selectedHubMapResultForTransfer);
             this.dstController.Setup(x => x.DstMapResult).Returns(new ReactiveList<IMappedElementRowViewModel>());
+            this.dstController.Setup(x => x.HubMapResult).Returns(new ReactiveList<IMappedElementRowViewModel>());
+            this.dstController.Setup(x => x.SelectedGroupsForTransfer).Returns(new ReactiveList<RequirementsGroup>());
             this.dstController.Setup(x => x.MappingDirection).Returns(MappingDirection.FromDstToHub);
 
             this.statusBar = new Mock<IStatusBarControlViewModel>();

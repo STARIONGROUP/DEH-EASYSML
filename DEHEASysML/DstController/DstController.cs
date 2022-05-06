@@ -110,11 +110,6 @@ namespace DEHEASysML.DstController
         private readonly IMappingConfigurationService mappingConfigurationService;
 
         /// <summary>
-        /// Correspondance between the Id of a <see cref="Package" /> and all parents package id. Used to reduice calculation
-        /// </summary>
-        private readonly Dictionary<int, List<int>> parentPackagesId = new();
-
-        /// <summary>
         /// Backing field for <see cref="CurrentRepository" />
         /// </summary>
         private Repository currentRepository;
@@ -142,7 +137,12 @@ namespace DEHEASysML.DstController
         /// <summary>
         /// A value indicating if the next notifyContext event should be ignore
         /// </summary>
-        private bool shouldIgnoreNextEvent;
+        private bool shouldIgnoreEvents;
+
+        /// <summary>
+        /// Backing field for <see cref="IsBusy" />
+        /// </summary>
+        private bool? isBusy;
 
         /// <summary>
         /// Initializes a new <see cref="DstController" />
@@ -194,6 +194,15 @@ namespace DEHEASysML.DstController
         }
 
         /// <summary>
+        /// Value asserting if the <see cref="DstController" /> is busy
+        /// </summary>
+        public bool? IsBusy
+        {
+            get => this.isBusy;
+            set => this.RaiseAndSetIfChanged(ref this.isBusy, value);
+        }
+
+        /// <summary>
         /// A collection of <see cref="IMappedElementRowViewModel" /> resulting of the mapping from dst to hub
         /// </summary>
         public ReactiveList<IMappedElementRowViewModel> DstMapResult { get; } = new();
@@ -217,11 +226,6 @@ namespace DEHEASysML.DstController
         /// A collection of all <see cref="CDP4Common.EngineeringModelData.RequirementsGroup" /> that should be transfered
         /// </summary>
         public ReactiveList<RequirementsGroup> SelectedGroupsForTransfer { get; } = new();
-
-        /// <summary>
-        /// A collection of <see cref="Element" /> that has been updated
-        /// </summary>
-        public List<Element> UpdatedElements { get; } = new();
 
         /// <summary>
         /// A collection of <see cref="Element" /> that has been created
@@ -315,12 +319,10 @@ namespace DEHEASysML.DstController
         /// <param name="objectType">The <see cref="ObjectType" /> of the item</param>
         public void OnNotifyContextItemModified(Repository repository, string guid, ObjectType objectType)
         {
-            if (!this.shouldIgnoreNextEvent)
+            if (!this.shouldIgnoreEvents)
             {
                 this.OnAnyEvent(repository);
             }
-
-            this.shouldIgnoreNextEvent = false;
         }
 
         /// <summary>
@@ -334,6 +336,19 @@ namespace DEHEASysML.DstController
         {
             var queryResult = this.CurrentRepository.GetElementsByQuery("Simple", name);
             element = queryResult.OfType<Element>().FirstOrDefault(x => x.Name == name && x.Stereotype.AreEquals(stereotype));
+            return element != null;
+        }
+
+        /// <summary>
+        /// Tries to get an <see cref="Element" /> that represents an Interface
+        /// </summary>
+        /// <param name="name">The name of the interface</param>
+        /// <param name="element">The <see cref="Element" /></param>
+        /// <returns>A value asserting if the Element has been found</returns>
+        public bool TryGetInterface(string name, out Element element)
+        {
+            var queryResult = this.CurrentRepository.GetElementsByQuery("Simple", name);
+            element = queryResult.OfType<Element>().FirstOrDefault(x => x.Name == name && x.MetaType.AreEquals(StereotypeKind.Interface));
             return element != null;
         }
 
@@ -401,6 +416,39 @@ namespace DEHEASysML.DstController
         }
 
         /// <summary>
+        /// Tries to get an <see cref="Element" /> representing a Requirement based on is Id and on his name
+        /// </summary>
+        /// <param name="name">The name of the <see cref="Element" /></param>
+        /// <param name="id">The Id of the requirement</param>
+        /// <param name="elementRequirement">The retrieved <see cref="Element" /></param>
+        /// <returns>A value indicating if the <see cref="Element" /> has been found</returns>
+        public bool TryGetRequirement(string name, string id, out Element elementRequirement)
+        {
+            elementRequirement = null;
+
+            var elements = this.CurrentRepository.GetElementsByQuery("Simple", name).OfType<Element>()
+                .Where(x => x.Stereotype.AreEquals(StereotypeKind.Requirement));
+
+            foreach (var element in elements)
+            {
+                var retrieveId = element.GetRequirementId();
+
+                if (this.UpdatedRequirementValues.TryGetValue(element.ElementGUID, out var updatedValue))
+                {
+                    retrieveId = updatedValue.id;
+                }
+
+                if (retrieveId == id)
+                {
+                    elementRequirement = element;
+                    break;
+                }
+            }
+
+            return elementRequirement != null;
+        }
+
+        /// <summary>
         /// Adds a new <see cref="Package" /> under the given <see cref="Package" />
         /// </summary>
         /// <param name="parentPackage">The parent <see cref="Package" /></param>
@@ -408,7 +456,7 @@ namespace DEHEASysML.DstController
         /// <returns></returns>
         public Package AddNewPackage(Package parentPackage, string name)
         {
-            this.shouldIgnoreNextEvent = true;
+            this.shouldIgnoreEvents = true;
             var newPackage = parentPackage.Packages.AddNew(name, "Package") as Package;
             this.CreatedPackages.Add(newPackage);
             newPackage.Update();
@@ -444,6 +492,26 @@ namespace DEHEASysML.DstController
             }
 
             return this.defaultBlocksPackage;
+        }
+
+        /// <summary>
+        /// Retrieve all <see cref="Element" /> of stereotype block or requirement contained in the project
+        /// </summary>
+        /// <returns>A collection of <see cref="Element" /></returns>
+        public List<Element> GetAllBlocksAndRequirementsOfRepository()
+        {
+            var elements = this.CurrentRepository.GetElementsByQuery("Extended", "block").OfType<Element>()
+                .Where(x => x.StereotypeEx.AreEquals(StereotypeKind.Block) && x.ParentID == 0).ToList();
+
+            elements.AddRange(this.CurrentRepository.GetElementsByQuery("Extended", "requirement").OfType<Element>()
+                .Where(x => x.StereotypeEx.AreEquals(StereotypeKind.Requirement)));
+
+            foreach (var element in elements.ToList().Where(element => this.CreatedElements.Any(x => x.ElementGUID == element.ElementGUID)))
+            {
+                elements.Remove(element);
+            }
+
+            return elements;
         }
 
         /// <summary>
@@ -538,6 +606,12 @@ namespace DEHEASysML.DstController
             var selectedPackage = repository.GetTreeSelectedPackage();
             mappableElement.AddRange(this.GetAllBlocks(selectedPackage));
             mappableElement.AddRange(this.GetAllRequirements(selectedPackage));
+
+            foreach (var createdElement in mappableElement.Where(x => this.CreatedElements.Any(created => created.ElementGUID == x.ElementGUID)).ToList())
+            {
+                mappableElement.Remove(createdElement);
+            }
+
             return mappableElement;
         }
 
@@ -563,7 +637,7 @@ namespace DEHEASysML.DstController
         /// Map all <see cref="IMappedElementRowViewModel" />
         /// </summary>
         /// <param name="elements">The collection of <see cref="IMappedElementRowViewModel" /></param>
-        /// <param name="mappingDirectionToMap">The <see cref="MappingDirection"/></param>
+        /// <param name="mappingDirectionToMap">The <see cref="MappingDirection" /></param>
         public void Map(List<IMappedElementRowViewModel> elements, MappingDirection mappingDirectionToMap)
         {
             if (mappingDirectionToMap == MappingDirection.FromDstToHub)
@@ -575,10 +649,12 @@ namespace DEHEASysML.DstController
             }
             else
             {
+                this.CurrentRepository.EnableUIUpdates = false;
                 this.HubMapResult.Clear();
                 var hubMappedElement = this.Map(elements.OfType<ElementDefinitionMappedElement>().ToList(), true);
                 hubMappedElement.AddRange(this.Map(elements.OfType<RequirementMappedElement>().ToList(), true));
-                CDPMessageBus.Current.SendMessage(new UpdateDstNetChangePreview());
+                this.HubMapResult.AddRange(hubMappedElement);
+                this.shouldIgnoreEvents = false;
             }
         }
 
@@ -586,7 +662,7 @@ namespace DEHEASysML.DstController
         /// Premaps all <see cref="IMappedElementRowViewModel" />
         /// </summary>
         /// <param name="elements">The collection of <see cref="IMappedElementRowViewModel" /> to premap</param>
-        /// <param name="mappingDirectionToMap">The <see cref="MappingDirection"/></param>
+        /// <param name="mappingDirectionToMap">The <see cref="MappingDirection" /></param>
         /// <returns>The collection of premapped <see cref="IMappedElementRowViewModel" /></returns>
         public List<IMappedElementRowViewModel> PreMap(List<IMappedElementRowViewModel> elements, MappingDirection mappingDirectionToMap)
         {
@@ -612,6 +688,8 @@ namespace DEHEASysML.DstController
         /// <returns>A <see cref="Task" /></returns>
         public async Task TransferMappedThingsToHub()
         {
+            this.IsBusy = true;
+
             try
             {
                 var (iterationClone, transaction) = this.GetIterationTransaction();
@@ -643,6 +721,7 @@ namespace DEHEASysML.DstController
                 this.SelectedGroupsForTransfer.Clear();
                 this.SelectedDstMapResultForTransfer.Clear();
                 this.LoadMapping();
+                this.IsBusy = false;
             }
         }
 
@@ -650,9 +729,35 @@ namespace DEHEASysML.DstController
         /// Transfers the mapped variables to the Hub data source
         /// </summary>
         /// <returns>A <see cref="Task" /></returns>
-        public Task TransferMappedThingsToDst()
+        public async Task TransferMappedThingsToDst()
         {
-            return Task.CompletedTask;
+            this.IsBusy = true;
+
+            foreach (var element in this.SelectedHubMapResultForTransfer)
+            {
+                if (element.Stereotype.AreEquals(StereotypeKind.Requirement))
+                {
+                    this.ProcessTransferOfRequirement(element);
+                }
+                else if (element.Stereotype.AreEquals(StereotypeKind.Block))
+                {
+                    this.ProcessTransferOfBlock(element);
+                }
+            }
+
+            this.CleanProject();
+            this.CurrentRepository.RefreshModelView(0);
+            var (iteration, transaction) = this.GetIterationTransaction();
+            this.mappingConfigurationService.PersistExternalIdentifierMap(transaction, iteration);
+            transaction.CreateOrUpdate(iteration);
+
+            await this.hubController.Write(transaction);
+            await this.hubController.Refresh();
+
+            this.mappingConfigurationService.RefreshExternalIdentifierMap();
+
+            this.LoadMapping();
+            this.IsBusy = false;
         }
 
         /// <summary>
@@ -661,11 +766,13 @@ namespace DEHEASysML.DstController
         /// <returns>The number of mapped things loaded</returns>
         public int LoadMapping()
         {
+            var hadHubMapping = this.HubMapResult.Any();
+            this.IsBusy = true;
             var elementsLoaded = 0;
 
             if (this.hubController.IsSessionOpen && this.hubController.OpenIteration != null)
             {
-                elementsLoaded += this.LoadMappingFromDstToHub();
+                elementsLoaded += this.LoadMappingFromDstToHub() + this.LoadMappingFromHubToDst();
             }
 
             if (elementsLoaded == 0)
@@ -677,8 +784,14 @@ namespace DEHEASysML.DstController
             }
 
             this.CurrentRepository.EnableUIUpdates = !this.HubMapResult.IsEmpty;
-            CDPMessageBus.Current.SendMessage(new UpdateDstNetChangePreview());
 
+            if (this.hubController.IsSessionOpen && this.hubController.OpenIteration != null && hadHubMapping)
+            {
+                CDPMessageBus.Current.SendMessage(new UpdateDstNetChangePreview());
+            }
+
+            this.IsBusy = false;
+            this.statusBar.Append($"{elementsLoaded} Element(s) has been loaded");
             return elementsLoaded;
         }
 
@@ -691,35 +804,142 @@ namespace DEHEASysML.DstController
         }
 
         /// <summary>
+        /// Process the transfer of an mapped Element of stereotype block
+        /// </summary>
+        /// <param name="element">The <see cref="Element" /> to transfer</param>
+        private void ProcessTransferOfBlock(Element element)
+        {
+            foreach (var port in element.Elements.GetAllPortsOfElement().ToList())
+            {
+                this.CreatedElements.RemoveAll(x => x.ElementGUID == port.ElementGUID);
+            }
+
+            foreach (var blockDefinition in element.GetAllPortsDefinitionOfElement().ToList())
+            {
+                this.CreatedElements.RemoveAll(x => x.ElementGUID == blockDefinition.ElementGUID);
+            }
+
+            foreach (var partProperty in element.Elements.GetAllPartPropertiesOfElement().ToList())
+            {
+                this.CreatedElements.RemoveAll(x => x.ElementGUID == partProperty.ElementGUID);
+            }
+
+            foreach (var property in element.Elements.GetAllValuePropertiesOfElement().ToList())
+            {
+                if (this.UpdatedValuePropretyValues.TryGetValue(property.ElementGUID, out var newValue))
+                {
+                    property.SetValueOfPropertyValue(newValue);
+                    property.Update();
+                    property.CustomProperties.Refresh();
+                    this.UpdatedValuePropretyValues.Remove(property.ElementGUID);
+                    this.CreatedElements.RemoveAll(x => x.ElementGUID == property.ElementGUID);
+                }
+
+                element.Update();
+                element.Elements.Refresh();
+                element.EmbeddedElements.Refresh();
+            }
+        }
+
+        /// <summary>
+        /// Process the transfer of an mapped Element of stereotype Requirement
+        /// </summary>
+        /// <param name="element">The <see cref="Element" /> to transfer</param>
+        private void ProcessTransferOfRequirement(Element element)
+        {
+            if (this.UpdatedRequirementValues.TryGetValue(element.ElementGUID, out var newValues))
+            {
+                element.SetRequirementId(newValues.id);
+                element.TaggedValuesEx.Refresh();
+                element.SetRequirementText(newValues.text);
+                element.TaggedValuesEx.Refresh();
+                element.Update();
+                this.CreatedElements.RemoveAll(x => x.ElementGUID == element.ElementGUID);
+                this.ClearPackages(element);
+            }
+        }
+
+        /// <summary>
+        /// Removes <see cref="Package" /> from the <see cref="CreatedPackages" />
+        /// </summary>
+        /// <param name="element">The <see cref="Element" /></param>
+        private void ClearPackages(Element element)
+        {
+            if (this.CreatedPackages.Any())
+            {
+                var packagesId = this.RetrieveAllParentsIdPackage(new List<Element> { element });
+
+                foreach (var packageId in packagesId)
+                {
+                    this.CreatedPackages.RemoveAll(x => x.PackageID == packageId);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Loads the saved mapping to the dst and applies the mapping rule
+        /// </summary>
+        /// <returns>The number of mapped things loaded</returns>
+        private int LoadMappingFromHubToDst()
+        {
+            if (this.mappingConfigurationService.LoadMappingFromHubToDst(this.CurrentRepository)
+                    is not { } mappedElements || !mappedElements.Any())
+            {
+                this.SelectedHubMapResultForTransfer.Clear();
+                this.HubMapResult.Clear();
+                return 0;
+            }
+
+            this.Map(mappedElements, MappingDirection.FromHubToDst);
+
+            return mappedElements.Count;
+        }
+
+        /// <summary>
         /// Delete all created <see cref="Element" /> that has not been transfered
         /// </summary>
         private void CleanProject()
         {
             foreach (var createdElement in this.CreatedElements)
             {
-                Collection collection = null;
+                try
+                {
+                    Collection collection = null;
 
-                if (createdElement.Stereotype.AreEquals(StereotypeKind.Block) || createdElement.Stereotype.AreEquals(StereotypeKind.Requirement))
-                {
-                    collection = this.CurrentRepository.GetPackageByID(createdElement.PackageID).Elements;
-                }
-                else if (createdElement.Stereotype.AreEquals(StereotypeKind.ValueProperty) || createdElement.Stereotype.AreEquals(StereotypeKind.PartProperty))
-                {
-                    collection = this.CurrentRepository.GetElementByID(createdElement.ParentID).Elements;
-                }
-
-                if (collection == null)
-                {
-                    continue;
-                }
-
-                for (short collectionIndex = 0; collectionIndex < collection.Count; collectionIndex++)
-                {
-                    if (collection.GetAt(collectionIndex) is Element element && element.ElementGUID == createdElement.ElementGUID)
+                    if (createdElement.Stereotype.AreEquals(StereotypeKind.Block) && createdElement.ParentID == 0
+                        || createdElement.Stereotype.AreEquals(StereotypeKind.Requirement) || createdElement.MetaType.AreEquals(StereotypeKind.Interface))
                     {
-                        collection.DeleteAt(collectionIndex, false);
-                        break;
+                        collection = this.CurrentRepository.GetPackageByID(createdElement.PackageID).Elements;
                     }
+                    else if (createdElement.Stereotype.AreEquals(StereotypeKind.ValueProperty)
+                             || createdElement.Stereotype.AreEquals(StereotypeKind.PartProperty) || createdElement.MetaType.AreEquals(StereotypeKind.Port)
+                             || createdElement.Stereotype.AreEquals(StereotypeKind.Block) && createdElement.ParentID != 0)
+                    {
+                        if (this.CreatedElements.Any(x => x.ElementID == createdElement.ParentID))
+                        {
+                            continue;
+                        }
+
+                        collection = this.CurrentRepository.GetElementByID(createdElement.ParentID).Elements;
+                    }
+
+                    if (collection == null)
+                    {
+                        continue;
+                    }
+
+                    for (short collectionIndex = 0; collectionIndex < collection.Count; collectionIndex++)
+                    {
+                        if (collection.GetAt(collectionIndex) is Element element && element.ElementGUID == createdElement.ElementGUID)
+                        {
+                            collection.DeleteAt(collectionIndex, false);
+                            break;
+                        }
+                    }
+                }
+                catch (Exception)
+                {
+                    this.logger.Warn($"Tries to delete an Element that does not exist anymore : {createdElement.Name}");
                 }
             }
 
@@ -764,7 +984,6 @@ namespace DEHEASysML.DstController
             this.CreatedPackages.Clear();
             this.UpdatedCollections.Clear();
             this.CreatedElements.Clear();
-            this.UpdatedElements.Clear();
         }
 
         /// <summary>
@@ -857,7 +1076,6 @@ namespace DEHEASysML.DstController
             this.CurrentRepository = repository;
             this.defaultBlocksPackage = null;
             this.LoadMapping();
-            this.CurrentRepository.EnableUIUpdates = false;
         }
 
         /// <summary>
@@ -946,7 +1164,8 @@ namespace DEHEASysML.DstController
                                        .FirstOrDefault(x => x.HubElement.Iid == thingId))
                 .ToList();
 
-            var relationships = mappedElements.SelectMany(x => x.RelationShips).ToList();
+            var relationships = mappedElements.SelectMany(x => x.RelationShips).GroupBy(x => x.Name)
+                .Select(g => g.First()).ToList();
 
             foreach (var relationship in relationships.ToList())
             {
@@ -1167,11 +1386,11 @@ namespace DEHEASysML.DstController
         /// <returns>The result of the mapping</returns>
         private List<IMappedElementRowViewModel> Map(List<ElementDefinitionMappedElement> mappedElement, bool isComplete)
         {
-            if (this.mappingEngine.Map((isComplete,mappedElement)) is List<MappedElementDefinitionRowViewModel> mappedElements && mappedElements.Any())
+            if (this.mappingEngine.Map((isComplete, mappedElement)) is List<MappedElementDefinitionRowViewModel> mappedElements && mappedElements.Any())
             {
                 if (isComplete)
                 {
-                    this.statusBar.Append($"Mapping of {mappedElements.Count} Element Defintion in progress...");
+                    this.statusBar.Append($"Mapping of {mappedElements.Count} Element(s) Definition in progress...");
                 }
 
                 return new List<IMappedElementRowViewModel>(mappedElements);
@@ -1192,7 +1411,7 @@ namespace DEHEASysML.DstController
             {
                 if (isComplete)
                 {
-                    this.statusBar.Append($"Mapping of {mappedElements.Count} Requirement in progress...");
+                    this.statusBar.Append($"Mapping of {mappedElements.Count} Requirement(s) in progress...");
                 }
 
                 return new List<IMappedElementRowViewModel>(mappedElements);
@@ -1210,12 +1429,6 @@ namespace DEHEASysML.DstController
         {
             while (true)
             {
-                if (this.parentPackagesId.ContainsKey(packageId))
-                {
-                    packagesId = this.parentPackagesId[packageId];
-                    return;
-                }
-
                 var package = this.CurrentRepository.GetPackageByID(packageId);
 
                 if (!packagesId.Contains(package.PackageID))
@@ -1229,7 +1442,6 @@ namespace DEHEASysML.DstController
                     }
                 }
 
-                this.parentPackagesId[packagesId[0]] = new List<int>(packagesId);
                 break;
             }
         }
@@ -1239,8 +1451,11 @@ namespace DEHEASysML.DstController
         /// </summary>
         private void UpdateProperties()
         {
+            this.HubMapResult.Clear();
+            this.SelectedHubMapResultForTransfer.Clear();
             this.DstMapResult.Clear();
             this.SelectedDstMapResultForTransfer.Clear();
+            this.CleanProject();
             this.CanMap = this.hubController.IsSessionOpen;
         }
 
