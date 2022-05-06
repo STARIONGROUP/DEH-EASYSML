@@ -244,7 +244,8 @@ namespace DEHEASysML.Tests.Services.MappingConfiguration
                 InternalThing = elementDefinition.Iid, 
                 ExternalId = JsonConvert.SerializeObject(new ExternalIdentifier()
                 {
-                    Identifier = blockElement1.Object.ElementGUID
+                    Identifier = blockElement1.Object.ElementGUID,
+                    MappingDirection = MappingDirection.FromDstToHub
                 })
             });
 
@@ -254,7 +255,30 @@ namespace DEHEASysML.Tests.Services.MappingConfiguration
                 InternalThing = elementDefinition.Iid,
                 ExternalId = JsonConvert.SerializeObject(new ExternalIdentifier()
                 {
-                    Identifier = "blockElement1.Object.ElementGUID"
+                    Identifier = blockElement1.Object.ElementGUID,
+                    MappingDirection = MappingDirection.FromHubToDst
+                })
+            });
+
+            map.Correspondence.Add(new IdCorrespondence()
+            {
+                Iid = Guid.NewGuid(),
+                InternalThing = elementDefinition.Iid,
+                ExternalId = JsonConvert.SerializeObject(new ExternalIdentifier()
+                {
+                    Identifier = "blockElement1.Object.ElementGUID",
+                    MappingDirection = MappingDirection.FromDstToHub
+                })
+            });
+
+            map.Correspondence.Add(new IdCorrespondence()
+            {
+                Iid = Guid.NewGuid(),
+                InternalThing = elementDefinition.Iid,
+                ExternalId = JsonConvert.SerializeObject(new ExternalIdentifier()
+                {
+                    Identifier = "blockElement1.Object.ElementGUID",
+                    MappingDirection = MappingDirection.FromHubToDst
                 })
             });
 
@@ -264,7 +288,19 @@ namespace DEHEASysML.Tests.Services.MappingConfiguration
                 InternalThing = requirement.Iid,
                 ExternalId = JsonConvert.SerializeObject(new ExternalIdentifier()
                 {
-                    Identifier = requirementElement.Object.ElementGUID
+                    Identifier = requirementElement.Object.ElementGUID,
+                    MappingDirection = MappingDirection.FromDstToHub
+                })
+            });
+
+            map.Correspondence.Add(new IdCorrespondence()
+            {
+                Iid = Guid.NewGuid(),
+                InternalThing = requirement.Iid,
+                ExternalId = JsonConvert.SerializeObject(new ExternalIdentifier()
+                {
+                    Identifier = requirementElement.Object.ElementGUID,
+                    MappingDirection = MappingDirection.FromHubToDst
                 })
             });
 
@@ -274,7 +310,19 @@ namespace DEHEASysML.Tests.Services.MappingConfiguration
                 InternalThing = elementDefinition2.Iid,
                 ExternalId = JsonConvert.SerializeObject(new ExternalIdentifier()
                 {
-                    Identifier = blockElement2.Object.ElementGUID
+                    Identifier = blockElement2.Object.ElementGUID,
+                    MappingDirection = MappingDirection.FromDstToHub
+                })
+            });
+
+            map.Correspondence.Add(new IdCorrespondence()
+            {
+                Iid = Guid.NewGuid(),
+                InternalThing = elementDefinition2.Iid,
+                ExternalId = JsonConvert.SerializeObject(new ExternalIdentifier()
+                {
+                    Identifier = blockElement2.Object.ElementGUID,
+                    MappingDirection = MappingDirection.FromHubToDst
                 })
             });
 
@@ -284,13 +332,28 @@ namespace DEHEASysML.Tests.Services.MappingConfiguration
                 InternalThing = requirement2.Iid,
                 ExternalId = JsonConvert.SerializeObject(new ExternalIdentifier()
                 {
-                    Identifier = requirementElement2.Object.ElementGUID
+                    Identifier = requirementElement2.Object.ElementGUID,
+                    MappingDirection = MappingDirection.FromDstToHub
+                })
+            });
+
+            map.Correspondence.Add(new IdCorrespondence()
+            {
+                Iid = Guid.NewGuid(),
+                InternalThing = requirement2.Iid,
+                ExternalId = JsonConvert.SerializeObject(new ExternalIdentifier()
+                {
+                    Identifier = requirementElement2.Object.ElementGUID,
+                    MappingDirection = MappingDirection.FromDstToHub
                 })
             });
 
             this.mappingConfiguration.ExternalIdentifierMap = map;
 
             var loadedElement = this.mappingConfiguration.LoadMappingFromDstToHub(this.repository.Object);
+            Assert.AreEqual(2, loadedElement.Count);
+
+            loadedElement = this.mappingConfiguration.LoadMappingFromHubToDst(this.repository.Object);
             Assert.AreEqual(2, loadedElement.Count);
         }
     }

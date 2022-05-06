@@ -60,7 +60,7 @@ namespace DEHEASysML.ViewModel.NetChangePreview
         /// <summary>
         /// A collection of <see cref="ElementRowViewModel" /> that are highlighted
         /// </summary>
-        private List<ElementRowViewModel> highlightedRows = new();
+        private readonly List<ElementRowViewModel> highlightedRows = new();
 
         /// <summary>
         /// Initializes a new <see cref="DstNetChangePreviewViewModel" />
@@ -116,6 +116,7 @@ namespace DEHEASysML.ViewModel.NetChangePreview
             }
 
             this.IsBusy = true;
+            this.SelectedThings.Clear();
             this.highlightedRows.Clear();
             this.BuildNetChangeTree();
             this.ComputeRows();
@@ -196,7 +197,7 @@ namespace DEHEASysML.ViewModel.NetChangePreview
 
                 foreach (var valuePropertyRow in row.ContainedRows.OfType<ValuePropertyRowViewModel>())
                 {
-                    if (this.dstController.UpdatedValuePropretyValues.TryGetValue(mappedElement.ElementGUID, out var newValue))
+                    if (this.dstController.UpdatedValuePropretyValues.TryGetValue(valuePropertyRow.RepresentedObject.ElementGUID, out var newValue))
                     {
                         valuePropertyRow.OverrideValue(newValue);
                     }

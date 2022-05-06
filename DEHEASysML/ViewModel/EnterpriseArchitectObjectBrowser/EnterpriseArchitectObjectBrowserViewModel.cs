@@ -89,7 +89,7 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser
         /// <summary>
         /// Gets the collection of <see cref="EnterpriseArchitectObjectBaseRowViewModel" /> to be displayed in the tree
         /// </summary>
-        public ReactiveList<EnterpriseArchitectObjectBaseRowViewModel> Things { get; } = new();
+        public ReactiveList<EnterpriseArchitectObjectBaseRowViewModel> Things { get; } = new() { ChangeTrackingEnabled = true};
 
         /// <summary>
         /// Gets the Context Menu for the implementing view model

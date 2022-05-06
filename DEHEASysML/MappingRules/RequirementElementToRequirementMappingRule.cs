@@ -211,7 +211,7 @@ namespace DEHEASysML.MappingRules
                                        .FirstOrDefault(x => x.Name == relationShipName && x.Target.Iid
                                            == targetRequirement.Iid && x.Source.Iid == sourceRequirement.Iid)?
                                        .Clone(false)
-                                   ?? this.CreateBinaryRelationShip(sourceRequirement, targetRequirement,
+                    ?? this.CreateBinaryRelationShip(sourceRequirement, targetRequirement,
                                        relationShipName, this.requirementCategoryNames, false);
 
                 mappedElement.RelationShips.Add(relationShip);

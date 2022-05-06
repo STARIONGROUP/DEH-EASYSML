@@ -208,6 +208,16 @@ namespace DEHEASysML.Services.MappingConfiguration
         }
 
         /// <summary>
+        /// Loads the mapping configuration from hub to dst and generates the map result respectively
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        /// <returns>A collection of <see cref="IMappedElementRowViewModel" /></returns>
+        public List<IMappedElementRowViewModel> LoadMappingFromHubToDst(Repository repository)
+        {
+            return this.LoadMapping(this.MapElementsFromTheExternalIdentifierMapToDst, repository); 
+        }
+
+        /// <summary>
         /// Adds one correspondance to the <see cref="ExternalIdentifierMap" />
         /// </summary>
         /// <param name="internalId">The thing that <see cref="externalId" /> corresponds to</param>
@@ -252,6 +262,7 @@ namespace DEHEASysML.Services.MappingConfiguration
 
         /// <summary>
         /// Maps the <see cref="IMappedElementRowViewModel" />s defined in the <see cref="ExternalIdentifierMap" />
+        /// for the <see cref="MappingDirection.FromDstToHub"/>
         /// </summary>
         /// <param name="repository">The <see cref="Repository" /></param>
         /// <returns>A collection of <see cref="IMappedElementRowViewModel" /></returns>
@@ -289,6 +300,52 @@ namespace DEHEASysML.Services.MappingConfiguration
                     }
 
                     mappedElements.Add(new EnterpriseArchitectRequirementElement(requirement.Clone(true), element, MappingDirection.FromDstToHub));
+                }
+            }
+
+            return mappedElements;
+        }
+
+        /// <summary>
+        /// Maps the <see cref="IMappedElementRowViewModel" />s defined in the <see cref="ExternalIdentifierMap" />
+        /// for the <see cref="MappingDirection.FromHubToDst"/>
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        /// <returns>A collection of <see cref="IMappedElementRowViewModel" /></returns>
+        private List<IMappedElementRowViewModel> MapElementsFromTheExternalIdentifierMapToDst(Repository repository)
+        {
+            var mappedElements = new List<IMappedElementRowViewModel>();
+
+            foreach (var idCorrespondences in this.correspondences
+                         .Where(x => x.ExternalIdentifier.MappingDirection == MappingDirection.FromHubToDst)
+                         .GroupBy(x => x.ExternalIdentifier.Identifier))
+            {
+                var element = repository.GetElementByGuid(idCorrespondences.Key);
+
+                if (element == null)
+                {
+                    continue;
+                }
+
+                if (element.Stereotype.AreEquals(StereotypeKind.Block))
+                {
+                    if (!this.hubController.GetThingById(idCorrespondences.First().InternalId, this.hubController.OpenIteration,
+                            out ElementDefinition elementDefinition))
+                    {
+                        continue;
+                    }
+
+                    mappedElements.Add(new ElementDefinitionMappedElement(elementDefinition.Clone(true), element, MappingDirection.FromHubToDst));
+                }
+                else if (element.Stereotype.AreEquals(StereotypeKind.Requirement))
+                {
+                    if (!this.hubController.GetThingById(idCorrespondences.First().InternalId, this.hubController.OpenIteration,
+                            out Requirement requirement))
+                    {
+                        continue;
+                    }
+
+                    mappedElements.Add(new RequirementMappedElement(requirement.Clone(true), element, MappingDirection.FromHubToDst));
                 }
             }
 

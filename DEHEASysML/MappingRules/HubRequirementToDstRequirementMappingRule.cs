@@ -36,6 +36,7 @@ namespace DEHEASysML.MappingRules
 
     using DEHEASysML.DstController;
     using DEHEASysML.Enumerators;
+    using DEHEASysML.Extensions;
     using DEHEASysML.Services.MappingConfiguration;
     using DEHEASysML.Utils.Stereotypes;
     using DEHEASysML.ViewModel.Rows;
@@ -68,7 +69,7 @@ namespace DEHEASysML.MappingRules
         /// </summary>
         /// <param name="input">
         /// Tuple of <see cref="bool" />, The <see cref="List{T}" /> of <see cref="RequirementMappedElement " />
-        /// The <see cref="bool" /> handles the fact that it the mapping has to map everything        ///
+        /// The <see cref="bool" /> handles the fact that it the mapping has to map everything
         /// </param>
         /// <returns>A collection of <see cref="MappedRequirementRowViewModel" /></returns>
         public override List<MappedRequirementRowViewModel> Transform((bool completeMapping, List<RequirementMappedElement> elements) input)
@@ -88,7 +89,12 @@ namespace DEHEASysML.MappingRules
 
                 foreach (var mappedElement in this.Elements.ToList())
                 {
-                    mappedElement.DstElement ??= this.GetOrCreateRequirement(mappedElement.HubElement);
+                    if (mappedElement.DstElement == null)
+                    {
+                        var alreadyExist = this.GetOrCreateRequirement(mappedElement.HubElement, out var requirementElement);
+                        mappedElement.DstElement = requirementElement;
+                        mappedElement.ShouldCreateNewTargetElement = !alreadyExist;
+                    }
 
                     if (complete)
                     {
@@ -99,6 +105,11 @@ namespace DEHEASysML.MappingRules
 
                 if (complete)
                 {
+                    foreach (var requirementMappedElement in this.Elements)
+                    {
+                        this.LinkRequirements(requirementMappedElement);
+                    }
+
                     this.SaveMappingConfiguration(new List<MappedElementRowViewModel<Requirement>>(this.Elements));
                 }
 
@@ -109,6 +120,51 @@ namespace DEHEASysML.MappingRules
                 this.Logger.Error(exception);
                 ExceptionDispatchInfo.Capture(exception).Throw();
                 return default;
+            }
+        }
+
+        /// <summary>
+        /// Links <see cref="Element"/> requirements based on their relationship
+        /// </summary>
+        /// <param name="requirementMappedElement">The <see cref="RequirementMappedElement"/></param>
+        private void LinkRequirements(RequirementMappedElement requirementMappedElement)
+        {
+            var relationShips = requirementMappedElement.HubElement.QueryRelationships
+                .OfType<BinaryRelationship>().ToList();
+
+            foreach (var relationship in relationShips)
+            {
+                if (relationship.Source is Requirement source && relationship.Target is Requirement target)
+                {
+                    if (this.DstController.TryGetRequirement(source.Name, source.ShortName, out var sourceElement)
+                        && this.DstController.TryGetRequirement(target.Name, target.ShortName, out var targetElement))
+                    {
+                        this.CreateOrUpdateConnector(requirementMappedElement.DstElement, sourceElement, targetElement);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Creates or Updates the connector for the requirement
+        /// </summary>
+        /// <param name="dstElement">The current <see cref="Element"/></param>
+        /// <param name="sourceElement">The source <see cref="Element"/></param>
+        /// <param name="targetElement">The target <see cref="Element"/></param>
+        private void CreateOrUpdateConnector(Element dstElement, Element sourceElement, Element targetElement)
+        {
+            var connector = dstElement.Connectors.OfType<Connector>()
+                .FirstOrDefault(x => x.Stereotype.AreEquals(StereotypeKind.DeriveReqt) && x.ClientID == sourceElement.ElementID
+                                                                                       && x.SupplierID == targetElement.ElementID);
+
+            if (connector == null)
+            {
+                connector = dstElement.Connectors.AddNew("", "Abstraction") as Connector;
+                connector.StereotypeEx = StereotypeKind.DeriveReqt.GetFQStereotype();
+                connector.ClientID = sourceElement.ElementID;
+                connector.SupplierID = targetElement.ElementID;
+                connector.Update();
+                dstElement.Connectors.Refresh();
             }
         }
 
@@ -170,8 +226,15 @@ namespace DEHEASysML.MappingRules
         /// <returns>The child <see cref="Package" /></returns>
         private Package GetOrCreatePackage(Package parentPackage, string subPackageName)
         {
-            var package = parentPackage.Packages.GetByName(subPackageName) as Package
-                          ?? this.DstController.AddNewPackage(parentPackage, subPackageName);
+            var package = parentPackage.Packages.OfType<Package>().FirstOrDefault(x => x.Name == subPackageName);
+
+            if (package == null)
+            {
+                package = this.DstController.AddNewPackage(parentPackage, subPackageName);
+                package.Update();
+                parentPackage.Update();
+                parentPackage.Packages.Refresh();
+            }
 
             return package;
         }
@@ -214,18 +277,21 @@ namespace DEHEASysML.MappingRules
         /// Gets or creates the <see cref="Element" /> representing a Requirement based on the <see cref="Requirement" />
         /// </summary>
         /// <param name="requirement">The <see cref="Requirement" /></param>
-        /// <returns>The <see cref="Element" /></returns>
-        private Element GetOrCreateRequirement(Requirement requirement)
+        /// <param name="requirementElement">The <see cref="Element" /></param>
+        /// <returns>A value indicating if the <see cref="Element" /> already exists</returns>
+        private bool GetOrCreateRequirement(Requirement requirement, out Element requirementElement)
         {
-            if (!this.DstController.TryGetElement(requirement.Name, StereotypeKind.Requirement, out var requirementElement))
+            if (!this.DstController.TryGetElement(requirement.Name, StereotypeKind.Requirement, out requirementElement)
+                || requirement.ShortName != requirementElement.GetRequirementId())
             {
                 requirementElement = this.DstController.AddNewElement(this.DstController.GetDefaultBlocksPackage().Elements,
                     requirement.Name, "requirement", StereotypeKind.Requirement);
 
                 requirementElement.Update();
+                return false;
             }
 
-            return requirementElement;
+            return true;
         }
     }
 }

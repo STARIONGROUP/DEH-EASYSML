@@ -68,6 +68,11 @@ namespace DEHEASysML.MappingRules
         private readonly List<Element> temporaryUnits = new();
 
         /// <summary>
+        /// A collection of correspondances between an <see cref="ElementUsage"/> and a Port and its definition to create links
+        /// </summary>
+        private readonly List<(ElementUsage elementUsage, Element port, Element portDefinition)> portsToLink = new();
+
+        /// <summary>
         /// The collection of <see cref="EnterpriseArchitectBlockElement" />
         /// </summary>
         public List<ElementDefinitionMappedElement> Elements { get; private set; } = new();
@@ -96,22 +101,32 @@ namespace DEHEASysML.MappingRules
 
                 var (complete, elements) = input;
                 this.Elements = new List<ElementDefinitionMappedElement>(elements);
+                this.portsToLink.Clear();
 
                 foreach (var mappedElement in this.Elements.ToList())
                 {
-                    mappedElement.DstElement ??= this.GetOrCreateElement(mappedElement.HubElement);
+                    if (mappedElement.DstElement == null)
+                    {
+                        var alreadyExist = this.GetOrCreateElement(mappedElement.HubElement, out var element);
+                        mappedElement.DstElement = element;
+                        mappedElement.ShouldCreateNewTargetElement = !alreadyExist;
+                    }
 
                     if (complete)
                     {
                         this.MapContainedElement(mappedElement);
                         this.MapProperties(mappedElement.HubElement, mappedElement.DstElement);
+                        this.MapPorts(mappedElement);
                     }
                 }
 
                 if (complete)
                 {
-                    this.DstController.UpdatedElements.AddRange(this.temporaryUnits);
-                    this.DstController.UpdatedElements.AddRange(this.temporaryValueTypes);
+                    foreach (var portToLink in this.portsToLink)
+                    {
+                        this.LinkPort(portToLink);
+                    }
+
                     this.SaveMappingConfiguration(new List<MappedElementRowViewModel<ElementDefinition>>(this.Elements));
                 }
 
@@ -123,6 +138,121 @@ namespace DEHEASysML.MappingRules
                 ExceptionDispatchInfo.Capture(exception).Throw();
                 return default;
             }
+        }
+
+        /// <summary>
+        /// Create the relation between a port an his interface
+        /// </summary>
+        /// <param name="portToLink">The correspondence between <see cref="ElementUsage"/> and Port Definition block</param>
+        private void LinkPort((ElementUsage elementUsage, Element port, Element portDefinition) portToLink)
+        {
+            var (elementUsage, port, portDefinition) = portToLink;
+
+            if (elementUsage.QueryRelationships
+                    .FirstOrDefault(x => x.Category.Any(cat => cat.Name == "interface")) is BinaryRelationship relationsShip)
+            {
+                var targetType = relationsShip.Source.Iid == elementUsage.Iid ? StereotypeKind.RequiredInterface : StereotypeKind.ProvidedInterface;
+                
+                var interfaceElement = this.GetOrCreateInterface(relationsShip.Name);
+
+                if (targetType == StereotypeKind.RequiredInterface)
+                {
+                    this.CreateOrUpdateConnector(portDefinition, interfaceElement);
+                }
+                
+                var embeddedInterface = port.EmbeddedElements.OfType<Element>().FirstOrDefault(x => x.MetaType.AreEquals(targetType));
+
+                if (embeddedInterface == null)
+                {
+                    embeddedInterface = this.DstController.AddNewElement(port.Elements, interfaceElement.Name, targetType.ToString(), targetType);
+                }
+
+                embeddedInterface.Name = interfaceElement.Name;
+                embeddedInterface.Update();
+                port.Elements.Refresh();
+            }
+        }
+
+        /// <summary>
+        /// Create or update the connector representing the relation between port and interface
+        /// </summary>
+        /// <param name="portDefinition">The port <see cref="Element"/> definition</param>
+        /// <param name="interfaceElement">The interface <see cref="Element"/></param>
+        private void CreateOrUpdateConnector(Element portDefinition, Element interfaceElement)
+        {
+            var connector = portDefinition.Connectors.OfType<Connector>().FirstOrDefault() 
+                            ?? portDefinition.Connectors.AddNew("", StereotypeKind.Usage.ToString()) as Connector;
+
+            connector.ClientID = portDefinition.ElementID;
+            connector.SupplierID = interfaceElement.ElementID;
+            connector.Update();
+            portDefinition.Connectors.Refresh();
+        }
+
+        /// <summary>
+        /// Gets or creates an <see cref="Element"/> representing an Interface
+        /// </summary>
+        /// <param name="interfaceName">The name of the <see cref="Element"/></param>
+        /// <returns>The <see cref="Element"/></returns>
+        private Element GetOrCreateInterface(string interfaceName)
+        {
+            if (!this.DstController.TryGetInterface(interfaceName, out var interfaceElement))
+            {
+                interfaceElement = this.DstController.AddNewElement(this.DstController.GetDefaultBlocksPackage().Elements, interfaceName,
+                    StereotypeKind.Interface.ToString(), StereotypeKind.Interface);
+
+                interfaceElement.Update();
+            }
+
+            return interfaceElement;
+        }
+
+        /// <summary>
+        /// Maps ports for the provided <see cref="ElementDefinitionMappedElement"/>
+        /// </summary>
+        /// <param name="mappedElement">The <see cref="ElementDefinitionMappedElement"/></param>
+        private void MapPorts(ElementDefinitionMappedElement mappedElement)
+        {
+            foreach (var elementUsage in mappedElement.HubElement.ContainedElement.Where(x => x.InterfaceEnd != InterfaceEndKind.NONE))
+            {
+                Element port = null;
+                Element definition = null;
+
+                if (!this.GetOrCreatePort(elementUsage, mappedElement.DstElement, ref port, ref definition))
+                {
+                    this.Logger.Error($"Error during the creation of the port {elementUsage.Name} inside {mappedElement.DstElement.Name}");
+                    continue;
+                }
+                
+                this.portsToLink.Add((elementUsage, port, definition));
+            }
+        }
+
+        /// <summary>
+        /// Gets or create the <see cref="Element"/> that represents a port based on the provided <see cref="ElementUsage"/>
+        /// </summary>
+        /// <param name="elementUsage">The <see cref="ElementUsage"/></param>
+        /// <param name="containerElement">The <see cref="Element"/> that will contains the Port</param>
+        /// <param name="port">The <see cref="Element"/> for the Port</param>
+        /// <param name="definition">The port definition</param>
+        /// <returns>A value indicating if the port and definition has been retrieved or created correctly</returns>
+        private bool GetOrCreatePort(ElementUsage elementUsage, Element containerElement, ref Element port, ref Element definition)
+        {
+            port= containerElement.GetAllPortsOfElement().FirstOrDefault(x => (string)x.PropertyTypeName == elementUsage.Name) 
+                  ?? this.DstController.AddNewElement(containerElement.Elements, "", "Port", StereotypeKind.Port);
+
+            definition = containerElement.GetAllPortsDefinitionOfElement().FirstOrDefault(x => x.Name == elementUsage.Name)
+                         ?? this.DstController.AddNewElement(containerElement.Elements, elementUsage.Name, "block", StereotypeKind.Block);
+
+            if (port.PropertyType == 0)
+            {
+                port.PropertyType = definition.ElementID;
+                port.Update();
+            }
+
+            containerElement.Elements.Refresh();
+
+            return port != null && definition != null;
         }
 
         /// <summary>
@@ -164,7 +294,6 @@ namespace DEHEASysML.MappingRules
                     this.CreateProperty(parameter, element, valueType, out property);
                 }
 
-                this.DstController.UpdatedElements.Add(property);
                 this.UpdateValue(parameter, property);
             }
         }
@@ -257,8 +386,6 @@ namespace DEHEASysML.MappingRules
                 var newValueType = this.DstController.AddNewElement(collection, parameterType.Name,
                     "DataType", StereotypeKind.ValueType);
 
-                this.DstController.UpdatedElements.Add(newValueType);
-
                 if (scale.Unit != null)
                 {
                     var newUnit = this.GetOrCreateUnit(scale.Unit);
@@ -327,7 +454,8 @@ namespace DEHEASysML.MappingRules
 
                 if (usageDefinitionMappedElement == null)
                 {
-                    usageDefinitionMappedElement = new ElementDefinitionMappedElement(elementUsage.ElementDefinition, this.GetOrCreateElement(elementUsage), MappingDirection.FromHubToDst);
+                    this.GetOrCreateElement(elementUsage, out var elementUsageElement);
+                    usageDefinitionMappedElement = new ElementDefinitionMappedElement(elementUsage.ElementDefinition, elementUsageElement, MappingDirection.FromHubToDst);
                     this.Elements.Add(usageDefinitionMappedElement);
                 }
 
@@ -355,26 +483,29 @@ namespace DEHEASysML.MappingRules
         /// Gets or creates an <see cref="Element" /> based on a <see cref="ElementBase" />
         /// </summary>
         /// <param name="elementBase">The <see cref="ElementBase" /></param>
-        /// <returns>An existing <see cref="Element" /> or a new  one</returns>
-        private Element GetOrCreateElement(ElementBase elementBase)
+        /// <param name="element">The <see cref="Element"/></param>
+        /// <returns>A value indicating if the <see cref="Element"/> already exists</returns>
+        private bool GetOrCreateElement(ElementBase elementBase, out Element element)
         {
-            return this.GetOrCreateElement(elementBase.Name);
+            return this.GetOrCreateElement(elementBase.Name, out element);
         }
 
         /// <summary>
         /// Gets or creates an <see cref="Element" /> based on a name
         /// </summary>
         /// <param name="elementBaseName">The name</param>
-        /// <returns>An existing <see cref="Element" /> or a new  one</returns>
-        private Element GetOrCreateElement(string elementBaseName)
+        /// <param name="element">The <see cref="Element"/></param>
+        /// <returns>A value indicating if the <see cref="Element"/> already exists</returns>
+        private bool GetOrCreateElement(string elementBaseName, out Element element)
         {
-            if (!this.DstController.TryGetElement(elementBaseName, StereotypeKind.Block, out var element))
+            if (!this.DstController.TryGetElement(elementBaseName, StereotypeKind.Block, out element))
             {
                 var package = this.DstController.GetDefaultBlocksPackage();
                 element = this.DstController.AddNewElement(package.Elements, elementBaseName, "block", StereotypeKind.Block);
+                return false;
             }
 
-            return element;
+            return true;
         }
 
         /// <summary>

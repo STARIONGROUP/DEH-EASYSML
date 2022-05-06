@@ -93,16 +93,6 @@ namespace DEHEASysML.DstController
         ReactiveList<Element> SelectedHubMapResultForTransfer { get; }
 
         /// <summary>
-        /// A collection of <see cref="Element" /> that has beeen updated
-        /// </summary>
-        List<Element> UpdatedElements { get; }
-
-        /// <summary>
-        /// A collection of <see cref="Collection" /> that has beeen updated
-        /// </summary>
-        HashSet<Collection> UpdatedCollections { get; }
-
-        /// <summary>
         /// Gets the correspondance to the new value of a ValueProperty
         /// </summary>
         Dictionary<string, string> UpdatedValuePropretyValues { get; }
@@ -116,6 +106,11 @@ namespace DEHEASysML.DstController
         /// Gets the correspondance to the new value of a ValueProperty
         /// </summary>
         Dictionary<string, (string id, string text)> UpdatedRequirementValues { get; }
+
+        /// <summary>
+        /// Value asserting if the <see cref="DstController" /> is busy
+        /// </summary>
+        bool? IsBusy { get; set; }
 
         /// <summary>
         /// Handle to clear everything when Enterprise Architect close
@@ -222,7 +217,7 @@ namespace DEHEASysML.DstController
         /// Premaps all <see cref="IMappedElementRowViewModel" />
         /// </summary>
         /// <param name="elements"></param>
-        /// <param name="mappingDirectionToMap">The <see cref="MappingDirection"/></param>
+        /// <param name="mappingDirectionToMap">The <see cref="MappingDirection" /></param>
         /// <returns>The collection of premapped <see cref="IMappedElementRowViewModel" /></returns>
         List<IMappedElementRowViewModel> PreMap(List<IMappedElementRowViewModel> elements, MappingDirection mappingDirectionToMap);
 
@@ -293,5 +288,28 @@ namespace DEHEASysML.DstController
         /// <param name="name">The name of the new package</param>
         /// <returns></returns>
         Package AddNewPackage(Package parentPackage, string name);
+
+        /// <summary>
+        /// Retrieve all <see cref="Element" /> of stereotype block or requirement contained in the project
+        /// </summary>
+        /// <returns>A collection of <see cref="Element" /></returns>
+        List<Element> GetAllBlocksAndRequirementsOfRepository();
+
+        /// <summary>
+        /// Tries to get an <see cref="Element" /> that represents an Interface
+        /// </summary>
+        /// <param name="name">The name of the interface</param>
+        /// <param name="element">The <see cref="Element" /></param>
+        /// <returns>A value asserting if the Element has been found</returns>
+        bool TryGetInterface(string name, out Element element);
+
+        /// <summary>
+        /// Tries to get an <see cref="Element" /> representing a Requirement based on is Id and on his name
+        /// </summary>
+        /// <param name="name">The name of the <see cref="Element" /></param>
+        /// <param name="id">The Id of the requirement</param>
+        /// <param name="elementRequirement">The retrieved <see cref="Element" /></param>
+        /// <returns>A value indicating if the <see cref="Element" /> has been found</returns>
+        bool TryGetRequirement(string name, string id, out Element elementRequirement);
     }
 }

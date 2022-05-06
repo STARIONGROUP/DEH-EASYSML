@@ -60,7 +60,6 @@ namespace DEHEASysML.Tests.MappingRules
         private Mock<IDstController> dstController;
         private Mock<IMappingConfigurationService> mappingConfiguration;
         private Dictionary<string, string> updatedValuePropretyValues;
-        private List<Element> updatedElements;
 
         [SetUp]
         public void Setup()
@@ -69,12 +68,10 @@ namespace DEHEASysML.Tests.MappingRules
             defaultPackage.Setup(x => x.Elements).Returns(new EnterpriseArchitectCollection());
 
             this.updatedValuePropretyValues = new Dictionary<string, string>();
-            this.updatedElements = new List<Element>();
             this.hubController = new Mock<IHubController>();
             this.dstController = new Mock<IDstController>();
             this.dstController.Setup(x => x.UpdatedValuePropretyValues).Returns(this.updatedValuePropretyValues);
             this.dstController.Setup(x => x.GetDefaultBlocksPackage()).Returns(defaultPackage.Object);
-            this.dstController.Setup(x => x.UpdatedElements).Returns(this.updatedElements);
 
             this.mappingConfiguration = new Mock<IMappingConfigurationService>();
 

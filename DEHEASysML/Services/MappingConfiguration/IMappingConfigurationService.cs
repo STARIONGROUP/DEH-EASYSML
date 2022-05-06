@@ -92,5 +92,12 @@ namespace DEHEASysML.Services.MappingConfiguration
         /// <param name="repository">The <see cref="Repository" /></param>
         /// <returns>A collection of <see cref="IMappedElementRowViewModel" /></returns>
         List<IMappedElementRowViewModel> LoadMappingFromDstToHub(Repository repository);
+
+        /// <summary>
+        /// Loads the mapping configuration from hub to dst and generates the map result respectively
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        /// <returns>A collection of <see cref="IMappedElementRowViewModel" /></returns>
+        List<IMappedElementRowViewModel> LoadMappingFromHubToDst(Repository repository);
     }
 }

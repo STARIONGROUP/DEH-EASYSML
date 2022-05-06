@@ -140,7 +140,7 @@ namespace DEHEASysML.MappingRules
             }
 
             if (this.HubController.TryGetThingBy(x => x.Name == categoryNames.name
-                                                      && x.IsDeprecated, ClassKind.Category, out Category category)
+                                                      && !x.IsDeprecated, ClassKind.Category, out Category category)
                 || this.TryCreateCategory(categoryNames, out category, ClassKind.BinaryRelationship))
             {
                 relationship.Category.Add(category);

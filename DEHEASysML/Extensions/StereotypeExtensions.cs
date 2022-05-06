@@ -62,6 +62,21 @@ namespace DEHEASysML.Extensions
         }
 
         /// <summary>
+        /// Sets the value of the given ValueProperty
+        /// </summary>
+        /// <param name="valueProperty">The value property</param>
+        /// <param name="newValue">The new value</param>
+        public static void SetValueOfPropertyValue(this Element valueProperty, string newValue)
+        {
+            var customProperties = valueProperty.CustomProperties.OfType<CustomProperty>().FirstOrDefault(x => x.Name == "default");
+
+            if (customProperties != null)
+            {
+                customProperties.Value = newValue;
+            }
+        }
+
+        /// <summary>
         /// Retrieve an <see cref="Element" /> representing a ValueProperty where the name corresponds
         /// </summary>
         /// <param name="element">The <see cref="Element" /> that may contains the ValueProperty</param>
@@ -123,6 +138,16 @@ namespace DEHEASysML.Extensions
         }
 
         /// <summary>
+        /// Gets all Blocks that defines Ports of an <see cref="Element"/>
+        /// </summary>
+        /// <param name="element">The <see cref="Element"/></param>
+        /// <returns>A collection of <see cref="Element"/></returns>
+        public static IEnumerable<Element> GetAllPortsDefinitionOfElement(this Element element)
+        {
+            return element.Elements.OfType<Element>().Where(x => x.Stereotype.AreEquals(StereotypeKind.Block));
+        }
+
+        /// <summary>
         /// Gets all Ports elements of an <see cref="Element" />
         /// </summary>
         /// <param name="element">The <see cref="Element"/></param>
@@ -133,13 +158,41 @@ namespace DEHEASysML.Extensions
         }
 
         /// <summary>
+        /// Gets all Ports elements of an <see cref="Element" />
+        /// </summary>
+        /// <param name="collection">The <see cref="Collection"/> of an Element</param>
+        /// <returns>A collection of <see cref="Element" /> containing PartPoperty</returns>
+        public static IEnumerable<Element> GetAllPortsOfElement(this Collection collection)
+        {
+            return collection.OfType<Element>().Where(x => x.MetaType.AreEquals(StereotypeKind.Port));
+        }
+
+        /// <summary>
         /// Gets the text of the Requirement
         /// </summary>
         /// <param name="requirement">The <see cref="Element"/> representing Requirement</param>
         /// <returns>The text of the Requirement</returns>
         public static string GetRequirementText(this Element requirement)
         {
-            return requirement.TaggedValuesEx.OfType<TaggedValue>().FirstOrDefault(x => x.Name == "Text")?.Value;
+            return requirement.TaggedValuesEx.OfType<TaggedValue>()
+                .FirstOrDefault(x => x.Name.Equals("text", StringComparison.InvariantCultureIgnoreCase))?.Notes;
+        }
+
+        /// <summary>
+        /// Sets the text of the Requirement
+        /// </summary>
+        /// <param name="requirement">The <see cref="Element"/> representing a Requirement</param>
+        /// <param name="text">The new text</param>
+        public static void SetRequirementText(this Element requirement, string text)
+        {
+            var taggedValue = requirement.TaggedValuesEx.OfType<TaggedValue>()
+                .FirstOrDefault(x => x.Name.Equals("text", StringComparison.InvariantCultureIgnoreCase));
+
+            if (taggedValue != null)
+            {
+                taggedValue.Notes = text;
+                taggedValue.Update();
+            }
         }
 
         /// <summary>
@@ -159,7 +212,25 @@ namespace DEHEASysML.Extensions
         /// <returns>The Id of the Requirement</returns>
         public static string GetRequirementId(this Element requirement)
         {
-            return requirement.TaggedValuesEx.OfType<TaggedValue>().FirstOrDefault(x => x.Name == "Id")?.Value;
+            return requirement.TaggedValuesEx.OfType<TaggedValue>()
+                .FirstOrDefault(x => x.Name.Equals("id", StringComparison.InvariantCultureIgnoreCase))?.Value;
+        }
+
+        /// <summary>
+        /// Sets the id of the Requirement
+        /// </summary>
+        /// <param name="requirement">The <see cref="Element"/> representing a Requirement</param>
+        /// <param name="id">The new id</param>
+        public static void SetRequirementId(this Element requirement, string id)
+        {
+            var taggedValue = requirement.TaggedValuesEx.OfType<TaggedValue>()
+                .FirstOrDefault(x => x.Name.Equals("id", StringComparison.InvariantCultureIgnoreCase));
+
+            if (taggedValue != null)
+            {
+                taggedValue.Value = id;
+                taggedValue.Update();
+            }
         }
 
         /// <summary>
@@ -198,6 +269,11 @@ namespace DEHEASysML.Extensions
                     return "SysML1.3::block";
                 case StereotypeKind.Requirement:
                     return "SysML1.4::requirement";
+                case StereotypeKind.Port:
+                case StereotypeKind.Interface:
+                case StereotypeKind.RequiredInterface:
+                case StereotypeKind.ProvidedInterface:
+                    return string.Empty;
                 default: return stereotype.ToString();
             }
         }
