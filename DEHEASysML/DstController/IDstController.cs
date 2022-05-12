@@ -27,6 +27,7 @@ namespace DEHEASysML.DstController
     using System;
     using System.Collections.Generic;
 
+    using CDP4Common;
     using CDP4Common.CommonData;
     using CDP4Common.EngineeringModelData;
     using CDP4Common.SiteDirectoryData;
@@ -111,6 +112,18 @@ namespace DEHEASysML.DstController
         /// Value asserting if the <see cref="DstController" /> is busy
         /// </summary>
         bool? IsBusy { get; set; }
+
+        /// <summary>
+        /// Correspondance between a state <see cref="Element" /> and a collection of the <see cref="Partition" /> where it as been
+        /// modified and the <see cref="ChangeKind" /> applied
+        /// to the partitions
+        /// </summary>
+        Dictionary<Element, List<(Partition, ChangeKind)>> ModifiedPartitions { get; }
+
+        /// <summary>
+        /// A collectior of <see cref="Connector" /> that has been created during the mapping from hub to dst
+        /// </summary>
+        List<Connector> CreatedConnectors { get; }
 
         /// <summary>
         /// Handle to clear everything when Enterprise Architect close
@@ -258,10 +271,11 @@ namespace DEHEASysML.DstController
         bool TryGetValueType(ParameterType parameterType, MeasurementScale scale, out Element valueType);
 
         /// <summary>
-        /// Gets the default <see cref="Package" /> where Blocks are stored
+        /// Gets the default <see cref="Package" /> where Element of the given StereoType are stored
         /// </summary>
+        /// <param name="stereotypeKind">The <see cref="StereotypeKind" /></param>
         /// <returns>The default package</returns>
-        Package GetDefaultBlocksPackage();
+        Package GetDefaultPackage(StereotypeKind stereotypeKind);
 
         /// <summary>
         /// Adds a new <see cref="Element" /> to the given <see cref="Collection" />
@@ -296,12 +310,13 @@ namespace DEHEASysML.DstController
         List<Element> GetAllBlocksAndRequirementsOfRepository();
 
         /// <summary>
-        /// Tries to get an <see cref="Element" /> that represents an Interface
+        /// Tries to get an <see cref="Element" /> that represents by his type
         /// </summary>
-        /// <param name="name">The name of the interface</param>
+        /// <param name="name">The name of the <see cref="Element" /></param>
+        /// <param name="type">The type of the Element</param>
         /// <param name="element">The <see cref="Element" /></param>
         /// <returns>A value asserting if the Element has been found</returns>
-        bool TryGetInterface(string name, out Element element);
+        bool TryGetElementByType(string name, StereotypeKind type, out Element element);
 
         /// <summary>
         /// Tries to get an <see cref="Element" /> representing a Requirement based on is Id and on his name

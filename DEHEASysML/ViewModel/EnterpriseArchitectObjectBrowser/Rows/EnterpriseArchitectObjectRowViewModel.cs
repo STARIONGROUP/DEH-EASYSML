@@ -24,6 +24,10 @@
 
 namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
 {
+    using System.Collections.Generic;
+
+    using DEHEASysML.ViewModel.Comparers;
+
     using EA;
 
     using ReactiveUI;
@@ -37,17 +41,22 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
     public abstract class EnterpriseArchitectObjectRowViewModel<TEaClass> : EnterpriseArchitectObjectBaseRowViewModel where TEaClass : class
     {
         /// <summary>
+        /// The <see cref="EnterpriseArchitectObjectBaseRowViewModel" /> <see cref="IComparer{T}" />
+        /// </summary>
+        protected static readonly IComparer<EnterpriseArchitectObjectBaseRowViewModel> ContainedRowsComparer = new EnterpriseArchitectObjectRowComparer();
+
+        /// <summary>
         /// Backing field for <see cref="RepresentedObject" />
         /// </summary>
         private TEaClass representedObject;
 
         /// <summary>
-        /// Backing field for <see cref="IsSelectedForTransfer"/>
+        /// Backing field for <see cref="IsSelectedForTransfer" />
         /// </summary>
         private bool isSelectedForTransfer;
 
         /// <summary>
-        /// Backing field for <see cref="IsHighlighted"/>
+        /// Backing field for <see cref="IsHighlighted" />
         /// </summary>
         private bool isHighlighted;
 
@@ -57,7 +66,7 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
         private EnterpriseArchitectObjectBaseRowViewModel parent;
 
         /// <summary>
-        /// Backing field for <see cref="ToolTip"/>
+        /// Backing field for <see cref="ToolTip" />
         /// </summary>
         private string toolTip;
 
@@ -136,6 +145,10 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
                 case Element element:
                     this.Name = element.Name;
                     this.RowType = element.Stereotype;
+                    break;
+                case Partition partition:
+                    this.Name = partition.Name;
+                    this.RowType = "Partition";
                     break;
             }
 

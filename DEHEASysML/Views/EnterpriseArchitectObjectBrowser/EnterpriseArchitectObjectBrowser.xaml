@@ -107,7 +107,33 @@
                 <dx:MeasurePixelSnapper>
                     <StackPanel Orientation="Horizontal">
                         <dx:PixelSnapper>
-                            <Image Style="{StaticResource ThingIcon}" Source="{dx:DXImage 'SvgImages/XAF/Action_LinkUnlink_Link.svg'}"/>
+                            <Image Style="{StaticResource ThingIcon}" Source="{dx:DXImage 'SvgImages/DiagramIcons/connector.svg'}"/>
+                        </dx:PixelSnapper>
+
+                        <ContentPresenter x:Name="defaultRowPresenter"
+                                          Content="{Binding}"
+                                          ContentTemplate="{Binding View.DefaultDataRowTemplate}"/>
+                    </StackPanel>
+                </dx:MeasurePixelSnapper>
+            </HierarchicalDataTemplate>
+            <HierarchicalDataTemplate DataType="{x:Type rows:StateRowViewModel}" ItemsSource="{Binding ContainedRows}">
+                <dx:MeasurePixelSnapper>
+                    <StackPanel Orientation="Horizontal">
+                        <dx:PixelSnapper>
+                            <Image Style="{StaticResource ThingIcon}" Source="{dx:DXImage 'SvgImages/DiagramIcons/Figures/figures3.svg'}"/>
+                        </dx:PixelSnapper>
+
+                        <ContentPresenter x:Name="defaultRowPresenter"
+                                          Content="{Binding}"
+                                          ContentTemplate="{Binding View.DefaultDataRowTemplate}"/>
+                    </StackPanel>
+                </dx:MeasurePixelSnapper>
+            </HierarchicalDataTemplate>
+            <HierarchicalDataTemplate DataType="{x:Type rows:PartitionRowViewModel}" ItemsSource="{Binding ContainedRows}">
+                <dx:MeasurePixelSnapper>
+                    <StackPanel Orientation="Horizontal">
+                        <dx:PixelSnapper>
+                            <Image Style="{StaticResource ThingIcon}" Source="{dx:DXImage 'SvgImages/Spreadsheet/ChartGridlinesHorizontal_Major.svg'}"/>
                         </dx:PixelSnapper>
 
                         <ContentPresenter x:Name="defaultRowPresenter"

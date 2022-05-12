@@ -11,6 +11,9 @@
                    xmlns:requirementsBrowser="clr-namespace:DEHEASysML.Views.RequirementsBrowser"
                    xmlns:objectBrowser="clr-namespace:DEHPCommon.UserInterfaces.Views.ObjectBrowser;assembly=DEHPCommon"
                    xmlns:enterpriseArchitectObjectBrowser="clr-namespace:DEHEASysML.Views.EnterpriseArchitectObjectBrowser"
+                   xmlns:stereotypes="clr-namespace:DEHEASysML.Utils.Stereotypes"
+                   xmlns:rows="clr-namespace:DEHEASysML.ViewModel.Rows"
+                   xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
                    mc:Ignorable="d"
                    Title="Mapping Configuration dialog from Hub to Enterprise Architect" Height="450" Width="800"
                    Topmost="True" MinWidth="800"
@@ -25,6 +28,22 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="pack://application:,,,/DEHPCommon;component/UserInterfaces/Views/ContextMenu/ContextMenuStyle.xaml"/>
             </ResourceDictionary.MergedDictionaries>
+
+            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+
+            <HierarchicalDataTemplate DataType="{x:Type stereotypes:ElementDefinitionMappedElement}"
+                                      ItemsSource="{Binding ContainedRows}">
+                <ContentPresenter x:Name="defaultRowPresenter"
+                                  Content="{Binding}"
+                                  ContentTemplate="{Binding View.DefaultDataRowTemplate}"/>
+            </HierarchicalDataTemplate>
+
+            <HierarchicalDataTemplate DataType="{x:Type rows:MappedParameterRowViewModel}"
+                                      ItemsSource="{Binding ContainedRows}">
+                <ContentPresenter x:Name="defaultRowPresenter"
+                                  Content="{Binding}"
+                                  ContentTemplate="{Binding View.DefaultDataRowTemplate}"/>
+            </HierarchicalDataTemplate>
         </ResourceDictionary>
     </dx:DXDialogWindow.Resources>
 
@@ -93,22 +112,23 @@
                     <behaviors:ContextMenuBehavior/>
                 </dxmvvm:Interaction.Behaviors>
                 <dxg:GridControl.View>
-                    <dxg:TableView Name="MappedElement"
+                    <dxg:TreeListView Name="MappedElement"
                                       AllowEditing="False"
                                       AutoWidth="False"
                                       EditorShowMode="MouseUpFocused"
                                       FixedLineWidth="0"
                                       HorizontalScrollbarVisibility="Auto"
+                                      TreeDerivationMode="HierarchicalDataTemplate"
                                       NavigationStyle="Cell"
                                       ShowHorizontalLines="False"
                                       ShowIndicator="False"
                                       ShowVerticalLines="False"
                                       VerticalScrollbarVisibility="Auto"
                                       AllowColumnMoving="False">
-                        <dxg:TableView.ContextMenu>
+                        <dxg:TreeListView.ContextMenu>
                             <ContextMenu Name="RowContextMenu"/>
-                        </dxg:TableView.ContextMenu>
-                        <dxg:TableView.RowStyle>
+                        </dxg:TreeListView.ContextMenu>
+                        <dxg:TreeListView.RowStyle>
                             <Style TargetType="{x:Type dxg:RowControl}">
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding Row.MappedRowStatus}" 
@@ -125,14 +145,14 @@
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
-                        </dxg:TableView.RowStyle>
-                    </dxg:TableView>
+                        </dxg:TreeListView.RowStyle>
+                    </dxg:TreeListView>
                 </dxg:GridControl.View>
                 <dxg:GridControl.Columns>
                     <dxg:GridColumn Header="Nodes" Fixed="Left" Width="80" FixedWidth="True">
                         <dxg:GridColumn.CellDisplayTemplate>
                             <DataTemplate>
-                                <StackPanel Orientation="Horizontal">
+                                <StackPanel Orientation="Horizontal" Visibility="{Binding Row.ShouldDisplayArrowAndIcons, Converter={StaticResource BooleanToVisibilityConverter}}">
                                     <dx:PixelSnapper>
                                         <Image Width="25" Source="pack://application:,,,/DEHEASysML;component/Resources/icon.ico"/>
                                     </dx:PixelSnapper>
@@ -146,11 +166,30 @@
                             </DataTemplate>
                         </dxg:GridColumn.CellDisplayTemplate>
                     </dxg:GridColumn>
-                    <dxg:GridColumn Header="Source Element" FieldName="SourceElementName" Width="*" MaxWidth="300"/>
+                    <dxg:GridColumn Header="Source Element" FieldName="" Width="2*" MaxWidth="400">
+                        <dxg:GridColumn.CellDisplayTemplate>
+                            <DataTemplate>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{Binding Row.SourceElementName}" VerticalAlignment="Center"
+                                               FontSize="12" Margin="2 0 0 0"/>
+                                    <dxe:ComboBoxEdit Grid.Column="1" Width="150"  
+                                                      ItemsSource="{Binding Row.AvailableActualFiniteStates}"
+                                                      SelectedItem="{Binding Row.SelectedActualFiniteState, Mode=TwoWay}"
+                                                      AllowNullInput="False" DisplayMember="Name"
+                                                      Visibility="{Binding Row.ShoulDisplayComboBox, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                      ToolTip="Select an Actual Finite State to use for any contained parameter that is state dependent"/>
+                                </Grid>
+                            </DataTemplate>
+                        </dxg:GridColumn.CellDisplayTemplate>
+                    </dxg:GridColumn>
                     <dxg:GridColumn Header="" Width="50" FixedWidth="True">
                         <dxg:GridColumn.CellDisplayTemplate>
                             <DataTemplate>
-                                <dx:PixelSnapper>
+                                <dx:PixelSnapper Visibility="{Binding Row.ShouldDisplayArrowAndIcons, Converter={StaticResource BooleanToVisibilityConverter}}">
                                     <Image Width="30" Source="{dx:DXImage 'SvgImages/XAF/ModelEditor_GoToObject.svg'}"/>
                                 </dx:PixelSnapper>
                             </DataTemplate>

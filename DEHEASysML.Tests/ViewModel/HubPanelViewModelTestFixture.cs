@@ -28,6 +28,8 @@ namespace DEHEASysML.Tests.ViewModel
     using System.Collections.Generic;
     using System.Reactive.Concurrency;
 
+    using Autofac;
+
     using CDP4Common.CommonData;
     using CDP4Common.EngineeringModelData;
     using CDP4Common.SiteDirectoryData;
@@ -36,15 +38,21 @@ namespace DEHEASysML.Tests.ViewModel
     using CDP4Dal.Permission;
 
     using DEHEASysML.DstController;
+    using DEHEASysML.Utils.Stereotypes;
     using DEHEASysML.ViewModel;
+    using DEHEASysML.ViewModel.Dialogs.Interfaces;
     using DEHEASysML.ViewModel.RequirementsBrowser;
+    using DEHEASysML.ViewModel.Rows;
+    using DEHEASysML.Views.Dialogs;
 
+    using DEHPCommon;
     using DEHPCommon.Enumerators;
     using DEHPCommon.HubController.Interfaces;
     using DEHPCommon.Services.NavigationService;
     using DEHPCommon.UserInterfaces.ViewModels;
     using DEHPCommon.UserInterfaces.ViewModels.Interfaces;
     using DEHPCommon.UserInterfaces.ViewModels.PublicationBrowser;
+    using DEHPCommon.UserInterfaces.ViewModels.Rows.ElementDefinitionTreeRows;
     using DEHPCommon.UserInterfaces.Views;
 
     using Moq;
@@ -71,14 +79,25 @@ namespace DEHEASysML.Tests.ViewModel
         private Participant participant;
         private Iteration iteration;
         private Mock<IDstController> dstController;
+        private Mock<IHubMappingConfigurationDialogViewModel> hubMappingConfiguration;
 
         [SetUp]
         public void Setup()
         {
             RxApp.MainThreadScheduler = Scheduler.CurrentThread;
 
+            this.hubMappingConfiguration = new Mock<IHubMappingConfigurationDialogViewModel>();
+            this.hubMappingConfiguration.Setup(x => x.Initialize(It.IsAny<List<Thing>>()));
+
+            var containerBuilder = new ContainerBuilder();
+            containerBuilder.RegisterInstance(this.hubMappingConfiguration.Object).As<IHubMappingConfigurationDialogViewModel>();
+            AppContainer.Container = containerBuilder.Build();
+
             this.navigationService = new Mock<INavigationService>();
             this.navigationService.Setup(x => x.ShowDialog<Login>());
+
+            this.navigationService.Setup(x => x.ShowDialog<HubMappingConfigurationDialog,
+                IHubMappingConfigurationDialogViewModel>(It.IsAny<IHubMappingConfigurationDialogViewModel>()));
 
             this.hubController = new Mock<IHubController>();
             this.hubController.Setup(x => x.Close());
@@ -123,7 +142,8 @@ namespace DEHEASysML.Tests.ViewModel
                 Container = new EngineeringModel(Guid.NewGuid(), null, null)
                 {
                     EngineeringModelSetup = engineeringModelSetup
-                }
+                }, 
+                TopElement = new ElementDefinition()
             };
 
             this.session.Setup(x => x.OpenIterations).Returns(
@@ -154,6 +174,11 @@ namespace DEHEASysML.Tests.ViewModel
             this.dstController = new Mock<IDstController>();
             this.dstController.Setup(x => x.IsFileOpen).Returns(true);
             this.dstController.Setup(x => x.MappingDirection).Returns(MappingDirection.FromHubToDst);
+
+            this.dstController.Setup(x => x.HubMapResult).Returns(new ReactiveList<IMappedElementRowViewModel>()
+            {
+                new RequirementMappedElement(null,null,MappingDirection.FromHubToDst)
+            });
 
             this.viewModel = new HubPanelViewModel(this.navigationService.Object, this.hubController.Object,
                 this.sessionControl.Object, this.hubBrowserHeader.Object, this.publicationBrowser.Object,
@@ -199,6 +224,53 @@ namespace DEHEASysML.Tests.ViewModel
             this.viewModel.ConnectCommand.Execute(null);
             this.hubController.Verify(x => x.Close(), Times.Exactly(3));
             this.navigationService.Verify(x => x.ShowDialog<Login>(), Times.Once);
+        }
+
+        [Test]
+        public void VerifyMapCommand()
+        {
+            Assert.DoesNotThrow(() => this.viewModel.ObjectBrowser.MapCommand.Execute(null));
+            Assert.DoesNotThrow(() => this.viewModel.RequirementsBrowser.MapCommand.Execute(null));
+            Assert.DoesNotThrow(() => this.viewModel.MapTopElementCommand.Execute(null));
+            this.hubController.Setup(x => x.OpenIteration).Returns(this.iteration);
+            Assert.DoesNotThrow(() => this.viewModel.MapTopElementCommand.Execute(null));
+
+            var selectedRequirements = new ReactiveList<object>();
+            var requirement = new RequirementRowViewModel(new Requirement(), this.session.Object, null);
+
+            var requirementGroup = new RequirementsGroup()
+            {
+                Iid = Guid.NewGuid()
+            };
+
+            var requirementsGroupRowViewModel = new RequirementsGroupRowViewModel(requirementGroup, this.session.Object, null,
+                new List<Requirement>()
+                {
+                    new Requirement()
+                    {
+                        Group = requirementGroup
+                    }
+                });
+
+            var requirementsSpecification = new RequirementsSpecificationRowViewModel(new RequirementsSpecification()
+            {
+                Requirement = { new Requirement() }
+            },
+                this.session.Object, null);
+
+            selectedRequirements.Add(requirement);
+            selectedRequirements.Add(requirementsGroupRowViewModel);
+            selectedRequirements.Add(requirementsSpecification);
+            this.requirementsBrowser.Setup(x => x.SelectedThings).Returns(selectedRequirements);
+            Assert.DoesNotThrow(() => this.viewModel.RequirementsBrowser.MapCommand.Execute(null));
+
+            var selectedElementDefinitions = new ReactiveList<object>
+            {
+                new ElementDefinitionRowViewModel(new ElementDefinition(), this.domain,this.session.Object, null)
+            };
+
+            this.objectBrowser.Setup(x => x.SelectedThings).Returns(selectedElementDefinitions);
+            Assert.DoesNotThrow(() => this.viewModel.ObjectBrowser.MapCommand.Execute(null));
         }
     }
 }

@@ -50,6 +50,13 @@ namespace DEHEASysML.Utils.Stereotypes
         public ElementDefinitionMappedElement(ElementDefinition thing, Element dstElement, MappingDirection mappingDirection)
             : base(thing, dstElement, mappingDirection)
         {
+            if (thing != null)
+            {
+                foreach (var parameter in thing.Parameter)
+                {
+                    this.ContainedRows.Add(new MappedParameterRowViewModel(parameter, null, mappingDirection));
+                }
+            }
         }
     }
 }

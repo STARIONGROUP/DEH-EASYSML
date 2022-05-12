@@ -46,11 +46,6 @@ namespace DEHEASysML.ViewModel.Rows
     public abstract class MappedElementRowViewModel<TThing> : ReactiveObject, IMappedElementRowViewModel where TThing : Thing
     {
         /// <summary>
-        /// A collection of <see cref="BinaryRelationship" />
-        /// </summary>
-        public List<BinaryRelationship> RelationShips { get; } = new();
-
-        /// <summary>
         /// Backing field for <see cref="DstElement" />
         /// </summary>
         private Element dstElement;
@@ -86,6 +81,16 @@ namespace DEHEASysML.ViewModel.Rows
         private MappedRowStatus mappedRowStatus;
 
         /// <summary>
+        /// Backing field for <see cref="ShoulDisplayComboBox"/>
+        /// </summary>
+        private bool shouldDisplayComboBox;
+
+        /// <summary>
+        /// Backing field for <see cref="ShouldDisplayArrowAndIcons"/>
+        /// </summary>
+        private bool shouldDisplayArrowAndIcons;
+
+        /// <summary>
         /// Initializes a new <see cref="MappedElementRowViewModel{TThing}" />
         /// </summary>
         /// <param name="thing">The <see cref="TThing" /></param>
@@ -96,10 +101,39 @@ namespace DEHEASysML.ViewModel.Rows
             this.HubElement = thing;
             this.DstElement = dstElement;
             this.MappingDirection = mappingDirection;
+            this.ShouldDisplayArrowAndIcons = true;
 
             this.WhenAnyValue(x => x.DstElement, x => x.HubElement)
                 .Subscribe(_ => this.UpdateProperties());
         }
+
+        /// <summary>
+        /// Gets or sets the value indicating if the combobox should be visible
+        /// </summary>
+        public bool ShoulDisplayComboBox
+        {
+            get => this.shouldDisplayComboBox;
+            set => this.RaiseAndSetIfChanged(ref this.shouldDisplayComboBox, value);
+        }
+
+        /// <summary>
+        /// Gets or sets the value indicating if the Arrow and icons should be display
+        /// </summary>
+        public bool ShouldDisplayArrowAndIcons
+        {
+            get => this.shouldDisplayArrowAndIcons;
+            set => this.RaiseAndSetIfChanged(ref this.shouldDisplayArrowAndIcons, value);
+        }
+
+        /// <summary>
+        /// A collection of <see cref="MappedParameterRowViewModel"/>
+        /// </summary>
+        public ReactiveList<object> ContainedRows { get; } = new();
+
+        /// <summary>
+        /// A collection of <see cref="BinaryRelationship" />
+        /// </summary>
+        public List<BinaryRelationship> RelationShips { get; } = new();
 
         /// <summary>
         /// Gets or sets the <see cref="IMappedElementRowViewModel.MappedRowStatus" />
@@ -170,7 +204,22 @@ namespace DEHEASysML.ViewModel.Rows
         private void UpdateProperties()
         {
             var dstElementDisplay = $"{this.DstElement?.Name} [{this.DstElement?.Stereotype}]";
-            var hubElementDisplay = $"{((INamedThing)this.HubElement)?.Name} [{this.HubElement?.GetType().Name}]";
+
+            if (this.DstElement == null)
+            {
+                dstElementDisplay = string.Empty;
+            }
+
+            string hubElementDisplay;
+
+            if (this.HubElement is INamedThing namedThing)
+            {
+                hubElementDisplay = $"{namedThing.Name} [{namedThing.GetType().Name}]";
+            }
+            else
+            {
+                hubElementDisplay = $"{this.HubElement?.UserFriendlyName}";
+            }
 
             this.SourceElementName = this.MappingDirection == MappingDirection.FromDstToHub ? dstElementDisplay : hubElementDisplay;
             this.TargetElementName = this.MappingDirection == MappingDirection.FromDstToHub ? hubElementDisplay : dstElementDisplay;
