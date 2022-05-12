@@ -87,11 +87,26 @@ namespace DEHEASysML.Enumerators
         /// <summary>
         /// Used to represent the Interface MetaType
         /// </summary>
-        Interface, 
+        Interface,
 
         /// <summary>
         /// Used to represent the Usage MetaType
         /// </summary>
-        Usage
+        Usage,
+
+        /// <summary>
+        /// Used to represent the Dependency MetaType
+        /// </summary>
+        Dependency,
+
+        /// <summary>
+        /// Used to represent the State MetaType
+        /// </summary>
+        State,
+
+        /// <summary>
+        /// Used to represent the Partition MetaType
+        /// </summary>
+        Partition
     }
 }

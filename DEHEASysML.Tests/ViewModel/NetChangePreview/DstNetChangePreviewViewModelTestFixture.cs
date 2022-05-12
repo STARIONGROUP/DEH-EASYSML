@@ -27,10 +27,13 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
     using System;
     using System.Collections.Generic;
 
+    using CDP4Common.EngineeringModelData;
+
     using CDP4Dal;
 
     using DEHEASysML.DstController;
     using DEHEASysML.Enumerators;
+    using DEHEASysML.Events;
     using DEHEASysML.Tests.Utils.Stereotypes;
     using DEHEASysML.Utils.Stereotypes;
     using DEHEASysML.ViewModel.NetChangePreview;
@@ -158,13 +161,15 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
         {
             Assert.IsNotNull(this.viewModel.SelectAllCommand);
             Assert.IsNotNull(this.viewModel.DeselectAllCommand);
+            Assert.DoesNotThrow(() => CDPMessageBus.Current.SendMessage(new UpdateDstNetChangePreview()));
+            Assert.DoesNotThrow(() => CDPMessageBus.Current.SendMessage(new UpdateDstNetChangePreview(true)));
         }
 
         [Test]
         public void VerifyPopulateContextMenu()
         {
             Assert.DoesNotThrow(() => this.viewModel.PopulateContextMenu());
-            this.hubMapResult.Add(new ElementDefinitionMappedElement(null,null, MappingDirection.FromHubToDst));
+            this.hubMapResult.Add(new ElementDefinitionMappedElement(new ElementDefinition(),null, MappingDirection.FromHubToDst));
             Assert.DoesNotThrow(() => this.viewModel.PopulateContextMenu());
             Assert.AreEqual(2, this.viewModel.ContextMenu.Count);
         }

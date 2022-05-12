@@ -110,6 +110,11 @@ namespace DEHEASysML.DstController
         private readonly IMappingConfigurationService mappingConfigurationService;
 
         /// <summary>
+        /// Reference to the <see cref="Package" /> where Element of Stereotype are stores, to not recalculate it each time
+        /// </summary>
+        private readonly Dictionary<StereotypeKind, Package> defaultPackages = new();
+
+        /// <summary>
         /// Backing field for <see cref="CurrentRepository" />
         /// </summary>
         private Repository currentRepository;
@@ -128,11 +133,6 @@ namespace DEHEASysML.DstController
         /// Backing field for <see cref="IsFileOpen" />
         /// </summary>
         private bool isFileOpen;
-
-        /// <summary>
-        /// Reference to the <see cref="Package" /> where Blocks are stores, to not recalculate it each time
-        /// </summary>
-        private Package defaultBlocksPackage;
 
         /// <summary>
         /// A value indicating if the next notifyContext event should be ignore
@@ -203,6 +203,13 @@ namespace DEHEASysML.DstController
         }
 
         /// <summary>
+        /// Correspondance between a state <see cref="Element" /> and a collection of the <see cref="Partition" /> where it as been
+        /// modified and the <see cref="ChangeKind" /> applied
+        /// to the partitions
+        /// </summary>
+        public Dictionary<Element, List<(Partition, ChangeKind)>> ModifiedPartitions { get; } = new();
+
+        /// <summary>
         /// A collection of <see cref="IMappedElementRowViewModel" /> resulting of the mapping from dst to hub
         /// </summary>
         public ReactiveList<IMappedElementRowViewModel> DstMapResult { get; } = new();
@@ -253,6 +260,11 @@ namespace DEHEASysML.DstController
         public Dictionary<string, (string id, string text)> UpdatedRequirementValues { get; } = new();
 
         /// <summary>
+        /// A collectior of <see cref="Connector" /> that has been created during the mapping from hub to dst
+        /// </summary>
+        public List<Connector> CreatedConnectors { get; } = new();
+
+        /// <summary>
         /// Gets or set the value if a file is open or not
         /// </summary>
         public bool IsFileOpen
@@ -266,6 +278,7 @@ namespace DEHEASysML.DstController
         /// </summary>
         public void Disconnect()
         {
+            this.CurrentRepository.EnableUIUpdates = true;
             this.hubController.Close();
             this.CurrentRepository = null;
         }
@@ -278,6 +291,7 @@ namespace DEHEASysML.DstController
         {
             this.CurrentRepository = repository;
             this.logger.Info("DST Controller initialized");
+            this.CurrentRepository.EnableUIUpdates = true;
         }
 
         /// <summary>
@@ -340,15 +354,16 @@ namespace DEHEASysML.DstController
         }
 
         /// <summary>
-        /// Tries to get an <see cref="Element" /> that represents an Interface
+        /// Tries to get an <see cref="Element" /> that represents by his type
         /// </summary>
-        /// <param name="name">The name of the interface</param>
+        /// <param name="name">The name of the <see cref="Element" /></param>
+        /// <param name="type">The type of the Element</param>
         /// <param name="element">The <see cref="Element" /></param>
         /// <returns>A value asserting if the Element has been found</returns>
-        public bool TryGetInterface(string name, out Element element)
+        public bool TryGetElementByType(string name, StereotypeKind type, out Element element)
         {
             var queryResult = this.CurrentRepository.GetElementsByQuery("Simple", name);
-            element = queryResult.OfType<Element>().FirstOrDefault(x => x.Name == name && x.MetaType.AreEquals(StereotypeKind.Interface));
+            element = queryResult.OfType<Element>().FirstOrDefault(x => x.Name == name && x.MetaType.AreEquals(type));
             return element != null;
         }
 
@@ -464,34 +479,47 @@ namespace DEHEASysML.DstController
         }
 
         /// <summary>
-        /// Gets the default <see cref="Package" /> where Blocks are stored
+        /// Gets the default <see cref="Package" /> where Element of the given StereoType are stored
         /// </summary>
+        /// <param name="stereotypeKind">The <see cref="StereotypeKind" /></param>
         /// <returns>The default package</returns>
-        public Package GetDefaultBlocksPackage()
+        public Package GetDefaultPackage(StereotypeKind stereotypeKind)
         {
-            if (this.defaultBlocksPackage == null)
+            this.shouldIgnoreEvents = true;
+
+            if (!this.defaultPackages.TryGetValue(stereotypeKind, out var defaultPackage))
             {
+                var packageName = $"COMET_{stereotypeKind}s";
+
                 foreach (var package in this.CurrentRepository.Models.OfType<Package>())
                 {
-                    var defaultPackage = this.GetDefaultBlocksPackage(package);
+                    defaultPackage = this.GetDefaultPackage(package, stereotypeKind);
 
                     if (defaultPackage != null)
                     {
-                        this.defaultBlocksPackage = defaultPackage;
+                        this.defaultPackages[stereotypeKind] = defaultPackage;
                         break;
                     }
                 }
 
-                if (this.defaultBlocksPackage == null)
+                if (defaultPackage == null)
                 {
+                    if (this.TryGetPackage(packageName, out defaultPackage))
+                    {
+                        this.defaultPackages[stereotypeKind] = defaultPackage;
+                        return defaultPackage;
+                    }
+
                     var collection = this.CurrentRepository.Models.OfType<Package>().First().Packages;
-                    this.defaultBlocksPackage = collection.AddNew("COMET", "Package") as Package;
-                    this.defaultBlocksPackage.Update();
-                    collection.Refresh();
+                    defaultPackage = collection.AddNew(packageName, "Package") as Package;
+                    defaultPackage.Update();
+                    this.defaultPackages[stereotypeKind] = defaultPackage;
+                    this.CurrentRepository.Models.OfType<Package>().First().Update();
                 }
             }
 
-            return this.defaultBlocksPackage;
+            this.shouldIgnoreEvents = false;
+            return defaultPackage;
         }
 
         /// <summary>
@@ -692,13 +720,20 @@ namespace DEHEASysML.DstController
 
             try
             {
-                var (iterationClone, transaction) = this.GetIterationTransaction();
-
-                if (!(this.SelectedDstMapResultForTransfer.Any() && this.TrySupplyingAndCreatingLogEntry(transaction)))
+                if (!(this.SelectedDstMapResultForTransfer.Any() && this.TrySupplyingAndCreatingLogEntry(out var content)))
                 {
                     this.statusBar.Append("Transfer to the Hub aborted !", StatusBarMessageSeverity.Warning);
                     return;
                 }
+
+                await this.PrepareActualFiniteState();
+                var (iterationClone, transaction) = this.GetIterationTransaction();
+                this.hubController.RegisterNewLogEntryToTransaction(content, transaction);
+
+                var stateDependsParameters = this.SelectedDstMapResultForTransfer.OfType<ElementDefinition>()
+                    .SelectMany(x => x.Parameter.Where(param => param.StateDependence != null));
+
+                this.UpdateParametersAndValueSets(stateDependsParameters, iterationClone, transaction);
 
                 this.PrepareThingsForTransfer(iterationClone, transaction);
                 this.mappingConfigurationService.PersistExternalIdentifierMap(transaction, iterationClone);
@@ -777,21 +812,28 @@ namespace DEHEASysML.DstController
 
             if (elementsLoaded == 0)
             {
-                this.SelectedDstMapResultForTransfer.Clear();
-                this.SelectedGroupsForTransfer.Clear();
                 this.DstMapResult.Clear();
                 this.HubMapResult.Clear();
             }
 
-            this.CurrentRepository.EnableUIUpdates = !this.HubMapResult.IsEmpty;
+            this.SelectedHubMapResultForTransfer.Clear();
+            this.SelectedDstMapResultForTransfer.Clear();
+            this.SelectedGroupsForTransfer.Clear();
 
-            if (this.hubController.IsSessionOpen && this.hubController.OpenIteration != null && hadHubMapping)
+            this.CurrentRepository.EnableUIUpdates = this.HubMapResult.IsEmpty;
+
+            if (this.hubController.IsSessionOpen && this.hubController.OpenIteration != null && (hadHubMapping || this.HubMapResult.Any()))
             {
                 CDPMessageBus.Current.SendMessage(new UpdateDstNetChangePreview());
             }
 
             this.IsBusy = false;
-            this.statusBar.Append($"{elementsLoaded} Element(s) has been loaded");
+
+            if (this.hubController.IsSessionOpen && this.hubController.OpenIteration != null)
+            {
+                this.statusBar.Append($"{elementsLoaded} Element(s) has been loaded");
+            }
+
             return elementsLoaded;
         }
 
@@ -801,6 +843,195 @@ namespace DEHEASysML.DstController
         public void ResetConfigurationMapping()
         {
             this.mappingConfigurationService.ExternalIdentifierMap = new ExternalIdentifierMap();
+        }
+
+        /// <summary>
+        /// Prepare all <see cref="ActualFiniteStateList" /> and <see cref="PossibleFiniteStateList" />
+        /// that has been modified or created during the mapping
+        /// </summary>
+        /// <returns>A Task</returns>
+        private async Task PrepareActualFiniteState()
+        {
+            var (iterationClone, transaction) = this.GetIterationTransaction();
+
+            var stateDependsParameters = this.SelectedDstMapResultForTransfer.OfType<ElementDefinition>()
+                .SelectMany(x => x.Parameter.Where(param => param.StateDependence != null));
+
+            var actualFiniteStateLists = stateDependsParameters.Select(x => x.StateDependence)
+                .GroupBy(x => x.Iid).Select(x => x.First()).ToList();
+
+            var possibleFiniteStateLists = actualFiniteStateLists
+                .SelectMany(x => x.PossibleFiniteStateList).Distinct().ToList();
+
+            var possibleFiniteStates = possibleFiniteStateLists
+                .SelectMany(x => x.PossibleState).Distinct().ToList();
+
+            foreach (var possibleFiniteState in possibleFiniteStates)
+            {
+                if (this.hubController.GetThingById(possibleFiniteState.Iid, iterationClone, out PossibleFiniteState retrievedPossibleFiniteState))
+                {
+                    if (retrievedPossibleFiniteState.Name != possibleFiniteState.Name || retrievedPossibleFiniteState.ShortName !=
+                        possibleFiniteState.ShortName)
+                    {
+                        this.exchangeHistory.Append(possibleFiniteState, ChangeKind.Update);
+                        transaction.CreateOrUpdate(possibleFiniteState.Clone(false));
+                    }
+                }
+                else
+                {
+                    this.exchangeHistory.Append(possibleFiniteState, ChangeKind.Create);
+                    transaction.CreateOrUpdate(possibleFiniteState);
+                }
+            }
+
+            foreach (var possibleFiniteStateList in possibleFiniteStateLists)
+            {
+                if (iterationClone.PossibleFiniteStateList.All(x => x.Iid != possibleFiniteStateList.Iid)
+                    || this.HasPossibleFiniteStateListChanged(possibleFiniteStateList))
+                {
+                    this.AddOrUpdateIterationAndTransaction(possibleFiniteStateList, iterationClone.PossibleFiniteStateList, transaction);
+                }
+            }
+
+            foreach (var actualFiniteStateList in actualFiniteStateLists.Where(actualFiniteStateList =>
+                         iterationClone.ActualFiniteStateList.All(x => x.Iid != actualFiniteStateList.Iid)))
+            {
+                this.AddOrUpdateIterationAndTransaction(actualFiniteStateList, iterationClone.ActualFiniteStateList, transaction);
+            }
+
+            foreach (var updatedPossibleFiniteStateList in transaction.UpdatedThing.Where(x => x.Key is PossibleFiniteStateList))
+            {
+                var original = (PossibleFiniteStateList)updatedPossibleFiniteStateList.Key;
+                var updated = (PossibleFiniteStateList)updatedPossibleFiniteStateList.Value;
+
+                foreach (var possibleState in original.PossibleState.Where(x => updated.PossibleState.All(update => update.Iid != x.Iid)))
+                {
+                    this.exchangeHistory.Append(possibleState, ChangeKind.Delete);
+                    transaction.Delete(possibleState.Clone(false));
+                }
+            }
+
+            transaction.CreateOrUpdate(iterationClone);
+            await this.hubController.Write(transaction);
+            await this.hubController.Refresh();
+        }
+
+        /// <summary>
+        /// Update each <see cref="Parameter" /> and its <see cref="IValueSet" /> with the new
+        /// <see cref="ActualFiniteStateList" />
+        /// </summary>
+        /// <param name="stateDependsParameters">A collection of <see cref="Parameter" /> to update</param>
+        /// <param name="iterationClone">The <see cref="Iteration" /> clone</param>
+        /// <param name="transaction">The <see cref="IThingTransaction" /></param>
+        private void UpdateParametersAndValueSets(IEnumerable<Parameter> stateDependsParameters, Iteration iterationClone, IThingTransaction transaction)
+        {
+            foreach (var parameter in stateDependsParameters)
+            {
+                if (this.hubController.GetThingById(parameter.StateDependence.Iid, iterationClone, out ActualFiniteStateList actualFiniteStateList))
+                {
+                    parameter.StateDependence = actualFiniteStateList;
+
+                    var valueToApply = parameter.ValueSet.First(x => x.ActualState == null).Manual;
+
+                    foreach (var actualState in actualFiniteStateList.ActualState)
+                    {
+                        if (parameter.ValueSet.FirstOrDefault(x => x.ActualState != null && x.ActualState.Iid == actualState.Iid) == null)
+                        {
+                            var valueSet = new ParameterValueSet
+                            {
+                                Iid = Guid.NewGuid(),
+                                Reference = new ValueArray<string>(),
+                                Formula = new ValueArray<string>(),
+                                Published = new ValueArray<string>(),
+                                Computed = new ValueArray<string>(),
+                                ActualState = actualState
+                            };
+
+                            parameter.ValueSet.Add(valueSet);
+
+                            valueSet.ValueSwitch = ParameterSwitchKind.MANUAL;
+                            valueSet.Manual = new ValueArray<string>(valueToApply);
+                        }
+                    }
+
+                    this.RemoveUnusedValueSets(parameter, iterationClone);
+                    transaction.CreateOrUpdate(parameter);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Removes all temporary <see cref="IValueSet" />
+        /// </summary>
+        /// <param name="parameter">The <see cref="Parameter" /></param>
+        /// <param name="iterationClone">The <see cref="Iteration" /> clone</param>
+        private void RemoveUnusedValueSets(Parameter parameter, Iteration iterationClone)
+        {
+            var parameterList = new List<Parameter> { parameter };
+
+            if (this.hubController.GetThingById(parameter.Iid, iterationClone, out Parameter parameterFromIteration))
+            {
+                parameterList.Add(parameterFromIteration);
+
+                var parameterFromIterationClone = parameterFromIteration;
+
+                while (parameterFromIterationClone.Original is Parameter originalParameter)
+                {
+                    parameterList.Add(originalParameter);
+                    parameterFromIterationClone = originalParameter;
+                }
+            }
+
+            var parameterClone = parameter;
+
+            while (parameterClone.Original is Parameter originalParameter)
+            {
+                parameterList.Add(originalParameter);
+                parameterClone = originalParameter;
+            }
+
+            foreach (var valueSet in parameter.ValueSet.ToList())
+            {
+                if (valueSet.ActualState == null && !this.hubController.GetThingById(valueSet.Iid, iterationClone, out ParameterValueSet _))
+                {
+                    foreach (var parameterToRemoveValueSet in parameterList)
+                    {
+                        parameterToRemoveValueSet.ValueSet.RemoveAll(x => x.Iid == valueSet.Iid);
+                    }
+                }
+                else if (valueSet.ActualState != null && !this.hubController.GetThingById(valueSet.ActualState.Iid, iterationClone, out ActualFiniteState _))
+                {
+                    foreach (var parameterToRemoveValueSet in parameterList)
+                    {
+                        parameterToRemoveValueSet.ValueSet.RemoveAll(x => x.Iid == valueSet.Iid);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Verifies if the <see cref="PossibleFiniteStateList" /> has changed or not
+        /// </summary>
+        /// <param name="possibleFiniteStateList">The <see cref="PossibleFiniteStateList" /></param>
+        /// <returns>A value indicating if the <see cref="PossibleFiniteStateList" /> has changed</returns>
+        private bool HasPossibleFiniteStateListChanged(PossibleFiniteStateList possibleFiniteStateList)
+        {
+            var originalPossibleStates = ((PossibleFiniteStateList)possibleFiniteStateList.Original).PossibleState;
+
+            if (originalPossibleStates.Count != possibleFiniteStateList.PossibleState.Count)
+            {
+                return true;
+            }
+
+            foreach (var possibleFiniteState in possibleFiniteStateList.PossibleState.ToList())
+            {
+                if (originalPossibleStates.All(x => x.Iid != possibleFiniteState.Iid))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -833,6 +1064,20 @@ namespace DEHEASysML.DstController
                     property.CustomProperties.Refresh();
                     this.UpdatedValuePropretyValues.Remove(property.ElementGUID);
                     this.CreatedElements.RemoveAll(x => x.ElementGUID == property.ElementGUID);
+                }
+
+                foreach (var dependency in property.GetAllConnectorsOfElement().Where(x => x.Type.AreEquals(StereotypeKind.Dependency)
+                                                                                           && x.ClientID == property.ElementID))
+                {
+                    this.CreatedConnectors.RemoveAll(x => x.ConnectorGUID == dependency.ConnectorGUID);
+                    var matchingKey = this.ModifiedPartitions.Keys.FirstOrDefault(x => x.ElementID == dependency.SupplierID);
+
+                    if (matchingKey != null)
+                    {
+                        this.ModifiedPartitions.Remove(matchingKey);
+                    }
+
+                    this.CreatedElements.RemoveAll(x => x.ElementID == dependency.SupplierID);
                 }
 
                 element.Update();
@@ -900,49 +1145,104 @@ namespace DEHEASysML.DstController
         /// </summary>
         private void CleanProject()
         {
-            foreach (var createdElement in this.CreatedElements)
+            this.RemoveUnstransferedConnectors();
+            this.UndoStateRegionsModifications();
+            this.RemoveUntransferedElements();
+            this.RemoveUntransferedPackages();
+
+            foreach (var updatedCollection in this.UpdatedCollections)
+            {
+                updatedCollection.Refresh();
+            }
+
+            this.CreatedConnectors.Clear();
+            this.ModifiedPartitions.Clear();
+            this.CreatedPackages.Clear();
+            this.UpdatedCollections.Clear();
+            this.CreatedElements.Clear();
+        }
+
+        /// <summary>
+        /// Reverts all unstransfered modifications to all
+        /// </summary>
+        private void UndoStateRegionsModifications()
+        {
+            foreach (var stateElement in this.ModifiedPartitions.Keys)
+            {
+                foreach (var (partition, changeKind) in this.ModifiedPartitions[stateElement])
+                {
+                    switch (changeKind)
+                    {
+                        case ChangeKind.Delete:
+                        {
+                            var createdPartition = stateElement.Partitions.AddNew(partition.Name, StereotypeKind.Partition.ToString()) as Partition;
+                            createdPartition.Note = partition.Note;
+                            createdPartition.Size = partition.Size;
+                            createdPartition.Operator = partition.Operator;
+                            break;
+                        }
+                        case ChangeKind.Create:
+                            for (short partitionIndex = 0; partitionIndex < stateElement.Partitions.Count; partitionIndex++)
+                            {
+                                if (stateElement.Partitions.GetAt(partitionIndex) is not Partition createdPartition || createdPartition.Name != partition.Name)
+                                {
+                                    continue;
+                                }
+
+                                stateElement.Partitions.Delete(partitionIndex);
+                                break;
+                            }
+
+                            break;
+                    }
+
+                    stateElement.Update();
+                    stateElement.Partitions.Refresh();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Removes all <see cref="Connector" /> that has not been transfered
+        /// </summary>
+        private void RemoveUnstransferedConnectors()
+        {
+            foreach (var createdConnector in this.CreatedConnectors.ToList())
             {
                 try
                 {
-                    Collection collection = null;
-
-                    if (createdElement.Stereotype.AreEquals(StereotypeKind.Block) && createdElement.ParentID == 0
-                        || createdElement.Stereotype.AreEquals(StereotypeKind.Requirement) || createdElement.MetaType.AreEquals(StereotypeKind.Interface))
-                    {
-                        collection = this.CurrentRepository.GetPackageByID(createdElement.PackageID).Elements;
-                    }
-                    else if (createdElement.Stereotype.AreEquals(StereotypeKind.ValueProperty)
-                             || createdElement.Stereotype.AreEquals(StereotypeKind.PartProperty) || createdElement.MetaType.AreEquals(StereotypeKind.Port)
-                             || createdElement.Stereotype.AreEquals(StereotypeKind.Block) && createdElement.ParentID != 0)
-                    {
-                        if (this.CreatedElements.Any(x => x.ElementID == createdElement.ParentID))
-                        {
-                            continue;
-                        }
-
-                        collection = this.CurrentRepository.GetElementByID(createdElement.ParentID).Elements;
-                    }
-
-                    if (collection == null)
+                    if (this.CreatedElements.Any(x => x.ElementID == createdConnector.SupplierID || x.ElementID == createdConnector.ClientID))
                     {
                         continue;
                     }
 
+                    var collection = this.CurrentRepository.GetElementByID(createdConnector.ClientID).Connectors;
+
                     for (short collectionIndex = 0; collectionIndex < collection.Count; collectionIndex++)
                     {
-                        if (collection.GetAt(collectionIndex) is Element element && element.ElementGUID == createdElement.ElementGUID)
+                        if (collection.GetAt(collectionIndex) is not Connector connector || connector.ConnectorGUID != createdConnector.ConnectorGUID)
                         {
-                            collection.DeleteAt(collectionIndex, false);
-                            break;
+                            continue;
                         }
+
+                        collection.DeleteAt(collectionIndex, false);
+                        break;
                     }
+
+                    collection.Refresh();
                 }
                 catch (Exception)
                 {
-                    this.logger.Warn($"Tries to delete an Element that does not exist anymore : {createdElement.Name}");
+                    this.logger.Warn($"Tries to delete an Connector that does not exist anymore of type {createdConnector.Type}");
                 }
             }
+        }
 
+        /// <summary>
+        /// Removes all <see cref="Package" /> that has not been transfered
+        /// </summary>
+        private void RemoveUntransferedPackages()
+        {
             foreach (var createdPackage in this.CreatedPackages)
             {
                 try
@@ -975,15 +1275,56 @@ namespace DEHEASysML.DstController
                     this.logger.Warn($"Tries to delete an Package that does not exist anymore : {createdPackage.Name}");
                 }
             }
+        }
 
-            foreach (var updatedCollection in this.UpdatedCollections)
+        /// <summary>
+        /// Removes all <see cref="Element" /> that has not been transfered
+        /// </summary>
+        private void RemoveUntransferedElements()
+        {
+            foreach (var createdElement in this.CreatedElements)
             {
-                updatedCollection.Refresh();
-            }
+                try
+                {
+                    Collection collection = null;
 
-            this.CreatedPackages.Clear();
-            this.UpdatedCollections.Clear();
-            this.CreatedElements.Clear();
+                    if ((createdElement.Stereotype.AreEquals(StereotypeKind.Block) && createdElement.ParentID == 0)
+                        || createdElement.Stereotype.AreEquals(StereotypeKind.Requirement) || createdElement.MetaType.AreEquals(StereotypeKind.Interface)
+                        || createdElement.MetaType.AreEquals(StereotypeKind.State))
+                    {
+                        collection = this.CurrentRepository.GetPackageByID(createdElement.PackageID).Elements;
+                    }
+                    else if (createdElement.Stereotype.AreEquals(StereotypeKind.ValueProperty)
+                             || createdElement.Stereotype.AreEquals(StereotypeKind.PartProperty) || createdElement.MetaType.AreEquals(StereotypeKind.Port)
+                             || (createdElement.Stereotype.AreEquals(StereotypeKind.Block) && createdElement.ParentID != 0))
+                    {
+                        if (this.CreatedElements.Any(x => x.ElementID == createdElement.ParentID))
+                        {
+                            continue;
+                        }
+
+                        collection = this.CurrentRepository.GetElementByID(createdElement.ParentID).Elements;
+                    }
+
+                    if (collection == null)
+                    {
+                        continue;
+                    }
+
+                    for (short collectionIndex = 0; collectionIndex < collection.Count; collectionIndex++)
+                    {
+                        if (collection.GetAt(collectionIndex) is Element element && element.ElementGUID == createdElement.ElementGUID)
+                        {
+                            collection.DeleteAt(collectionIndex, false);
+                            break;
+                        }
+                    }
+                }
+                catch (Exception)
+                {
+                    this.logger.Warn($"Tries to delete an Element that does not exist anymore : {createdElement.Name}");
+                }
+            }
         }
 
         /// <summary>
@@ -1031,20 +1372,22 @@ namespace DEHEASysML.DstController
         }
 
         /// <summary>
-        /// Gets the default <see cref="Package" /> where Blocks are stored
+        /// Gets the default <see cref="Package" /> where Element of Stereotype are stored
         /// </summary>
         /// <param name="containerPackage">The <see cref="Package" /> to look into</param>
+        /// <param name="stereotypeKind"></param>
         /// <returns>The default package</returns>
-        private Package GetDefaultBlocksPackage(Package containerPackage)
+        private Package GetDefaultPackage(Package containerPackage, StereotypeKind stereotypeKind)
         {
             foreach (var package in containerPackage.Packages.OfType<Package>())
             {
-                if (package.Elements.OfType<Element>().Any(x => x.Stereotype.AreEquals(StereotypeKind.Block)))
+                if (package.Elements.OfType<Element>().Any(x => x.Stereotype.AreEquals(stereotypeKind) ||
+                                                                x.MetaType.AreEquals(stereotypeKind)))
                 {
                     return package;
                 }
 
-                var subPackage = this.GetDefaultBlocksPackage(package);
+                var subPackage = this.GetDefaultPackage(package, stereotypeKind);
 
                 if (subPackage != null)
                 {
@@ -1074,7 +1417,7 @@ namespace DEHEASysML.DstController
         private void OnAnyEvent(Repository repository)
         {
             this.CurrentRepository = repository;
-            this.defaultBlocksPackage = null;
+            this.defaultPackages.Clear();
             this.LoadMapping();
         }
 
@@ -1169,10 +1512,10 @@ namespace DEHEASysML.DstController
 
             foreach (var relationship in relationships.ToList())
             {
-                if (this.SelectedDstMapResultForTransfer.All(x => x.Iid != relationship.Source.Container.Iid && x.Iid != relationship.Source.Iid)
-                    && relationship.Target.Original == null ||
-                    this.SelectedDstMapResultForTransfer.All(x => x.Iid != relationship.Target.Container.Iid
-                                                                  && x.Iid != relationship.Target.Iid) && relationship.Target.Original == null)
+                if ((this.SelectedDstMapResultForTransfer.All(x => x.Iid != relationship.Source.Container.Iid && x.Iid != relationship.Source.Iid)
+                     && relationship.Target.Original == null) ||
+                    (this.SelectedDstMapResultForTransfer.All(x => x.Iid != relationship.Target.Container.Iid
+                                                                   && x.Iid != relationship.Target.Iid) && relationship.Target.Original == null))
                 {
                     relationships.RemoveAll(x => x.Iid == relationship.Iid);
                 }
@@ -1299,12 +1642,11 @@ namespace DEHEASysML.DstController
         }
 
         /// <summary>
-        /// Pops the <see cref="CreateLogEntryDialog" /> and based on its result, either registers a new ModelLogEntry to the
-        /// <see cref="transaction" /> or not
+        /// Pops the <see cref="CreateLogEntryDialog" /> and based on its result
         /// </summary>
-        /// <param name="transaction">The <see cref="IThingTransaction" /> that will get the changes registered to</param>
+        /// <param name="content">The content that the user typed</param>
         /// <returns>A boolean result, true if the user pressed OK, otherwise false</returns>
-        private bool TrySupplyingAndCreatingLogEntry(ThingTransaction transaction)
+        private bool TrySupplyingAndCreatingLogEntry(out string content)
         {
             var vm = new CreateLogEntryDialogViewModel();
 
@@ -1313,10 +1655,11 @@ namespace DEHEASysML.DstController
 
             if (dialogResult != true)
             {
+                content = string.Empty;
                 return false;
             }
 
-            this.hubController.RegisterNewLogEntryToTransaction(vm.LogEntryContent, transaction);
+            content = vm.LogEntryContent;
             return true;
         }
 

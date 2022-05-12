@@ -255,6 +255,17 @@ namespace DEHEASysML.Extensions
         }
 
         /// <summary>
+        /// Gets all <see cref="Element"/> of a certain Type inside a <see cref="Package"/>
+        /// </summary>
+        /// <param name="package">The <see cref="IDualPackage"/></param>
+        /// <param name="stereotype">The <see cref="StereotypeKind"/></param>
+        /// <returns>A collection of <see cref="Element"/></returns>
+        public static IEnumerable<Element> GetElementsOfTypeInPackage(this IDualPackage package, StereotypeKind stereotype)
+        {
+            return package.Elements.OfType<Element>().Where(x => x.MetaType.AreEquals(stereotype));
+        }
+
+        /// <summary>
         /// Get the fully qualified stereotype of the provided <see cref="StereotypeKind"/>
         /// </summary>
         /// <param name="stereotype">The <see cref="StereotypeKind"/></param>
@@ -273,6 +284,7 @@ namespace DEHEASysML.Extensions
                 case StereotypeKind.Interface:
                 case StereotypeKind.RequiredInterface:
                 case StereotypeKind.ProvidedInterface:
+                case StereotypeKind.State:
                     return string.Empty;
                 default: return stereotype.ToString();
             }

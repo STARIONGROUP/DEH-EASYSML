@@ -707,6 +707,7 @@ namespace DEHEASysML.Tests.DstController
             property.Setup(x => x.Stereotype).Returns(StereotypeKind.ValueProperty.ToString());
             property.Setup(x => x.ElementGUID).Returns(Guid.NewGuid().ToString());
             property.Setup(x => x.CustomProperties).Returns(new EnterpriseArchitectCollection() { customProperty.Object });
+            property.Setup(x => x.Connectors).Returns(new EnterpriseArchitectCollection());
             block.Setup(x => x.Elements).Returns(new EnterpriseArchitectCollection() { property.Object });
             block.Setup(x => x.EmbeddedElements).Returns(new EnterpriseArchitectCollection());
             this.dstController.UpdatedValuePropretyValues[property.Object.ElementGUID] = "423";

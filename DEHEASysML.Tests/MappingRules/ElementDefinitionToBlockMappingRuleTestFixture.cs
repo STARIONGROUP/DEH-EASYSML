@@ -29,6 +29,7 @@ namespace DEHEASysML.Tests.MappingRules
 
     using Autofac;
 
+    using CDP4Common;
     using CDP4Common.EngineeringModelData;
     using CDP4Common.SiteDirectoryData;
     using CDP4Common.Types;
@@ -60,6 +61,8 @@ namespace DEHEASysML.Tests.MappingRules
         private Mock<IDstController> dstController;
         private Mock<IMappingConfigurationService> mappingConfiguration;
         private Dictionary<string, string> updatedValuePropretyValues;
+        private Dictionary<Element, List<(Partition, ChangeKind)>> modifiedPartitions;
+        private List<Connector> createrConnectors;
 
         [SetUp]
         public void Setup()
@@ -67,12 +70,15 @@ namespace DEHEASysML.Tests.MappingRules
             var defaultPackage = new Mock<Package>();
             defaultPackage.Setup(x => x.Elements).Returns(new EnterpriseArchitectCollection());
 
+            this.createrConnectors = new List<Connector>();
+            this.modifiedPartitions = new Dictionary<Element, List<(Partition, ChangeKind)>>();
             this.updatedValuePropretyValues = new Dictionary<string, string>();
             this.hubController = new Mock<IHubController>();
             this.dstController = new Mock<IDstController>();
             this.dstController.Setup(x => x.UpdatedValuePropretyValues).Returns(this.updatedValuePropretyValues);
-            this.dstController.Setup(x => x.GetDefaultBlocksPackage()).Returns(defaultPackage.Object);
-
+            this.dstController.Setup(x => x.GetDefaultPackage(It.IsAny<StereotypeKind>())).Returns(defaultPackage.Object);
+            this.dstController.Setup(x => x.ModifiedPartitions).Returns(this.modifiedPartitions);
+            this.dstController.Setup(x => x.CreatedConnectors).Returns(this.createrConnectors);
             this.mappingConfiguration = new Mock<IMappingConfigurationService>();
 
             var containerBuilder = new ContainerBuilder();
@@ -87,6 +93,27 @@ namespace DEHEASysML.Tests.MappingRules
         [Test]
         public void VerifyMapping()
         {
+            var possibleFiniteStateList = new PossibleFiniteStateList()
+            {
+                Name = "State"
+            };
+
+            possibleFiniteStateList.PossibleState.Add(new PossibleFiniteState()
+            {
+                Name = "SubState1"
+            });
+
+            possibleFiniteStateList.PossibleState.Add(new PossibleFiniteState()
+            {
+                Name = "SubState2"
+            });
+
+            var actualFiniteStateList = new ActualFiniteStateList();
+            actualFiniteStateList.PossibleFiniteStateList.Add(possibleFiniteStateList);
+            var actualFiniteState = new ActualFiniteState();
+            actualFiniteState.PossibleState.Add(possibleFiniteStateList.PossibleState[0]);
+            actualFiniteStateList.ActualState.Add(actualFiniteState);
+
             var parameter = new Parameter()
             {
                 Iid = Guid.NewGuid(),
@@ -109,9 +136,11 @@ namespace DEHEASysML.Tests.MappingRules
                     new ParameterValueSet()
                     {
                         Manual = new ValueArray<string>(new []{"45"}),
-                        ValueSwitch = ParameterSwitchKind.MANUAL
+                        ValueSwitch = ParameterSwitchKind.MANUAL,
+                        ActualState = actualFiniteState
                     }
-                }
+                }, 
+                StateDependence = actualFiniteStateList
             };
 
             var elementDefinition = new ElementDefinition()
@@ -149,6 +178,10 @@ namespace DEHEASysML.Tests.MappingRules
             var property = new Mock<Element>();
             property.Setup(x => x.PropertyType);
             property.Setup(x => x.ElementGUID).Returns(Guid.NewGuid().ToString());
+            property.Setup(x => x.Connectors).Returns(new EnterpriseArchitectCollection());
+
+            var state = new Mock<Element>();
+            state.Setup(x => x.Partitions).Returns(new EnterpriseArchitectCollection());
 
             this.dstController.Setup(x => x.AddNewElement(It.IsAny<Collection>(), elementDefinition.Name, "block", StereotypeKind.Block))
                 .Returns(blockElement.Object);
@@ -161,6 +194,9 @@ namespace DEHEASysML.Tests.MappingRules
 
             this.dstController.Setup(x => x.AddNewElement(It.IsAny<Collection>(), "mass", "Property", StereotypeKind.ValueProperty))
                 .Returns(property.Object);
+
+            this.dstController.Setup(x => x.AddNewElement(It.IsAny<Collection>(), It.IsAny<string>(), StereotypeKind.State.ToString(),
+                StereotypeKind.State)).Returns(state.Object);
 
             this.hubController.Setup(x => x.IsSessionOpen).Returns(false);
             Assert.DoesNotThrow(() => this.rule.Transform((true, mappedElements)));

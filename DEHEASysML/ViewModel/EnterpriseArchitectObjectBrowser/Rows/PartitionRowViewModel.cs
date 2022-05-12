@@ -1,5 +1,5 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
-// <copyright file="IMappedElementRowViewModel.cs" company="RHEA System S.A.">
+// <copyright file="PartitionRowViewModel.cs" company="RHEA System S.A.">
 // Copyright (c) 2020-2022 RHEA System S.A.
 // 
 // Author: Sam Gerené, Alex Vorobiev, Alexander van Delft, Nathanael Smiechowski, Antoine Théate.
@@ -22,49 +22,38 @@
 // </copyright>
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace DEHEASysML.ViewModel.Rows
+namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
 {
-    using System.Collections.Generic;
-
-    using CDP4Common.EngineeringModelData;
-
-    using DEHEASysML.Enumerators;
-
-    using ReactiveUI;
+    using EA;
 
     /// <summary>
-    /// Interface definition for <see cref="MappedElementRowViewModel{TThing}"/>
+    /// The <see cref="PartitionRowViewModel" /> represents an <see cref="Partition"/>
     /// </summary>
-    public interface IMappedElementRowViewModel
+    public class PartitionRowViewModel : EnterpriseArchitectObjectRowViewModel<Partition>
     {
         /// <summary>
-        /// Gets or sets the <see cref="MappedRowStatus"/>
+        /// Initializes a new <see cref="PartitionRowViewModel" />
         /// </summary>
-        MappedRowStatus MappedRowStatus { get; set; }
+        /// <param name="parent">The parent row</param>
+        /// <param name="eaObject">The object to represent</param>
+        public PartitionRowViewModel(EnterpriseArchitectObjectBaseRowViewModel parent, Partition eaObject) : base(parent, eaObject)
+        {
+            this.Initialize();
+        }
 
         /// <summary>
-        /// The name of the Target Element
+        /// Initializes this row properties
         /// </summary>
-        string TargetElementName { get; set; }
+        private void Initialize()
+        {
+            this.UpdateProperties();
+        }
 
         /// <summary>
-        /// The name of the Source Element
+        /// Compute the current row to initializes properties
         /// </summary>
-        string SourceElementName { get; set; }
-
-        /// <summary>
-        /// Gets or sets a value indicating wheter this row represents a mapping done to a new element
-        /// </summary>
-        bool ShouldCreateNewTargetElement { get; set; }
-
-        /// <summary>
-        /// A collection of <see cref="BinaryRelationship" />
-        /// </summary>
-        List<BinaryRelationship> RelationShips { get; }
-
-        /// <summary>
-        /// A collection of <see cref="object"/> for the contained rows
-        /// </summary>
-        ReactiveList<object> ContainedRows { get; }
+        public override void ComputeRow()
+        {
+        }
     }
 }

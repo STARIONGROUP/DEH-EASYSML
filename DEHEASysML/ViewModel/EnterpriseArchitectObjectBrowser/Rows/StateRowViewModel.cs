@@ -1,5 +1,5 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
-// <copyright file="BlockRowViewModel.cs" company="RHEA System S.A.">
+// <copyright file="StateRowViewModel.cs" company="RHEA System S.A.">
 // Copyright (c) 2020-2022 RHEA System S.A.
 // 
 // Author: Sam Gerené, Alex Vorobiev, Alexander van Delft, Nathanael Smiechowski, Antoine Théate.
@@ -24,29 +24,24 @@
 
 namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
 {
-    using DEHEASysML.Extensions;
+    using System.Linq;
 
-    using DEHPCommon.Extensions;
+    using DEHEASysML.Enumerators;
 
     using EA;
 
     /// <summary>
-    /// The <see cref="BlockRowViewModel" /> represents an <see cref="Element" /> of Stereotype Block
+    /// The <see cref="StateRowViewModel" /> represents an <see cref="Element" /> of Type State
     /// </summary>
-    public class BlockRowViewModel : ElementRowViewModel
+    public class StateRowViewModel : ElementRowViewModel
     {
         /// <summary>
-        /// Initializes a new <see cref="BlockRowViewModel" />
+        /// Initializes a new <see cref="StateRowViewModel" />
         /// </summary>
         /// <param name="parent">The parent row</param>
         /// <param name="eaObject">The object to represent</param>
-        /// <param name="shouldShowEverything">
-        /// A value asserting if the row should display its contained <see cref="Element" />
-        /// </param>
-        public BlockRowViewModel(EnterpriseArchitectObjectBaseRowViewModel parent, Element eaObject, bool shouldShowEverything)
-            : base(parent, eaObject)
+        public StateRowViewModel(EnterpriseArchitectObjectBaseRowViewModel parent, Element eaObject) : base(parent, eaObject)
         {
-            this.ShouldShowEverything = shouldShowEverything;
             this.Initialize();
         }
 
@@ -55,22 +50,11 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
         /// </summary>
         public override void ComputeRow()
         {
-            if (this.ShouldShowEverything)
+            this.RowType = StereotypeKind.State.ToString();
+
+            foreach (var partition in this.RepresentedObject.Partitions.OfType<Partition>())
             {
-                foreach (var valueProperty in this.RepresentedObject.Elements.GetAllValuePropertiesOfElement())
-                {
-                    this.ContainedRows.SortedInsert(new ValuePropertyRowViewModel(this, valueProperty), ContainedRowsComparer);
-                }
-
-                foreach (var partProperty in this.RepresentedObject.Elements.GetAllPartPropertiesOfElement())
-                {
-                    this.ContainedRows.SortedInsert(new PartPropertyRowViewModel(this, partProperty), ContainedRowsComparer);
-                }
-
-                foreach (var port in this.RepresentedObject.Elements.GetAllPortsOfElement())
-                {
-                    this.ContainedRows.SortedInsert(new PortRowViewModel(this, port), ContainedRowsComparer);
-                }
+                this.ContainedRows.Add(new PartitionRowViewModel(this, partition));
             }
         }
 

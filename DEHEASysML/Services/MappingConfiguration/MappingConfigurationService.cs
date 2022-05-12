@@ -335,7 +335,24 @@ namespace DEHEASysML.Services.MappingConfiguration
                         continue;
                     }
 
-                    mappedElements.Add(new ElementDefinitionMappedElement(elementDefinition.Clone(true), element, MappingDirection.FromHubToDst));
+                    var elementDefinitionMappedElement = new ElementDefinitionMappedElement(elementDefinition.Clone(true), element, MappingDirection.FromHubToDst);
+                    mappedElements.Add(elementDefinitionMappedElement);
+
+                    foreach (var parameterIid in elementDefinition.Parameter.Select(x =>x.Iid))
+                    {
+                        if (this.correspondences.FirstOrDefault(x => x.InternalId == parameterIid).ExternalIdentifier
+                                is { } external && this.hubController.GetThingById(new Guid(external.Identifier), 
+                                this.hubController.OpenIteration, out ActualFiniteState actualFiniteState))
+                        {
+                            var parameterRow = elementDefinitionMappedElement.ContainedRows.OfType<MappedParameterRowViewModel>()
+                                .FirstOrDefault(x => x.HubElement.Iid == parameterIid);
+
+                            if (parameterRow != null)
+                            {
+                                parameterRow.SelectedActualFiniteState = actualFiniteState;
+                            }
+                        }
+                    }
                 }
                 else if (element.Stereotype.AreEquals(StereotypeKind.Requirement))
                 {

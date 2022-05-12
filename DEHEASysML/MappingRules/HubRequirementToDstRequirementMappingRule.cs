@@ -212,7 +212,7 @@ namespace DEHEASysML.MappingRules
         {
             if (!this.DstController.TryGetPackage(container.Name, out var package))
             {
-                package = this.DstController.AddNewPackage(this.DstController.GetDefaultBlocksPackage(), container.Name);
+                package = this.DstController.AddNewPackage(this.DstController.GetDefaultPackage(StereotypeKind.Requirement), container.Name);
             }
 
             return package;
@@ -284,7 +284,7 @@ namespace DEHEASysML.MappingRules
             if (!this.DstController.TryGetElement(requirement.Name, StereotypeKind.Requirement, out requirementElement)
                 || requirement.ShortName != requirementElement.GetRequirementId())
             {
-                requirementElement = this.DstController.AddNewElement(this.DstController.GetDefaultBlocksPackage().Elements,
+                requirementElement = this.DstController.AddNewElement(this.DstController.GetDefaultPackage(StereotypeKind.Block).Elements,
                     requirement.Name, "requirement", StereotypeKind.Requirement);
 
                 requirementElement.Update();

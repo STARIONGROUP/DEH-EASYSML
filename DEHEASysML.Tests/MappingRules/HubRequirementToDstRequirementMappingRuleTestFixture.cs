@@ -70,7 +70,7 @@ namespace DEHEASysML.Tests.MappingRules
             this.hubController = new Mock<IHubController>();
             this.dstController = new Mock<IDstController>();
             this.dstController.Setup(x => x.UpdatedRequirementValues).Returns(this.requirementValues);
-            this.dstController.Setup(x => x.GetDefaultBlocksPackage()).Returns(defaultPackage.Object);
+            this.dstController.Setup(x => x.GetDefaultPackage(It.IsAny<StereotypeKind>())).Returns(defaultPackage.Object);
             this.mappingConfiguration = new Mock<IMappingConfigurationService>();
 
             var containerBuilder = new ContainerBuilder();

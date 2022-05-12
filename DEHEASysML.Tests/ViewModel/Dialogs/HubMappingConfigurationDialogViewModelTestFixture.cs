@@ -217,7 +217,7 @@ namespace DEHEASysML.Tests.ViewModel.Dialogs
             var blockElement = this.CreateElement(StereotypeKind.Block);
 
             this.viewModel.SelectedElement = blockElement.Object;
-            this.viewModel.SelectedItem = new ElementDefinitionMappedElement(null, null, MappingDirection.FromHubToDst);
+            this.viewModel.SelectedItem = new ElementDefinitionMappedElement(new ElementDefinition(), null, MappingDirection.FromHubToDst);
             Assert.IsTrue(this.viewModel.MapToNewElementCommand.CanExecute(null));
             Assert.DoesNotThrow(() => this.viewModel.MapToNewElementCommand.Execute(null));
             Assert.AreEqual(MappedRowStatus.ExistingElement, this.viewModel.SelectedItem.MappedRowStatus);
