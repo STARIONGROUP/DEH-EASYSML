@@ -33,6 +33,8 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
 
     using CDP4Dal;
 
+    using CDP4Common.EngineeringModelData;
+
     using CDP4Dal;
 
     using DEHEASysML.DstController;
@@ -170,6 +172,8 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
         {
             Assert.IsNotNull(this.viewModel.SelectAllCommand);
             Assert.IsNotNull(this.viewModel.DeselectAllCommand);
+            Assert.DoesNotThrow(() => CDPMessageBus.Current.SendMessage(new UpdateDstNetChangePreview()));
+            Assert.DoesNotThrow(() => CDPMessageBus.Current.SendMessage(new UpdateDstNetChangePreview(true)));
         }
 
         [Test]

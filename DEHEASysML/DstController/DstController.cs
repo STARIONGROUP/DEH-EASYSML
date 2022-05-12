@@ -110,6 +110,11 @@ namespace DEHEASysML.DstController
         private readonly IMappingConfigurationService mappingConfigurationService;
 
         /// <summary>
+        /// Reference to the <see cref="Package" /> where Element of Stereotype are stores, to not recalculate it each time
+        /// </summary>
+        private readonly Dictionary<StereotypeKind, Package> defaultPackages = new();
+
+        /// <summary>
         /// Backing field for <see cref="CurrentRepository" />
         /// </summary>
         private Repository currentRepository;
@@ -1579,7 +1584,7 @@ namespace DEHEASysML.DstController
         private void OnAnyEvent(Repository repository)
         {
             this.CurrentRepository = repository;
-            this.defaultBlocksPackage = null;
+            this.defaultPackages.Clear();
             this.LoadMapping();
         }
 

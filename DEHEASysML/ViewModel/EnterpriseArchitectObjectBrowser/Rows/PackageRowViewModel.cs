@@ -233,6 +233,11 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
             {
                 packageRowViewModel.UpdateRepresentedObject(packages.FirstOrDefault(x => x.PackageGUID == packageRowViewModel.RepresentedObject.PackageGUID));
             }
+
+            foreach (var state in states)
+            {
+                this.ContainedRows.SortedInsert(new StateRowViewModel(this, state), ContainedRowsComparer);
+            }
         }
 
         /// <summary>

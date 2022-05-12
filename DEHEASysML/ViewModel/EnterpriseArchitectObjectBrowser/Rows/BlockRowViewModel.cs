@@ -29,6 +29,8 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
     using DEHEASysML.Enumerators;
     using DEHEASysML.Extensions;
 
+    using DEHPCommon.Extensions;
+
     using EA;
 
     /// <summary>
