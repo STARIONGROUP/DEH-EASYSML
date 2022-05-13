@@ -117,12 +117,16 @@ namespace DEHEASysML.MappingRules
                     {
                         this.MapContainedElement(mappedElement);
                         this.MapProperties(mappedElement.HubElement, mappedElement.DstElement);
-                        this.MapPorts(mappedElement);
                     }
                 }
 
                 if (complete)
                 {
+                    foreach (var mappedElement in this.Elements.ToList())
+                    {
+                        this.MapPorts(mappedElement);
+                    }
+
                     foreach (var portToLink in this.portsToLink)
                     {
                         this.LinkPort(portToLink);
@@ -177,7 +181,7 @@ namespace DEHEASysML.MappingRules
         /// <param name="interfaceElement">The interface <see cref="Element" /></param>
         private void CreateOrUpdateConnector(Element portDefinition, Element interfaceElement)
         {
-            var connector = portDefinition.Connectors.OfType<Connector>().FirstOrDefault();
+            var connector = portDefinition.GetAllConnectorsOfElement().FirstOrDefault();
 
             if (connector == null)
             {
@@ -290,10 +294,16 @@ namespace DEHEASysML.MappingRules
         {
             foreach (var parameter in parameters)
             {
+                this.GetOrCreateValueType(parameter, out var valueType);
+
                 if (!this.TryGetExistingProperty(element, parameter, out var property))
                 {
-                    this.GetOrCreateValueType(parameter, out var valueType);
-                    this.CreateProperty(parameter, element, valueType, out property);
+                    this.CreateProperty(parameter, element, out property);
+                }
+
+                if (property.PropertyType != valueType.ElementID)
+                {
+                    this.DstController.UpdatePropertyTypes[property.ElementGUID] = valueType.ElementID;
                 }
 
                 this.VerifyStateDependency(parameter, property);
@@ -330,7 +340,7 @@ namespace DEHEASysML.MappingRules
                 if (state == null && !this.DstController.TryGetElementByType(possibleFiniteState.Name, StereotypeKind.State, out state))
                 {
                     var collection = this.DstController.GetDefaultPackage(StereotypeKind.State).Elements;
-                    
+
                     state = this.DstController.AddNewElement(collection, possibleFiniteState.Name,
                         StereotypeKind.State.ToString(), StereotypeKind.State);
 
@@ -486,13 +496,10 @@ namespace DEHEASysML.MappingRules
         /// </summary>
         /// <param name="parameter">The <see cref="ParameterOrOverrideBase" /></param>
         /// <param name="container">The <see cref="Element" /> container</param>
-        /// <param name="valueType">The <see cref="Element" /> for the ValueType</param>
         /// <param name="property">The <see cref="Element" /> for the ValueProperty</param>
-        private void CreateProperty(ParameterOrOverrideBase parameter, Element container, Element valueType, out Element property)
+        private void CreateProperty(ParameterOrOverrideBase parameter, Element container, out Element property)
         {
             property = this.DstController.AddNewElement(container.EmbeddedElements, parameter.ParameterType.Name, "Property", StereotypeKind.ValueProperty);
-            property.PropertyType = valueType.ElementID;
-
             property.Update();
         }
 
@@ -623,11 +630,10 @@ namespace DEHEASysML.MappingRules
                     this.GetOrCreateElement(elementUsage, out var elementUsageElement);
                     usageDefinitionMappedElement = new ElementDefinitionMappedElement(elementUsage.ElementDefinition, elementUsageElement, MappingDirection.FromHubToDst);
                     this.Elements.Add(usageDefinitionMappedElement);
+                    this.MapProperties(elementUsage, usageDefinitionMappedElement.DstElement);
+                    this.UpdateContainement(mappedElement.DstElement, usageDefinitionMappedElement.DstElement);
+                    this.MapContainedElement(usageDefinitionMappedElement);
                 }
-
-                this.MapProperties(elementUsage, usageDefinitionMappedElement.DstElement);
-                this.UpdateContainement(mappedElement.DstElement, usageDefinitionMappedElement.DstElement);
-                this.MapContainedElement(usageDefinitionMappedElement);
             }
         }
 
