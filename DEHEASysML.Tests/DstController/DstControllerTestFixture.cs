@@ -725,5 +725,52 @@ namespace DEHEASysML.Tests.DstController
             this.dstController.SelectedHubMapResultForTransfer.Add(requirement.Object);
             Assert.DoesNotThrowAsync( async () => await this.dstController.TransferMappedThingsToDst());
         }
+
+        [Test]
+        public void VerifyTryGetValueType()
+        {
+            this.dstController.CurrentRepository = this.repository.Object;
+
+            this.repository.Setup(x => x.GetElementsByQuery("Extended", StereotypeKind.ValueType.ToString()))
+                .Returns(new EnterpriseArchitectCollection());
+
+            var parameterType = new SimpleQuantityKind()
+            {
+                Name = "mass",
+                ShortName = "mass"
+            };
+
+            var scale = new RatioScale()
+            {
+                Name = "kilogram",
+                ShortName = "kg"
+            };
+
+            Assert.IsFalse(this.dstController.TryGetValueType(parameterType, scale, out var valueType));
+
+            var existingValueType = new Mock<Element>();
+            existingValueType.Setup(x => x.Stereotype).Returns(StereotypeKind.ValueType.ToString());
+            existingValueType.Setup(x => x.Name).Returns("mass");
+            existingValueType.Setup(x => x.TaggedValuesEx).Returns(new EnterpriseArchitectCollection());
+
+            this.repository.Setup(x => x.GetElementsByQuery("Extended", StereotypeKind.ValueType.ToString()))
+                .Returns(new EnterpriseArchitectCollection(){existingValueType.Object});
+
+            Assert.IsFalse(this.dstController.TryGetValueType(parameterType, scale, out valueType));
+            existingValueType.Setup(x => x.Name).Returns("mass[kg]");
+            Assert.IsFalse(this.dstController.TryGetValueType(parameterType, scale, out valueType));
+
+            var unitElement = new Mock<Element>();
+            unitElement.Setup(x => x.ElementGUID).Returns(Guid.NewGuid().ToString());
+            unitElement.Setup(x => x.Name).Returns("kg");
+
+            var taggedValue = new Mock<TaggedValue>();
+            taggedValue.Setup(x => x.Name).Returns("unit");
+            taggedValue.Setup(x => x.Value).Returns(unitElement.Object.ElementGUID);
+            existingValueType.Setup(x => x.TaggedValuesEx).Returns(new EnterpriseArchitectCollection(){taggedValue.Object});
+
+            this.repository.Setup(x => x.GetElementByGuid(unitElement.Object.ElementGUID)).Returns(unitElement.Object);
+            Assert.IsTrue(this.dstController.TryGetValueType(parameterType, scale, out valueType));
+        }
     }
 }

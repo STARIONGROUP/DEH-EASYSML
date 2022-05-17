@@ -110,11 +110,6 @@ namespace DEHEASysML.DstController
         private readonly IMappingConfigurationService mappingConfigurationService;
 
         /// <summary>
-        /// Reference to the <see cref="Package" /> where Element of Stereotype are stores, to not recalculate it each time
-        /// </summary>
-        private readonly Dictionary<StereotypeKind, Package> defaultPackages = new();
-
-        /// <summary>
         /// Backing field for <see cref="CurrentRepository" />
         /// </summary>
         private Repository currentRepository;
@@ -201,6 +196,11 @@ namespace DEHEASysML.DstController
             get => this.isBusy;
             set => this.RaiseAndSetIfChanged(ref this.isBusy, value);
         }
+
+        /// <summary>
+        /// Corrspondance between a <see cref="Element"/> Guid of Stereotype ValueProperty new PropertyType Value
+        /// </summary>
+        public Dictionary<string, int> UpdatePropertyTypes { get; } = new();
 
         /// <summary>
         /// Correspondance between a state <see cref="Element" /> and a collection of the <see cref="Partition" /> where it as been
@@ -487,35 +487,31 @@ namespace DEHEASysML.DstController
         {
             this.shouldIgnoreEvents = true;
 
-            if (!this.defaultPackages.TryGetValue(stereotypeKind, out var defaultPackage))
+            Package defaultPackage = null;
+
+            var packageName = $"COMET_{stereotypeKind}s";
+
+            foreach (var package in this.CurrentRepository.Models.OfType<Package>())
             {
-                var packageName = $"COMET_{stereotypeKind}s";
+                defaultPackage = this.GetDefaultPackage(package, stereotypeKind);
 
-                foreach (var package in this.CurrentRepository.Models.OfType<Package>())
+                if (defaultPackage != null)
                 {
-                    defaultPackage = this.GetDefaultPackage(package, stereotypeKind);
+                    return defaultPackage;
+                }
+            }
 
-                    if (defaultPackage != null)
-                    {
-                        this.defaultPackages[stereotypeKind] = defaultPackage;
-                        break;
-                    }
+            if (defaultPackage == null)
+            {
+                if (this.TryGetPackage(packageName, out defaultPackage))
+                {
+                    return defaultPackage;
                 }
 
-                if (defaultPackage == null)
-                {
-                    if (this.TryGetPackage(packageName, out defaultPackage))
-                    {
-                        this.defaultPackages[stereotypeKind] = defaultPackage;
-                        return defaultPackage;
-                    }
-
-                    var collection = this.CurrentRepository.Models.OfType<Package>().First().Packages;
-                    defaultPackage = collection.AddNew(packageName, "Package") as Package;
-                    defaultPackage.Update();
-                    this.defaultPackages[stereotypeKind] = defaultPackage;
-                    this.CurrentRepository.Models.OfType<Package>().First().Update();
-                }
+                var collection = this.CurrentRepository.Models.OfType<Package>().First().Packages;
+                defaultPackage = collection.AddNew(packageName, "Package") as Package;
+                defaultPackage.Update();
+                this.CurrentRepository.Models.OfType<Package>().First().Update();
             }
 
             this.shouldIgnoreEvents = false;
@@ -596,6 +592,32 @@ namespace DEHEASysML.DstController
             var target = this.CurrentRepository.GetElementByID(connector.SupplierID);
 
             return (source, target);
+        }
+
+        /// <summary>
+        /// Tries to get the block that define the correct given Interface
+        /// </summary>
+        /// <param name="interfaceElement">The <see cref="Element"/></param>
+        /// <param name="blockDefinition">The retrieve block <see cref="Element"/></param>
+        /// <returns>a value indicating if the <see cref="Element"/> has been found</returns>
+        public bool TryGetInterfaceImplementation(Element interfaceElement, out Element blockDefinition)
+        {
+            blockDefinition = null;
+
+            var providedInterface = this.CurrentRepository.GetElementsByQuery("Extended", StereotypeKind.ProvidedInterface.ToString())
+                .OfType<Element>().Where(x => x.Type.AreEquals(StereotypeKind.ProvidedInterface)).FirstOrDefault(x => x.Name == interfaceElement.Name);
+
+            if (providedInterface != null)
+            {
+                var port = this.CurrentRepository.GetElementByID(providedInterface.ParentID);
+
+                if (port.PropertyType != 0)
+                {
+                    blockDefinition = this.currentRepository.GetElementByID(port.PropertyType);
+                }
+            }
+
+            return blockDefinition != null;
         }
 
         /// <summary>
@@ -703,6 +725,7 @@ namespace DEHEASysML.DstController
             }
             else
             {
+                this.CurrentRepository.EnableUIUpdates = false;
                 premappedElements.AddRange(this.Map(elements.OfType<ElementDefinitionMappedElement>().ToList(), false));
                 premappedElements.AddRange(this.Map(elements.OfType<RequirementMappedElement>().ToList(), false));
             }
@@ -736,6 +759,7 @@ namespace DEHEASysML.DstController
                 this.UpdateParametersAndValueSets(stateDependsParameters, iterationClone, transaction);
 
                 this.PrepareThingsForTransfer(iterationClone, transaction);
+
                 this.mappingConfigurationService.PersistExternalIdentifierMap(transaction, iterationClone);
                 transaction.CreateOrUpdate(iterationClone);
 
@@ -1040,6 +1064,8 @@ namespace DEHEASysML.DstController
         /// <param name="element">The <see cref="Element" /> to transfer</param>
         private void ProcessTransferOfBlock(Element element)
         {
+            this.CreatedElements.RemoveAll(x => x.ElementGUID == element.ElementGUID);
+
             foreach (var port in element.Elements.GetAllPortsOfElement().ToList())
             {
                 this.CreatedElements.RemoveAll(x => x.ElementGUID == port.ElementGUID);
@@ -1048,6 +1074,12 @@ namespace DEHEASysML.DstController
             foreach (var blockDefinition in element.GetAllPortsDefinitionOfElement().ToList())
             {
                 this.CreatedElements.RemoveAll(x => x.ElementGUID == blockDefinition.ElementGUID);
+
+                foreach (var connector in blockDefinition.GetAllConnectorsOfElement())
+                {
+                    this.CreatedElements.RemoveAll(x => x.ElementID == connector.SupplierID);
+                    this.CreatedConnectors.RemoveAll(x => x.ConnectorGUID == connector.ConnectorGUID);
+                }
             }
 
             foreach (var partProperty in element.Elements.GetAllPartPropertiesOfElement().ToList())
@@ -1064,6 +1096,13 @@ namespace DEHEASysML.DstController
                     property.CustomProperties.Refresh();
                     this.UpdatedValuePropretyValues.Remove(property.ElementGUID);
                     this.CreatedElements.RemoveAll(x => x.ElementGUID == property.ElementGUID);
+                }
+
+                if (this.UpdatePropertyTypes.TryGetValue(property.ElementGUID, out var newValueType))
+                {
+                    property.PropertyType = newValueType;
+                    property.Update();
+                    this.UpdatePropertyTypes.Remove(property.ElementGUID);
                 }
 
                 foreach (var dependency in property.GetAllConnectorsOfElement().Where(x => x.Type.AreEquals(StereotypeKind.Dependency)
@@ -1343,7 +1382,7 @@ namespace DEHEASysML.DstController
                 return this.VerifyQuantityKindNameAndUnit(quantityKind, scale, valueType, this.CurrentRepository.GetElementByGuid(unit.Value));
             }
 
-            return scale == null && this.VerifyNames(parameterType, valueType.Name);
+            return parameterType != null && scale == null && this.VerifyNames(parameterType, valueType.Name);
         }
 
         /// <summary>
@@ -1368,6 +1407,11 @@ namespace DEHEASysML.DstController
         /// <returns>The result of the match</returns>
         private bool VerifyQuantityKindNameAndUnit(QuantityKind quantityKind, MeasurementScale scale, Element valueType, Element unit)
         {
+            if (valueType == null || unit == null)
+            {
+                return false;
+            }
+
             return this.VerifyNames(quantityKind, valueType.Name.Split('[')[0]) && this.VerifyNames(scale, unit.Name);
         }
 
@@ -1417,7 +1461,6 @@ namespace DEHEASysML.DstController
         private void OnAnyEvent(Repository repository)
         {
             this.CurrentRepository = repository;
-            this.defaultPackages.Clear();
             this.LoadMapping();
         }
 
@@ -1507,7 +1550,7 @@ namespace DEHEASysML.DstController
                                        .FirstOrDefault(x => x.HubElement.Iid == thingId))
                 .ToList();
 
-            var relationships = mappedElements.SelectMany(x => x.RelationShips).GroupBy(x => x.Name)
+            var relationships = mappedElements.SelectMany(x => x.RelationShips).GroupBy(x => x.Source.Iid)
                 .Select(g => g.First()).ToList();
 
             foreach (var relationship in relationships.ToList())
@@ -1631,7 +1674,11 @@ namespace DEHEASysML.DstController
 
             foreach (var elementUsage in elementDefinition.ContainedElement)
             {
-                this.AddOrUpdateIterationAndTransaction(elementUsage.ElementDefinition.Clone(false), iterationClone.Element, transaction);
+                if (this.SelectedDstMapResultForTransfer.All(x => x.Iid != elementUsage.ElementDefinition.Iid))
+                {
+                    this.PrepareElementDefinitionForTransfer(iterationClone, transaction, elementUsage.ElementDefinition.Clone(false));
+                }
+
                 this.AddOrUpdateIterationAndTransaction(elementUsage, elementDefinition.ContainedElement, transaction);
             }
 

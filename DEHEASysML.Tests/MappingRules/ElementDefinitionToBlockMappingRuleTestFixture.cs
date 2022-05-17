@@ -62,6 +62,7 @@ namespace DEHEASysML.Tests.MappingRules
         private Mock<IMappingConfigurationService> mappingConfiguration;
         private Dictionary<string, string> updatedValuePropretyValues;
         private Dictionary<Element, List<(Partition, ChangeKind)>> modifiedPartitions;
+        private Dictionary<string, int> updatedPropertyTypes;
         private List<Connector> createrConnectors;
 
         [SetUp]
@@ -70,6 +71,7 @@ namespace DEHEASysML.Tests.MappingRules
             var defaultPackage = new Mock<Package>();
             defaultPackage.Setup(x => x.Elements).Returns(new EnterpriseArchitectCollection());
 
+            this.updatedPropertyTypes = new Dictionary<string, int>();
             this.createrConnectors = new List<Connector>();
             this.modifiedPartitions = new Dictionary<Element, List<(Partition, ChangeKind)>>();
             this.updatedValuePropretyValues = new Dictionary<string, string>();
@@ -79,6 +81,7 @@ namespace DEHEASysML.Tests.MappingRules
             this.dstController.Setup(x => x.GetDefaultPackage(It.IsAny<StereotypeKind>())).Returns(defaultPackage.Object);
             this.dstController.Setup(x => x.ModifiedPartitions).Returns(this.modifiedPartitions);
             this.dstController.Setup(x => x.CreatedConnectors).Returns(this.createrConnectors);
+            this.dstController.Setup(x => x.UpdatePropertyTypes).Returns(this.updatedPropertyTypes);
             this.mappingConfiguration = new Mock<IMappingConfigurationService>();
 
             var containerBuilder = new ContainerBuilder();

@@ -207,13 +207,18 @@ namespace DEHEASysML.MappingRules
 
                 var elementUsageName = $"{interfaceBlock.Name}_Impl";
 
+                if (this.DstController.TryGetInterfaceImplementation(interfaceBlock, out var blockDefinition))
+                {
+                    elementUsageName = blockDefinition.Name;
+                }
+
                 var interfaceElementUsage = this.portsToConnect
                     .FirstOrDefault(x => x.Item1.PropertyTypeName as string == elementUsageName).Item3;
 
                 if (interfaceElementUsage == null)
                 {
                     interfaceElementUsage = this.HubController.OpenIteration.Element.SelectMany(x => x.ContainedElement)
-                        .FirstOrDefault(x => x.Name == elementUsageName);
+                        .FirstOrDefault(x => x.Name == elementUsageName)?.Clone(false);
 
                     if (interfaceElementUsage == null)
                     {
@@ -683,7 +688,7 @@ namespace DEHEASysML.MappingRules
         /// <param name="partProperty">The PartProperty</param>
         private void MapPartProperty(ElementDefinition container, Element partProperty)
         {
-            if (container == null)
+            if (container == null || partProperty.PropertyType == 0)
             {
                 return;
             }
@@ -695,9 +700,8 @@ namespace DEHEASysML.MappingRules
             {
                 mappedElement = new EnterpriseArchitectBlockElement(this.GetOrCreateElementDefinition(partPropertyBlock), partPropertyBlock, MappingDirection.FromDstToHub);
                 this.Elements.Add(mappedElement);
+                this.MapElement(mappedElement);
             }
-
-            this.MapElement(mappedElement);
 
             if (container.ContainedElement.Any(x => x.ElementDefinition.Iid == mappedElement.HubElement.Iid))
             {

@@ -126,6 +126,11 @@ namespace DEHEASysML.DstController
         List<Connector> CreatedConnectors { get; }
 
         /// <summary>
+        /// Corrspondance between a <see cref="Element"/> Guid of Stereotype ValueProperty and new PropertyType Value
+        /// </summary>
+        Dictionary<string, int> UpdatePropertyTypes { get; }
+
+        /// <summary>
         /// Handle to clear everything when Enterprise Architect close
         /// </summary>
         void Disconnect();
@@ -326,5 +331,13 @@ namespace DEHEASysML.DstController
         /// <param name="elementRequirement">The retrieved <see cref="Element" /></param>
         /// <returns>A value indicating if the <see cref="Element" /> has been found</returns>
         bool TryGetRequirement(string name, string id, out Element elementRequirement);
+
+        /// <summary>
+        /// Tries to get the block that define the correct given Interface
+        /// </summary>
+        /// <param name="interfaceElement">The <see cref="Element"/></param>
+        /// <param name="blockDefinition">The retrieve block <see cref="Element"/></param>
+        /// <returns>a value indicating if the <see cref="Element"/> has been found</returns>
+        bool TryGetInterfaceImplementation(Element interfaceElement, out Element blockDefinition);
     }
 }
