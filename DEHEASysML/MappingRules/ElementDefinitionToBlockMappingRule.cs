@@ -117,7 +117,6 @@ namespace DEHEASysML.MappingRules
                     {
                         this.MapContainedElement(mappedElement);
                         this.MapProperties(mappedElement.HubElement, mappedElement.DstElement);
-                        this.MapPorts(mappedElement);
                     }
                 }
 
