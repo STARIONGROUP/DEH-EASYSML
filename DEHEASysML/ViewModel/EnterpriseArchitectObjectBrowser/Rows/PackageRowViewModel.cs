@@ -96,7 +96,7 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
         /// </summary>
         /// <param name="element">The <see cref="Element" /></param>
         /// <param name="packagesId">The collection of package that contains the element</param>
-        /// <returns></returns>
+        /// <returns>The <see cref="ElementRowViewModel"/></returns>
         public ElementRowViewModel GetOrCreateElementRowViewModel(Element element, List<int> packagesId)
         {
             foreach (var containedPackage in this.ContainedRows.OfType<PackageRowViewModel>())
@@ -116,9 +116,56 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
                 }
             }
 
-            return element.Stereotype.AreEquals(StereotypeKind.Block)
-                ? new BlockRowViewModel(this, element, true)
-                : new ElementRequirementRowViewModel(this, element);
+            ElementRowViewModel row;
+
+            if (element.Stereotype.AreEquals(StereotypeKind.Requirement))
+            {
+                row = new ElementRequirementRowViewModel(this, element);
+            }
+            else if (element.Stereotype.AreEquals(StereotypeKind.State))
+            {
+                row = new StateRowViewModel(this, element);
+            }
+            else
+            {
+                row = new BlockRowViewModel(this, element, true);
+            }
+
+            this.ContainedRows.SortedInsert(row, ContainedRowsComparer);
+            return row;
+        }
+
+        /// <summary>
+        /// Gets or create an <see cref="PackageRowViewModel" /> to represents the <see cref="Package" />
+        /// </summary>
+        /// <param name="package">The <see cref="Package" /></param>
+        /// <param name="packagesId">The collection of package that contains the element</param>
+        /// <returns>The <see cref="PackageRowViewModel"/></returns>
+        public PackageRowViewModel GetOrCreatePackageRowViewModel(Package package, List<int> packagesId)
+        {
+            if (this.RepresentedObject.PackageID == packagesId.Last())
+            {
+                var existingPackageRow = this.ContainedRows.OfType<PackageRowViewModel>()
+                    .FirstOrDefault(x => x.RepresentedObject.PackageID == package.PackageID);
+
+                if (existingPackageRow == null)
+                {
+                    existingPackageRow = new PackageRowViewModel(this, package);
+                    this.ContainedRows.SortedInsert(existingPackageRow, ContainedRowsComparer);
+                }
+                
+                return existingPackageRow;
+            }
+
+            foreach (var containedPackage in this.ContainedRows.OfType<PackageRowViewModel>().ToList())
+            {
+                if (packagesId.Contains(containedPackage.RepresentedObject.PackageID))
+                {
+                    return containedPackage.GetOrCreatePackageRowViewModel(package, packagesId);
+                }
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -143,29 +190,48 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
         /// </summary>
         private void ShowCompleteTree()
         {
-            var requirements = this.RepresentedObject.GetElementsOfStereotypeInPackage(StereotypeKind.Requirement);
-            var blocks = this.RepresentedObject.GetElementsOfStereotypeInPackage(StereotypeKind.Block);
-            var packages = this.RepresentedObject.Packages.OfType<Package>();
-            var states = this.RepresentedObject.GetElementsOfTypeInPackage(StereotypeKind.State);
+            this.ComputeContainedPackages();
 
-            foreach (var package in packages)
+            this.UpdateContainedRowsOfStereotype(StereotypeKind.Requirement,
+                this.RepresentedObject.GetElementsOfStereotypeInPackage(StereotypeKind.Requirement).ToList());
+
+            this.UpdateContainedRowsOfStereotype(StereotypeKind.Block, this.RepresentedObject.GetElementsOfStereotypeInPackage(StereotypeKind.Block).ToList());
+            this.UpdateContainedRowsOfStereotype(StereotypeKind.State, this.RepresentedObject.GetElementsOfTypeInPackage(StereotypeKind.State).ToList());
+        }
+
+        /// <summary>
+        /// Update the <see cref="EnterpriseArchitectObjectBaseRowViewModel.ContainedRows" /> of type
+        /// <see cref="PackageRowViewModel" />
+        /// to apply the latest changes
+        /// </summary>
+        private void ComputeContainedPackages()
+        {
+            var packages = this.RepresentedObject.Packages.OfType<Package>().ToList();
+
+            var packagesRows = this.ContainedRows.OfType<PackageRowViewModel>().ToList();
+
+            var packagesToUpdate = packagesRows.Where(x =>
+                packages.Any(package => package.PackageGUID == x.RepresentedObject.PackageGUID));
+
+            var packagesToRemove = packagesRows.Where(x =>
+                packages.All(package => package.PackageGUID != x.RepresentedObject.PackageGUID));
+
+            var packagesToAdd = packages.Where(x => packagesRows.All(package =>
+                package.RepresentedObject.PackageGUID != x.PackageGUID));
+
+            foreach (var packageRowViewModel in packagesToRemove)
+            {
+                this.ContainedRows.Remove(packageRowViewModel);
+            }
+
+            foreach (var package in packagesToAdd)
             {
                 this.ContainedRows.SortedInsert(new PackageRowViewModel(this, package), ContainedRowsComparer);
             }
 
-            foreach (var requirement in requirements)
+            foreach (var packageRowViewModel in packagesToUpdate)
             {
-                this.ContainedRows.SortedInsert(new ElementRequirementRowViewModel(this, requirement), ContainedRowsComparer);
-            }
-
-            foreach (var block in blocks)
-            {
-                this.ContainedRows.SortedInsert(new BlockRowViewModel(this, block, true), ContainedRowsComparer);
-            }
-
-            foreach (var state in states)
-            {
-                this.ContainedRows.SortedInsert(new StateRowViewModel(this, state), ContainedRowsComparer);
+                packageRowViewModel.UpdateRepresentedObject(packages.FirstOrDefault(x => x.PackageGUID == packageRowViewModel.RepresentedObject.PackageGUID));
             }
         }
 

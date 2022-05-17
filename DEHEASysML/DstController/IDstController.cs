@@ -126,7 +126,7 @@ namespace DEHEASysML.DstController
         List<Connector> CreatedConnectors { get; }
 
         /// <summary>
-        /// Corrspondance between a <see cref="Element"/> Guid of Stereotype ValueProperty and new PropertyType Value
+        /// Correspondance between a <see cref="Element"/> Guid of Stereotype ValueProperty and new PropertyType Value
         /// </summary>
         Dictionary<string, int> UpdatePropertyTypes { get; }
 
@@ -339,5 +339,36 @@ namespace DEHEASysML.DstController
         /// <param name="blockDefinition">The retrieve block <see cref="Element"/></param>
         /// <returns>a value indicating if the <see cref="Element"/> has been found</returns>
         bool TryGetInterfaceImplementation(Element interfaceElement, out Element blockDefinition);
+
+        /// <summary>
+        /// Handle the execution of the EA_OnPostNewPackage or EA_OnPreDeletePackage event
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository"/></param>
+        /// <param name="changeKind">The <see cref="ChangeKind"/></param>
+        /// <param name="value">The id of <see cref="Package"/></param>
+        void OnPackageEvent(Repository repository, ChangeKind changeKind,int value);
+
+        /// <summary>
+        /// Handle the execution of the EA_OnPostNewElement or EA_OnPreDeleteElement event
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository"/></param>
+        /// <param name="changeKind">The <see cref="ChangeKind"/></param>
+        /// <param name="value">The id of <see cref="Element"/></param>
+        void OnElementEvent(Repository repository, ChangeKind changeKind, int value);
+
+        /// <summary>
+        /// Gets the Id of each parent of the given <see cref="Package" /> Id
+        /// </summary>
+        /// <param name="packageId">The <see cref="Package" /> id</param>
+        /// <param name="packagesId">A collection of all <see cref="Package" /> already found</param>
+        void GetPackageParentId(int packageId, ref List<int> packagesId);
+
+        /// <summary>
+        /// Handle the OnNotifyContextItemModified event from EA
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        /// <param name="guid">The guid of the Item</param>
+        /// <param name="objectType">The <see cref="ObjectType" /> of the item</param>
+        void OnContextItemChanged(Repository repository, string guid, ObjectType objectType);
     }
 }

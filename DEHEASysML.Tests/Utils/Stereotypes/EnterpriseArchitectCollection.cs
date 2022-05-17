@@ -125,7 +125,17 @@ namespace DEHEASysML.Tests.Utils.Stereotypes
         /// <returns>The created object</returns>
         public object AddNew(string Name, string Type)
         {
-            return Type.AreEquals(StereotypeKind.Dependency) ? new Mock<Connector>().Object : null;
+            if (Type.AreEquals(StereotypeKind.Dependency))
+            {
+                return new Mock<Connector>().Object;
+            }
+
+            if (Type.AreEquals(StereotypeKind.Package))
+            {
+                return new Mock<Package>().Object;
+            }
+
+            return null;
         }
 
         /// <summary>

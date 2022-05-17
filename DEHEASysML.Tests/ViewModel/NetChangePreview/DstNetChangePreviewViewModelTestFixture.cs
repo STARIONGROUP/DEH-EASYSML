@@ -26,7 +26,9 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
 {
     using System;
     using System.Collections.Generic;
+    using System.Linq;
 
+    using CDP4Common;
     using CDP4Common.EngineeringModelData;
 
     using CDP4Dal;
@@ -36,6 +38,7 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
     using DEHEASysML.Events;
     using DEHEASysML.Tests.Utils.Stereotypes;
     using DEHEASysML.Utils.Stereotypes;
+    using DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows;
     using DEHEASysML.ViewModel.NetChangePreview;
     using DEHEASysML.ViewModel.Rows;
 
@@ -120,6 +123,7 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
             subPackage.Setup(x => x.PackageID).Returns(3);
             subPackage.Setup(x => x.Name).Returns("subPackage");
             subPackage.Setup(x => x.Packages).Returns(new EnterpriseArchitectCollection());
+            subPackage.Setup(x => x.PackageGUID).Returns(Guid.NewGuid().ToString());
 
             subPackage.Setup(x => x.Elements).Returns(new EnterpriseArchitectCollection()
             {
@@ -129,6 +133,7 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
             var firstModel = new Mock<Package>();
             firstModel.Setup(x => x.PackageID).Returns(1);
             firstModel.Setup(x => x.Name).Returns("Model");
+            firstModel.Setup(x => x.PackageGUID).Returns(Guid.NewGuid().ToString());
             firstModel.Setup(x => x.Packages).Returns(new EnterpriseArchitectCollection() { subPackage.Object });
             firstModel.Setup(x => x.Elements).Returns(new EnterpriseArchitectCollection());
 
@@ -145,6 +150,8 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
 
             this.repository = new Mock<Repository>();
             this.repository.Setup(x => x.Models).Returns(collection);
+            this.repository.Setup(x => x.GetPackageByGuid(firstModel.Object.PackageGUID)).Returns(firstModel.Object);
+            this.repository.Setup(x => x.GetPackageByGuid(subPackage.Object.PackageGUID)).Returns(subPackage.Object);
 
             this.dstController.Setup(x => x.CurrentRepository).Returns(this.repository.Object);
             this.dstController.Setup(x => x.RetrieveAllParentsIdPackage(It.IsAny<IEnumerable<Element>>())).Returns(new List<int>() { 1, 3 });
@@ -161,8 +168,6 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
         {
             Assert.IsNotNull(this.viewModel.SelectAllCommand);
             Assert.IsNotNull(this.viewModel.DeselectAllCommand);
-            Assert.DoesNotThrow(() => CDPMessageBus.Current.SendMessage(new UpdateDstNetChangePreview()));
-            Assert.DoesNotThrow(() => CDPMessageBus.Current.SendMessage(new UpdateDstNetChangePreview(true)));
         }
 
         [Test]
@@ -177,9 +182,14 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
         [Test]
         public void VerifyComputesValues()
         {
-            Assert.DoesNotThrow(() => this.viewModel.ComputeValues());
+            Assert.DoesNotThrow(() => this.viewModel.ComputeValues(false));
+            Assert.DoesNotThrow(() => this.viewModel.ComputeValues(true));
             this.dstController.Setup(x => x.IsFileOpen).Returns(true);
-            Assert.DoesNotThrow(() => this.viewModel.ComputeValues());
+            Assert.DoesNotThrow(() => this.viewModel.ComputeValues(true));
+            this.hubMapResult.Add(new ElementDefinitionMappedElement(new ElementDefinition(), this.block.Object, MappingDirection.FromHubToDst));
+            this.hubMapResult.Add(new RequirementMappedElement(new CDP4Common.EngineeringModelData.Requirement(), this.requirement.Object, MappingDirection.FromHubToDst));
+            Assert.DoesNotThrow(() => this.viewModel.ComputeValues(false));
+            Assert.DoesNotThrow(() => this.viewModel.ComputeValues(false));
         }
 
         [Test]
@@ -191,11 +201,94 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
             this.hubMapResult.Add(new ElementDefinitionMappedElement(null, this.block.Object, MappingDirection.FromHubToDst));
             this.hubMapResult.Add(new RequirementMappedElement(null, this.requirement.Object, MappingDirection.FromHubToDst));
             this.dstController.Setup(x => x.IsFileOpen).Returns(true);
-            this.viewModel.ComputeValues();
+            this.viewModel.ComputeValues(true);
             Assert.DoesNotThrow(() => this.viewModel.SelectAllCommand.Execute(null));
             Assert.IsNotEmpty(this.selectedMapElements);
             Assert.DoesNotThrow(() => this.viewModel.DeselectAllCommand.Execute(null));
             Assert.IsEmpty(this.selectedMapElements);
         }
+
+        [Test]
+        public void VerifyCDPMessageBus()
+        {
+            Assert.DoesNotThrow(() => CDPMessageBus.Current.SendMessage(new UpdateDstNetChangePreview()));
+            Assert.DoesNotThrow(() => CDPMessageBus.Current.SendMessage(new UpdateDstNetChangePreview(true)));
+
+            var package = new Mock<Package>();
+            package.Setup(x => x.PackageID).Returns(15);
+            package.Setup(x => x.Packages).Returns(new EnterpriseArchitectCollection());
+            package.Setup(x => x.Elements).Returns(new EnterpriseArchitectCollection());
+            this.repository.Setup(x => x.GetPackageByID(package.Object.PackageID)).Returns(package.Object);
+
+            var model = new Mock<Package>();
+            model.Setup(x => x.PackageID).Returns(1);
+            model.Setup(x => x.Packages).Returns(new EnterpriseArchitectCollection());
+            model.Setup(x => x.Elements).Returns(new EnterpriseArchitectCollection());
+
+            this.viewModel.Things.Add(new ModelRowViewModel(model.Object));
+            var idList = new List<int>() {15,1};
+
+            var element = new Mock<Element>();
+            element.Setup(x => x.ElementID).Returns(145);
+            element.Setup(x => x.Elements).Returns(new EnterpriseArchitectCollection());
+            element.Setup(x => x.PackageID).Returns(package.Object.PackageID);
+            element.Setup(x => x.Stereotype).Returns(StereotypeKind.Block.ToString());
+
+            this.dstController.Setup(x => x.GetPackageParentId(package.Object.PackageID, ref It.Ref<List<int>>.IsAny))
+                .Callback(new GetPackageParentIdDelegate(((int id, ref List<int> idsList) => idsList = idList)));
+
+            this.dstController.Setup(x => x.RetrieveAllParentsIdPackage(It.IsAny<IEnumerable<Element>>())).Returns(
+                new List<int>(){ model.Object.PackageID, package.Object.PackageID});
+
+            this.repository.Setup(x => x.GetElementByID(element.Object.ElementID)).Returns(element.Object);
+
+            Assert.DoesNotThrow(() => CDPMessageBus.Current.SendMessage(new EnterpriseArchitectPackageEvent(ChangeKind.Create, package.Object.PackageID)));
+            Assert.DoesNotThrow(() => CDPMessageBus.Current.SendMessage(new EnterpriseArchitectElementEvent(ChangeKind.Create, element.Object.ElementID)));
+
+            var valueProperty = new Mock<Element>();
+            valueProperty.Setup(x => x.ElementID).Returns(1458);
+            valueProperty.Setup(x => x.ParentID).Returns(element.Object.ElementID);
+            valueProperty.Setup(x => x.Stereotype).Returns(StereotypeKind.ValueProperty.ToString());
+            valueProperty.Setup(x => x.CustomProperties).Returns(new EnterpriseArchitectCollection());
+            element.Setup(x => x.Elements).Returns(new EnterpriseArchitectCollection() { valueProperty.Object });
+            this.repository.Setup(x => x.GetElementByID(valueProperty.Object.ElementID)).Returns(valueProperty.Object);
+
+            Assert.DoesNotThrow(() => CDPMessageBus.Current.SendMessage(new EnterpriseArchitectElementEvent(ChangeKind.Create, valueProperty.Object.ElementID)));
+            Assert.DoesNotThrow(() => CDPMessageBus.Current.SendMessage(new EnterpriseArchitectElementEvent(ChangeKind.Delete, valueProperty.Object.ElementID)));
+
+            Assert.DoesNotThrow(() => CDPMessageBus.Current.SendMessage(new EnterpriseArchitectElementEvent(ChangeKind.Delete, element.Object.ElementID)));
+            Assert.DoesNotThrow(() => CDPMessageBus.Current.SendMessage(new EnterpriseArchitectPackageEvent(ChangeKind.Delete, package.Object.PackageID)));
+        }
+
+        [Test]
+        public void VerifiyWhenItemSelectedChanges()
+        {
+            this.dstController.Setup(x => x.IsFileOpen).Returns(true);
+            this.viewModel.ComputeValues(true);
+
+            var requirementRow = this.viewModel.Things.First().ContainedRows.First()
+                .ContainedRows.OfType<ElementRequirementRowViewModel>().First();
+
+            var blockRow = this.viewModel.Things.First().ContainedRows.First().ContainedRows.OfType<BlockRowViewModel>().First();
+            var packageRow = this.viewModel.Things.First();
+
+            this.viewModel.SelectedThings.Add(blockRow);
+            this.viewModel.SelectedThings.Add(requirementRow);
+            this.viewModel.SelectedThings.Add(packageRow);
+
+            Assert.IsEmpty(this.selectedMapElements);
+            
+            this.hubMapResult.Add(new RequirementMappedElement(null, this.requirement.Object, MappingDirection.FromHubToDst));
+            this.hubMapResult.Add(new ElementDefinitionMappedElement(new ElementDefinition(), this.block.Object, MappingDirection.FromHubToDst));
+
+            this.viewModel.ComputeValues(false);
+            this.viewModel.SelectedThings.Add(blockRow);
+            this.viewModel.SelectedThings.Add(requirementRow);
+            this.viewModel.SelectedThings.Add(packageRow);
+
+            Assert.AreEqual(2,this.selectedMapElements.Count);
+        }
     }
+
+    internal delegate void GetPackageParentIdDelegate(int packageId, ref List<int> idList);
 }

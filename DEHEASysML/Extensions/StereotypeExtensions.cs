@@ -277,7 +277,7 @@ namespace DEHEASysML.Extensions
                 case StereotypeKind.Unit:
                     return "SysML1.3::unit";
                 case StereotypeKind.Block:
-                    return "SysML1.3::block";
+                    return "SysML1.4::block";
                 case StereotypeKind.Requirement:
                     return "SysML1.4::requirement";
                 case StereotypeKind.Port:

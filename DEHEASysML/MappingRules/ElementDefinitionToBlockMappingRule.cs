@@ -160,10 +160,8 @@ namespace DEHEASysML.MappingRules
 
                 var interfaceElement = this.GetOrCreateInterface(relationsShip.Name);
 
-                if (targetType == StereotypeKind.RequiredInterface)
-                {
-                    this.CreateOrUpdateConnector(portDefinition, interfaceElement);
-                }
+                this.CreateOrUpdateConnector(portDefinition, interfaceElement
+                    , targetType == StereotypeKind.RequiredInterface ? StereotypeKind.Usage : StereotypeKind.Realization);
 
                 var embeddedInterface = port.EmbeddedElements.OfType<Element>().FirstOrDefault(x => x.MetaType.AreEquals(targetType))
                                         ?? this.DstController.AddNewElement(port.Elements, interfaceElement.Name, targetType.ToString(), targetType);
@@ -179,13 +177,14 @@ namespace DEHEASysML.MappingRules
         /// </summary>
         /// <param name="portDefinition">The port <see cref="Element" /> definition</param>
         /// <param name="interfaceElement">The interface <see cref="Element" /></param>
-        private void CreateOrUpdateConnector(Element portDefinition, Element interfaceElement)
+        /// <param name="connectorType">The type of the connector</param>
+        private void CreateOrUpdateConnector(Element portDefinition, Element interfaceElement, StereotypeKind connectorType)
         {
             var connector = portDefinition.GetAllConnectorsOfElement().FirstOrDefault();
 
             if (connector == null)
             {
-                connector = portDefinition.Connectors.AddNew("", StereotypeKind.Usage.ToString()) as Connector;
+                connector = portDefinition.Connectors.AddNew("", connectorType.ToString()) as Connector;
                 this.DstController.CreatedConnectors.Add(connector);
             }
 
@@ -309,6 +308,8 @@ namespace DEHEASysML.MappingRules
                 this.VerifyStateDependency(parameter, property);
                 this.UpdateValue(parameter, property);
             }
+
+            element.Update();
         }
 
         /// <summary>

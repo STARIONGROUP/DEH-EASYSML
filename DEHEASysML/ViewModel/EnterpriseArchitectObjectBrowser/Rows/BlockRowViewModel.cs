@@ -24,9 +24,10 @@
 
 namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
 {
-    using DEHEASysML.Extensions;
+    using System.Linq;
 
-    using DEHPCommon.Extensions;
+    using DEHEASysML.Enumerators;
+    using DEHEASysML.Extensions;
 
     using EA;
 
@@ -57,20 +58,9 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
         {
             if (this.ShouldShowEverything)
             {
-                foreach (var valueProperty in this.RepresentedObject.Elements.GetAllValuePropertiesOfElement())
-                {
-                    this.ContainedRows.SortedInsert(new ValuePropertyRowViewModel(this, valueProperty), ContainedRowsComparer);
-                }
-
-                foreach (var partProperty in this.RepresentedObject.Elements.GetAllPartPropertiesOfElement())
-                {
-                    this.ContainedRows.SortedInsert(new PartPropertyRowViewModel(this, partProperty), ContainedRowsComparer);
-                }
-
-                foreach (var port in this.RepresentedObject.Elements.GetAllPortsOfElement())
-                {
-                    this.ContainedRows.SortedInsert(new PortRowViewModel(this, port), ContainedRowsComparer);
-                }
+                this.UpdateContainedRowsOfStereotype(StereotypeKind.ValueProperty, this.RepresentedObject.Elements.GetAllValuePropertiesOfElement().ToList());
+                this.UpdateContainedRowsOfStereotype(StereotypeKind.PartProperty, this.RepresentedObject.Elements.GetAllPartPropertiesOfElement().ToList());
+                this.UpdateContainedRowsOfStereotype(StereotypeKind.Port, this.RepresentedObject.Elements.GetAllPortsOfElement().ToList());
             }
         }
 

@@ -207,7 +207,15 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
                 Group = parameterGroup
             };
 
+            var elementUsage = new ElementUsage()
+            {
+                Iid = Guid.NewGuid(),
+                Container = elementDefinition,
+                ElementDefinition = new ElementDefinition()
+            };
+
             elementDefinition.Parameter.Add(parameter);
+            elementDefinition.ContainedElement.Add(elementUsage);
 
             var elementDefinition2 = new ElementDefinition()
             {
@@ -221,7 +229,7 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
             this.viewModel.ComputeValues();
 
             Assert.DoesNotThrow(() => this.viewModel.SelectAllCommand.Execute(null));
-            Assert.AreEqual(1, this.selectedDstMapResultForTransfer.Count);
+            Assert.AreEqual(2, this.selectedDstMapResultForTransfer.Count);
 
             Assert.DoesNotThrow(() => this.viewModel.DeselectAllCommand.Execute(null));
             Assert.AreEqual(0, this.selectedDstMapResultForTransfer.Count);
@@ -233,15 +241,19 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
             this.viewModel.GetElementDefinitionRowViewModel(elementDefinition2, out var elementDefinitionRow2);
             Assert.DoesNotThrow(() => this.viewModel.SelectedThings.Add(elementDefinitionRow));
             Assert.DoesNotThrow(() => this.viewModel.SelectedThings.Add(elementDefinitionRow2));
-            Assert.AreEqual(1, this.selectedDstMapResultForTransfer.Count);
+            Assert.AreEqual(2, this.selectedDstMapResultForTransfer.Count);
 
             var parameterGroupRow = elementDefinitionRow.ContainedRows.OfType<ParameterGroupRowViewModel>().First();
             Assert.DoesNotThrow(() => this.viewModel.SelectedThings.Add(parameterGroupRow));
-            Assert.AreEqual(0, this.selectedDstMapResultForTransfer.Count);
+            Assert.AreEqual(2, this.selectedDstMapResultForTransfer.Count);
 
-            var parameterRow = parameterGroupRow.ContainedRows.OfType<ParameterOrOverrideBaseRowViewModel>().First();
+            var parameterRow = parameterGroupRow.ContainedRows.OfType<ParameterRowViewModel>().First();
             Assert.DoesNotThrow(() => this.viewModel.SelectedThings.Add(parameterRow));
             Assert.AreEqual(1, this.selectedDstMapResultForTransfer.Count);
+
+            var elementUsageRow = elementDefinitionRow.ContainedRows.OfType<ElementUsageRowViewModel>().First();
+            Assert.DoesNotThrow(() => this.viewModel.SelectedThings.Add(elementUsageRow));
+            Assert.AreEqual(0, this.selectedDstMapResultForTransfer.Count);
         }
     }
 }

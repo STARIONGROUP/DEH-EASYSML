@@ -1,5 +1,5 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
-// <copyright file="ElementRowViewModel.cs" company="RHEA System S.A.">
+// <copyright file="EnterpriseArchitectElementPackage.cs" company="RHEA System S.A.">
 // Copyright (c) 2020-2022 RHEA System S.A.
 // 
 // Author: Sam Gerené, Alex Vorobiev, Alexander van Delft, Nathanael Smiechowski, Antoine Théate.
@@ -22,43 +22,24 @@
 // </copyright>
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
+namespace DEHEASysML.Events
 {
-    using EA;
+    using CDP4Common;
+
+    using CDP4Dal;
 
     /// <summary>
-    /// The <see cref="ElementRowViewModel" /> represents a row for an <see cref="Element" />
+    /// An event for the <see cref="CDPMessageBus"/>
     /// </summary>
-    public abstract class ElementRowViewModel : EnterpriseArchitectObjectRowViewModel<Element>
+    public class EnterpriseArchitectElementEvent : EnterpriseArchitectEvent
     {
         /// <summary>
-        /// Initializes a new <see cref="ElementRowViewModel" />
+        /// Initializes a new instance of the <see cref="EnterpriseArchitectElementEvent" /> class.
         /// </summary>
-        /// <param name="parent">The parent row</param>
-        /// <param name="eaObject">The object to represent</param>
-        protected ElementRowViewModel(EnterpriseArchitectObjectBaseRowViewModel parent, Element eaObject)
-            : base(parent, eaObject)
+        /// <param name="changeKind">The <see cref="ChangeKind"/></param>
+        /// <param name="id">The id</param>
+        public EnterpriseArchitectElementEvent(ChangeKind changeKind, int id) : base(changeKind, id)
         {
-        }
-
-        /// <summary>
-        /// Update the current <see cref="Element" />
-        /// </summary>
-        /// <param name="element">The new <see cref="Element" /></param>
-        public void UpdateElement(Element element)
-        {
-            this.ContainedRows.Clear();
-            this.RepresentedObject = element;
-            this.UpdateProperties();
-        }
-
-        /// <summary>
-        /// Updates this view model properties;
-        /// </summary>
-        protected override void UpdateProperties()
-        {
-            base.UpdateProperties();
-            this.ComputeRow();
         }
     }
 }

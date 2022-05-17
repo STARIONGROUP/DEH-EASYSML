@@ -29,12 +29,15 @@ namespace DEHEASysML.ViewModel.NetChangePreview
     using System.Linq;
     using System.Reactive.Linq;
 
+    using CDP4Common;
     using CDP4Common.CommonData;
 
     using CDP4Dal;
 
     using DEHEASysML.DstController;
+    using DEHEASysML.Enumerators;
     using DEHEASysML.Events;
+    using DEHEASysML.Extensions;
     using DEHEASysML.Utils.Stereotypes;
     using DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser;
     using DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows;
@@ -60,7 +63,7 @@ namespace DEHEASysML.ViewModel.NetChangePreview
         /// <summary>
         /// A collection of <see cref="ElementRowViewModel" /> that are highlighted
         /// </summary>
-        private readonly List<ElementRowViewModel> highlightedRows = new();
+        private readonly List<EnterpriseArchitectObjectBaseRowViewModel> highlightedRows = new();
 
         /// <summary>
         /// Initializes a new <see cref="DstNetChangePreviewViewModel" />
@@ -71,7 +74,7 @@ namespace DEHEASysML.ViewModel.NetChangePreview
             this.dstController = dstController;
 
             this.InitializeCommandsAndObservables();
-            this.ComputeValues();
+            this.ComputeValues(true);
         }
 
         /// <summary>
@@ -108,17 +111,29 @@ namespace DEHEASysML.ViewModel.NetChangePreview
         /// <summary>
         /// Compute all rows
         /// </summary>
-        public void ComputeValues()
+        /// <param name="shouldReset">A value indicating if the tree has to reset or not</param>
+        public void ComputeValues(bool shouldReset)
         {
             if (!this.dstController.IsFileOpen)
             {
+                this.Things.Clear();
                 return;
             }
 
             this.IsBusy = true;
+
+            if (shouldReset)
+            {
+                this.BuildNetChangeTree();
+            }
+            else
+            {
+                this.CleanTree();
+            }
+
             this.SelectedThings.Clear();
             this.highlightedRows.Clear();
-            this.BuildNetChangeTree();
+
             this.ComputeRows();
             this.IsBusy = false;
         }
@@ -171,6 +186,42 @@ namespace DEHEASysML.ViewModel.NetChangePreview
         }
 
         /// <summary>
+        /// Cleans the tree
+        /// </summary>
+        private void CleanTree()
+        {
+            foreach (var row in this.highlightedRows.OfType<ElementRowViewModel>())
+            {
+                row.IsHighlighted = false;
+                row.IsSelectedForTransfer = false;
+
+                var element = this.dstController.CurrentRepository.GetElementByGuid(row.RepresentedObject.ElementGUID);
+
+                if (element != null)
+                {
+                    row.UpdateElement(element);
+                }
+                else
+                {
+                    row.Parent.ContainedRows.Remove(row);
+                }
+            }
+
+            foreach (var row in this.highlightedRows.OfType<PackageRowViewModel>())
+            {
+                row.IsHighlighted = false;
+                row.IsSelectedForTransfer = false;
+
+                var package = this.dstController.CurrentRepository.GetPackageByGuid(row.RepresentedObject.PackageGUID);
+
+                if (package == null)
+                {
+                    row.Parent.ContainedRows.Remove(row);
+                }
+            }
+        }
+
+        /// <summary>
         /// Compute the rows to display the current mapping
         /// </summary>
         private void ComputeRows()
@@ -191,9 +242,8 @@ namespace DEHEASysML.ViewModel.NetChangePreview
                 }
 
                 var row = this.GetOrCreateRow(mappedElement);
-                row.IsHighlighted = true;
 
-                this.highlightedRows.Add(row);
+                this.HighlightRowAndParentRow(row);
 
                 foreach (var valuePropertyRow in row.ContainedRows.OfType<ValuePropertyRowViewModel>())
                 {
@@ -203,11 +253,26 @@ namespace DEHEASysML.ViewModel.NetChangePreview
                     }
                 }
 
-                if (row is ElementRequirementRowViewModel requirementRow 
+                if (row is ElementRequirementRowViewModel requirementRow
                     && this.dstController.UpdatedRequirementValues.TryGetValue(mappedElement.ElementGUID, out var newRequirementValue))
                 {
                     requirementRow.OverrideValue(newRequirementValue.text);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Highlight a row and the parent of this row
+        /// </summary>
+        /// <param name="row">The row to highlight</param>
+        private void HighlightRowAndParentRow(EnterpriseArchitectObjectBaseRowViewModel row)
+        {
+            row.IsHighlighted = true;
+            this.highlightedRows.Add(row);
+
+            if (row.Parent is { IsHighlighted: false })
+            {
+                this.HighlightRowAndParentRow(row.Parent);
             }
         }
 
@@ -218,7 +283,8 @@ namespace DEHEASysML.ViewModel.NetChangePreview
         /// <returns>A <see cref="ElementRowViewModel" /></returns>
         private ElementRowViewModel GetOrCreateRow(Element mappedElement)
         {
-            var highlightedRow = this.highlightedRows.FirstOrDefault(x => x.RepresentedObject.ElementGUID == mappedElement.ElementGUID);
+            var highlightedRow = this.highlightedRows
+                .OfType<ElementRowViewModel>().FirstOrDefault(x => x.RepresentedObject.ElementGUID == mappedElement.ElementGUID);
 
             if (highlightedRow != null)
             {
@@ -262,7 +328,14 @@ namespace DEHEASysML.ViewModel.NetChangePreview
         /// </summary>
         private void InitializeCommandsAndObservables()
         {
-            CDPMessageBus.Current.Listen<UpdateDstNetChangePreview>().Subscribe(_ => this.ComputeValues());
+            CDPMessageBus.Current.Listen<UpdateDstNetChangePreview>()
+                .Subscribe(x => this.ComputeValues(x.Reset));
+
+            CDPMessageBus.Current.Listen<EnterpriseArchitectPackageEvent>()
+                .Subscribe(x => this.AddOrRemovePackageRow(x.Id, x.ChangeKind));
+
+            CDPMessageBus.Current.Listen<EnterpriseArchitectElementEvent>()
+                .Subscribe(x => this.AddOrRemoveElementRow(x.Id, x.ChangeKind));
 
             this.SelectedThings.BeforeItemsAdded.Subscribe(this.WhenItemSelectedChanges);
             this.SelectedThings.BeforeItemsRemoved.Subscribe(this.WhenItemSelectedChanges);
@@ -277,9 +350,101 @@ namespace DEHEASysML.ViewModel.NetChangePreview
         }
 
         /// <summary>
+        /// Adds or removes <see cref="ElementRowViewModel" />
+        /// </summary>
+        /// <param name="elementId">The id of the <see cref="Element" /></param>
+        /// <param name="changeKind">The <see cref="ChangeKind" /></param>
+        private void AddOrRemoveElementRow(int elementId, ChangeKind changeKind)
+        {
+            this.IsBusy = true;
+
+            var element = this.dstController.CurrentRepository.GetElementByID(elementId);
+
+            if (element.Stereotype.AreEquals(StereotypeKind.Block) || element.Stereotype.AreEquals(StereotypeKind.Requirement)
+                                                                   || element.Stereotype.AreEquals(StereotypeKind.State))
+            {
+                var row = this.GetOrCreateRow(element);
+
+                if (changeKind == ChangeKind.Delete)
+                {
+                    row.Parent.ContainedRows.Remove(row);
+                }
+            }
+            else if (element.Stereotype.AreEquals(StereotypeKind.Port) || element.Stereotype.AreEquals(StereotypeKind.PartProperty)
+                                                                       || element.Stereotype.AreEquals(StereotypeKind.ValueProperty))
+            {
+                var blockElement = this.dstController.CurrentRepository.GetElementByID(element.ParentID);
+
+                var parentRow = this.GetOrCreateRow(blockElement);
+
+                if (changeKind == ChangeKind.Delete)
+                {
+                    foreach (var containedRwows in parentRow.ContainedRows.OfType<ElementRowViewModel>()
+                                 .Where(containedRwows => containedRwows.RepresentedObject.ElementID == elementId).ToList())
+                    {
+                        containedRwows.Parent.ContainedRows.Remove(containedRwows);
+                    }
+                }
+            }
+
+            this.IsBusy = false;
+        }
+
+        /// <summary>
+        /// Adds or removes <see cref="PackageRowViewModel" />
+        /// </summary>
+        /// <param name="packageId">The id of the <see cref="Package" /></param>
+        /// <param name="changeKind">The <see cref="ChangeKind" /></param>
+        private void AddOrRemovePackageRow(int packageId, ChangeKind changeKind)
+        {
+            this.IsBusy = true;
+
+            var package = this.dstController.CurrentRepository.GetPackageByID(packageId);
+
+            var packageRow = this.GetOrCreatePackageRow(package);
+
+            if (changeKind == ChangeKind.Delete)
+            {
+                packageRow.Parent.ContainedRows.Remove(packageRow);
+            }
+
+            this.IsBusy = false;
+        }
+
+        /// <summary>
+        /// Gets or create the <see cref="PackageRowViewModel" /> representing the <see cref="Package" />
+        /// </summary>
+        /// <param name="package">The <see cref="Package" /></param>
+        /// <returns>The <see cref="PackageRowViewModel" /></returns>
+        private PackageRowViewModel GetOrCreatePackageRow(Package package)
+        {
+            var packagesId = new List<int>();
+            this.dstController.GetPackageParentId(package.PackageID, ref packagesId);
+
+            if (packagesId.Count > 1)
+            {
+                packagesId.RemoveAt(0);
+            }
+
+            packagesId.Reverse();
+
+            foreach (var modelRow in this.Things.OfType<ModelRowViewModel>())
+            {
+                var row = modelRow.GetOrCreatePackageRowViewModel(package, packagesId);
+
+                if (row != null)
+                {
+                    return row;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
         /// The <see cref="Element" />
         /// </summary>
-        /// <param name="elementRow">The <see cref="ElementRowViewModel"/></param>
+        /// <param name="elementRow">The <see cref="ElementRowViewModel" /></param>
         private void AddOrRemoveToSelectedThingsToTransfer(ElementRowViewModel elementRow)
         {
             this.AddOrRemoveToSelectedThingsToTransfer(elementRow.RepresentedObject, elementRow.IsSelectedForTransfer);
