@@ -45,11 +45,6 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
     public abstract class EnterpriseArchitectObjectRowViewModel<TEaClass> : EnterpriseArchitectObjectBaseRowViewModel where TEaClass : class
     {
         /// <summary>
-        /// The <see cref="EnterpriseArchitectObjectBaseRowViewModel" /> <see cref="IComparer{T}" />
-        /// </summary>
-        protected static readonly IComparer<EnterpriseArchitectObjectBaseRowViewModel> ContainedRowsComparer = new EnterpriseArchitectObjectRowComparer();
-
-        /// <summary>
         /// Backing field for <see cref="RepresentedObject" />
         /// </summary>
         private TEaClass representedObject;

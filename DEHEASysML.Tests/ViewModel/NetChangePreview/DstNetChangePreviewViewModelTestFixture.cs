@@ -172,8 +172,6 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
         {
             Assert.IsNotNull(this.viewModel.SelectAllCommand);
             Assert.IsNotNull(this.viewModel.DeselectAllCommand);
-            Assert.DoesNotThrow(() => CDPMessageBus.Current.SendMessage(new UpdateDstNetChangePreview()));
-            Assert.DoesNotThrow(() => CDPMessageBus.Current.SendMessage(new UpdateDstNetChangePreview(true)));
         }
 
         [Test]
