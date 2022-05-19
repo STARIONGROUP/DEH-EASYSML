@@ -270,6 +270,11 @@ namespace DEHEASysML.DstController
         public List<Connector> CreatedConnectors { get; } = new();
 
         /// <summary>
+        /// A collection of <see cref="BinaryRelationship" /> that has been mapped based on <see cref="Connector" />
+        /// </summary>
+        public List<BinaryRelationship> MappedConnectorsToBinaryRelationships { get; } = new();
+
+        /// <summary>
         /// Gets or set the value if a file is open or not
         /// </summary>
         public bool IsFileOpen
@@ -594,7 +599,7 @@ namespace DEHEASysML.DstController
         public (Element port, Element interfaceElement) ResolvePort(Element port)
         {
             var propertyTypeElement = this.CurrentRepository.GetElementByID(port.PropertyType);
-            var connector = propertyTypeElement.Connectors.OfType<Connector>().FirstOrDefault();
+            var connector = propertyTypeElement.GetAllConnectorsOfElement().FirstOrDefault(x => x.Stereotype.AreEquals(StereotypeKind.Usage));
 
             return connector == null ? (null, propertyTypeElement) : this.ResolveConnector(connector);
         }
@@ -728,7 +733,7 @@ namespace DEHEASysML.DstController
         }
 
         /// <summary>
-        /// Map all <see cref="IMappedElementRowViewModel" />
+        /// Maps all <see cref="IMappedElementRowViewModel" />
         /// </summary>
         /// <param name="elements">The collection of <see cref="IMappedElementRowViewModel" /></param>
         /// <param name="mappingDirectionToMap">The <see cref="MappingDirection" /></param>
@@ -739,6 +744,9 @@ namespace DEHEASysML.DstController
                 this.DstMapResult.Clear();
                 var mappedElement = this.Map(elements.OfType<EnterpriseArchitectBlockElement>().ToList(), true);
                 mappedElement.AddRange(this.Map(elements.OfType<EnterpriseArchitectRequirementElement>().ToList(), true));
+                var mappedRelationships = this.MapToBinaryRelationships(mappedElement);
+                this.MappedConnectorsToBinaryRelationships.RemoveAll(x => mappedRelationships.Any(mapped => x.Iid == mapped.Iid));
+                this.MappedConnectorsToBinaryRelationships.AddRange(mappedRelationships);
                 this.DstMapResult.AddRange(mappedElement);
             }
             else
@@ -747,6 +755,13 @@ namespace DEHEASysML.DstController
                 this.HubMapResult.Clear();
                 var hubMappedElement = this.Map(elements.OfType<ElementDefinitionMappedElement>().ToList(), true);
                 hubMappedElement.AddRange(this.Map(elements.OfType<RequirementMappedElement>().ToList(), true));
+                var mappedConnector = this.MapToConnectors(hubMappedElement);
+
+                this.CreatedConnectors.RemoveAll(x => mappedConnector.Any(mapped => mapped.Stereotype == x.Stereotype &&
+                                                                                    mapped.ClientID == x.ClientID
+                                                                                    && mapped.SupplierID == x.SupplierID));
+
+                this.CreatedConnectors.AddRange(mappedConnector);
                 this.HubMapResult.AddRange(hubMappedElement);
                 this.shouldIgnoreEvents = false;
             }
@@ -845,6 +860,15 @@ namespace DEHEASysML.DstController
                 else if (element.Stereotype.AreEquals(StereotypeKind.Block))
                 {
                     this.ProcessTransferOfBlock(element);
+                }
+            }
+
+            foreach (var createdConnector in this.CreatedConnectors.ToList())
+            {
+                if (this.SelectedHubMapResultForTransfer.Any(x => x.ElementID == createdConnector.ClientID) &&
+                    this.SelectedHubMapResultForTransfer.Any(x => x.ElementID == createdConnector.SupplierID))
+                {
+                    this.CreatedConnectors.Remove(createdConnector);
                 }
             }
 
@@ -963,8 +987,8 @@ namespace DEHEASysML.DstController
         {
             var (iterationClone, transaction) = this.GetIterationTransaction();
 
-            var stateDependsParameters = this.SelectedDstMapResultForTransfer.OfType<ElementDefinition>()
-                .SelectMany(x => x.Parameter.Where(param => param.StateDependence != null));
+            var stateDependsParameters = this.SelectedDstMapResultForTransfer.OfType<Parameter>()
+                .Where(x => x.StateDependence != null);
 
             var actualFiniteStateLists = stateDependsParameters.Select(x => x.StateDependence)
                 .GroupBy(x => x.Iid).Select(x => x.First()).ToList();
@@ -1149,7 +1173,9 @@ namespace DEHEASysML.DstController
         /// <param name="element">The <see cref="Element" /> to transfer</param>
         private void ProcessTransferOfBlock(Element element)
         {
-            this.CreatedElements.RemoveAll(x => x.ElementGUID == element.ElementGUID);
+            this.exchangeHistory.Append(this.CreatedElements.RemoveAll(x => x.ElementGUID == element.ElementGUID) > 0
+                ? $"Block {element.Name} has been created"
+                : $"Block {element.Name} has been updated");
 
             foreach (var port in element.Elements.GetAllPortsOfElement().ToList())
             {
@@ -1158,7 +1184,10 @@ namespace DEHEASysML.DstController
 
             foreach (var blockDefinition in element.GetAllPortsDefinitionOfElement().ToList())
             {
-                this.CreatedElements.RemoveAll(x => x.ElementGUID == blockDefinition.ElementGUID);
+                if (this.CreatedElements.RemoveAll(x => x.ElementGUID == blockDefinition.ElementGUID) > 0)
+                {
+                    this.exchangeHistory.Append($"Port {blockDefinition.Name} has been created");
+                }
 
                 foreach (var connector in blockDefinition.GetAllConnectorsOfElement())
                 {
@@ -1176,6 +1205,9 @@ namespace DEHEASysML.DstController
             {
                 if (this.UpdatedValuePropretyValues.TryGetValue(property.ElementGUID, out var newValue))
                 {
+                    this.exchangeHistory.Append($"Value {property.GetValueOfPropertyValue()} of the property {element.Name}.{property.Name} " +
+                                                $"has been updated: {newValue}");
+
                     property.SetValueOfPropertyValue(newValue);
                     property.Update();
                     property.CustomProperties.Refresh();
@@ -1225,6 +1257,7 @@ namespace DEHEASysML.DstController
                 element.Update();
                 this.CreatedElements.RemoveAll(x => x.ElementGUID == element.ElementGUID);
                 this.ClearPackages(element);
+                this.exchangeHistory.Append($"Requirement element {element.GetRequirementId()} has been updated");
             }
         }
 
@@ -1640,8 +1673,18 @@ namespace DEHEASysML.DstController
             var relationships = mappedElements.SelectMany(x => x.RelationShips).GroupBy(x => x.Source.Iid)
                 .Select(g => g.First()).ToList();
 
+            relationships.AddRange(this.MappedConnectorsToBinaryRelationships);
+
             foreach (var relationship in relationships.ToList())
             {
+                if ((this.SelectedDstMapResultForTransfer.Any(x => x.Iid == relationship.Source.Iid) ||
+                     this.SelectedDstMapResultForTransfer.Any(x => x.Container.Iid == relationship.Source.Iid))
+                    && (this.SelectedDstMapResultForTransfer.Any(x => x.Iid == relationship.Target.Iid)
+                        || this.SelectedDstMapResultForTransfer.Any(x => x.Container.Iid == relationship.Target.Iid)))
+                {
+                    continue;
+                }
+
                 if ((this.SelectedDstMapResultForTransfer.All(x => x.Iid != relationship.Source.Iid) && relationship.Target.Original == null) ||
                     (this.SelectedDstMapResultForTransfer.All(x => x.Iid != relationship.Target.Iid) && relationship.Target.Original == null))
                 {
@@ -1760,9 +1803,9 @@ namespace DEHEASysML.DstController
             foreach (var elementUsage in elementDefinition.ContainedElement
                          .Where(x => this.SelectedDstMapResultForTransfer.Any(selected => selected.Iid == x.Iid)))
             {
-                if (this.SelectedDstMapResultForTransfer.All(x => x.Iid != elementUsage.ElementDefinition.Iid))
+                if (this.SelectedDstMapResultForTransfer.All(x => x.Container.Iid != elementUsage.ElementDefinition.Iid))
                 {
-                    this.PrepareElementDefinitionForTransfer(iterationClone, transaction, elementUsage.ElementDefinition.Clone(false));
+                    this.PrepareElementDefinitionForTransfer(iterationClone, transaction, elementUsage.ElementDefinition.Clone(true));
                 }
 
                 this.AddOrUpdateIterationAndTransaction(elementUsage, elementDefinition.ContainedElement, transaction);
@@ -1811,7 +1854,75 @@ namespace DEHEASysML.DstController
         }
 
         /// <summary>
-        /// Map all <see cref="EnterpriseArchitectBlockElement" />
+        /// Maps all <see cref="IMappedElementRowViewModel" /> to creates <see cref="Connector" />
+        /// </summary>
+        /// <param name="mappedElement">A collection of <see cref="IMappedElementRowViewModel" /></param>
+        /// <returns>A collection of <see cref="Connector" /></returns>
+        private List<Connector> MapToConnectors(List<IMappedElementRowViewModel> mappedElement)
+        {
+            var hubRelationshipMappedElements = new List<HubRelationshipMappedElement>();
+
+            foreach (var mappedElementRowViewModel in mappedElement)
+            {
+                switch (mappedElementRowViewModel)
+                {
+                    case ElementDefinitionMappedElement elementDefinitionMappedElement:
+                        hubRelationshipMappedElements.Add(new HubRelationshipMappedElement(elementDefinitionMappedElement));
+                        break;
+                    case RequirementMappedElement requirementMappedElement:
+                        hubRelationshipMappedElements.Add(new HubRelationshipMappedElement(requirementMappedElement));
+                        break;
+                }
+            }
+
+            this.statusBar.Append($"Mapping of Links from {hubRelationshipMappedElements.Count} mapped Elements in progress...");
+
+            if (this.mappingEngine.Map(hubRelationshipMappedElements) is List<Connector> connectors && connectors.Any())
+            {
+                this.statusBar.Append($"{connectors.Count} Links mapped...");
+
+                return connectors;
+            }
+
+            return new List<Connector>();
+        }
+
+        /// <summary>
+        /// Maps all <see cref="IMappedElementRowViewModel" /> to creates <see cref="BinaryRelationship" />
+        /// </summary>
+        /// <param name="mappedElement">A collection of <see cref="IMappedElementRowViewModel" /></param>
+        /// <returns>A collection of <see cref="BinaryRelationship" /></returns>
+        private List<BinaryRelationship> MapToBinaryRelationships(List<IMappedElementRowViewModel> mappedElement)
+        {
+            var tracableElements = new List<EnterpriseArchitectTracableMappedElement>();
+
+            foreach (var mappedElementRowViewModel in mappedElement)
+            {
+                switch (mappedElementRowViewModel)
+                {
+                    case EnterpriseArchitectBlockElement mappedBlockElement:
+                        tracableElements.Add(new EnterpriseArchitectTracableMappedElement(mappedBlockElement));
+                        break;
+                    case EnterpriseArchitectRequirementElement requirementElement:
+                        tracableElements.Add(new EnterpriseArchitectTracableMappedElement(requirementElement));
+                        break;
+                }
+            }
+
+            this.statusBar.Append($"Mapping of Relationships from {tracableElements.Count} mapped Elements in progress...");
+
+            if (this.mappingEngine.Map(tracableElements) is List<BinaryRelationship> binaryRelationships && binaryRelationships.Any())
+            {
+                this.statusBar.Append($"{binaryRelationships.Count} Relationships mapped...");
+
+                return binaryRelationships;
+            }
+
+            return new List<BinaryRelationship>();
+        }
+
+        /// <summary>
+        /// MapToBinaryRelationships all <see cref="EnterpriseArchitectBlockElement" />
         /// </summary>
         /// <param name="blockElements">The collection of <see cref="EnterpriseArchitectBlockElement" /></param>
         /// <param name="isCompleteMapping">Asserts if the mapping has to been complete or not</param>
@@ -1832,7 +1943,7 @@ namespace DEHEASysML.DstController
         }
 
         /// <summary>
-        /// Map all <see cref="EnterpriseArchitectRequirementElement" />
+        /// Maps all <see cref="EnterpriseArchitectRequirementElement" />
         /// </summary>
         /// <param name="requirementElements">
         /// The collection of <see cref="EnterpriseArchitectRequirementElement" />

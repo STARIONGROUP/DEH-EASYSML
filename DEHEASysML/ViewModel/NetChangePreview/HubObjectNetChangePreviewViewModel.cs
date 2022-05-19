@@ -130,7 +130,7 @@ namespace DEHEASysML.ViewModel.NetChangePreview
         {
             switch (row)
             {
-                case ParameterRowViewModel parameterRowViewModel when this.IsThingTransferable(parameterRowViewModel.Thing):
+                case ParameterRowViewModel parameterRowViewModel when this.IsThingTransferable(parameterRowViewModel.Thing) && !this.IsContainedInElementUsage(parameterRowViewModel):
                     this.WhenItemSelectedChanges(parameterRowViewModel);
                     break;
 
@@ -183,6 +183,21 @@ namespace DEHEASysML.ViewModel.NetChangePreview
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Verifies that a <see cref="IHaveContainerViewModel" /> is not part of an <see cref="ElementUsageRowViewModel"/>
+        /// </summary>
+        /// <param name="containedRow">A <see cref="IHaveContainerViewModel"/></param>
+        /// <returns>A value indicating if the <see cref="IHaveContainerViewModel" /> if part of an <see cref="ElementUsageRowViewModel"/></returns>
+        private bool IsContainedInElementUsage(IHaveContainerViewModel containedRow)
+        {
+            return containedRow.ContainerViewModel switch
+            {
+                ElementUsageRowViewModel => true,
+                ParameterGroupRowViewModel parameterGroup => this.IsContainedInElementUsage(parameterGroup),
+                _ => false
+            };
         }
 
         /// <summary>

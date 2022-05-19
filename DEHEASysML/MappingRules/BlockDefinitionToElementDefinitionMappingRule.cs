@@ -148,10 +148,10 @@ namespace DEHEASysML.MappingRules
                 this.portsToConnect.Clear();
 
                 this.createdPossibleFiniteStateLists.RemoveAll(x => this.HubController.OpenIteration
-                    .PossibleFiniteStateList.Any(possibleFiniteState => x.Iid == possibleFiniteState.Iid) || x.Container.Iid != this.HubController.OpenIteration.Iid);
+                    .PossibleFiniteStateList.Any(possibleFiniteState => x.Iid == possibleFiniteState.Iid) || x.Container?.Iid != this.HubController.OpenIteration.Iid);
 
                 this.createdActualFiniteStateLists.RemoveAll(x => this.HubController.OpenIteration
-                    .ActualFiniteStateList.Any(actualFiniteStateList => x.Iid == actualFiniteStateList.Iid || x.Container.Iid != this.HubController.OpenIteration.Iid));
+                    .ActualFiniteStateList.Any(actualFiniteStateList => x.Iid == actualFiniteStateList.Iid || x.Container?.Iid != this.HubController.OpenIteration.Iid));
 
                 foreach (var mappedElement in this.Elements.ToList())
                 {
@@ -418,26 +418,26 @@ namespace DEHEASysML.MappingRules
         /// <param name="actualFiniteStateList">The <see cref="ActualFiniteStateList" /> to update</param>
         private void UpdateActualFiniteStateList(ActualFiniteStateList actualFiniteStateList)
         {
-            var combinaisons = this.GetAllPossibleCombinaision(actualFiniteStateList.PossibleFiniteStateList.ToList());
+            var combinations = this.GetAllPossibleCombination(actualFiniteStateList.PossibleFiniteStateList.ToList());
             actualFiniteStateList.ActualState.Clear();
 
-            foreach (var combinaison in combinaisons)
+            foreach (var combination in combinations)
             {
                 actualFiniteStateList.ActualState.Add(new ActualFiniteState
                 {
-                    PossibleState = combinaison,
+                    PossibleState = combination,
                     Iid = Guid.NewGuid()
                 });
             }
         }
 
         /// <summary>
-        /// Generates all possible combinaison crossing all <see cref="PossibleFiniteState" /> from all
+        /// Generates all possible combination crossing all <see cref="PossibleFiniteState" /> from all
         /// <see cref="PossibleFiniteStateList" />
         /// </summary>
         /// <param name="possibleFiniteStateLists">A collection of <see cref="PossibleFiniteStateList" /></param>
         /// <returns>A collection of <see cref="PossibleFiniteState" /></returns>
-        private List<List<PossibleFiniteState>> GetAllPossibleCombinaision(List<PossibleFiniteStateList> possibleFiniteStateLists)
+        private List<List<PossibleFiniteState>> GetAllPossibleCombination(List<PossibleFiniteStateList> possibleFiniteStateLists)
         {
             var allPossibleFiniteState = new List<List<PossibleFiniteState>>();
 
@@ -446,11 +446,11 @@ namespace DEHEASysML.MappingRules
                 allPossibleFiniteState.Add(possibleFiniteStateList.PossibleState.ToList());
             }
 
-            IEnumerable<List<PossibleFiniteState>> combinaisons = new List<List<PossibleFiniteState>> { new() };
+            IEnumerable<List<PossibleFiniteState>> combinations = new List<List<PossibleFiniteState>> { new() };
 
             foreach (var possibleFinites in allPossibleFiniteState)
             {
-                combinaisons = combinaisons.SelectMany(combi => possibleFinites.Select(x =>
+                combinations = combinations.SelectMany(combi => possibleFinites.Select(x =>
                 {
                     var newList = combi.ToList();
                     newList.Add(x);
@@ -458,7 +458,7 @@ namespace DEHEASysML.MappingRules
                 }).ToList());
             }
 
-            return combinaisons.ToList();
+            return combinations.ToList();
         }
 
         /// <summary>

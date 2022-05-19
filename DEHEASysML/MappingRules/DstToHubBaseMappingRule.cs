@@ -139,7 +139,7 @@ namespace DEHEASysML.MappingRules
                 return relationship;
             }
 
-            if (this.HubController.TryGetThingBy(x => x.Name == categoryNames.name
+            if (this.HubController.TryGetThingBy(x => string.Equals(x.Name, categoryNames.name, StringComparison.InvariantCultureIgnoreCase)
                                                       && !x.IsDeprecated, ClassKind.Category, out Category category)
                 || this.TryCreateCategory(categoryNames, out category, ClassKind.BinaryRelationship))
             {
