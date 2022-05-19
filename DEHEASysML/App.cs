@@ -94,7 +94,7 @@ namespace DEHEASysML
         /// <summary>
         /// The name of the Map Selected Package command
         /// </summary>
-        private const string MapSelectedPackage = "&Map selected package";
+        private const string MapSelectedPackage = "&Map all objects contained in the package";
 
         /// <summary>
         /// The name of the Ribbon Category
