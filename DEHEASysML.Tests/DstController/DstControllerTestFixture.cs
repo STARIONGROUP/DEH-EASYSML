@@ -595,8 +595,10 @@ namespace DEHEASysML.Tests.DstController
             this.dstController.DstMapResult.Add(new EnterpriseArchitectRequirementElement(requirement3, null, MappingDirection.FromDstToHub));
             this.dstController.SelectedDstMapResultForTransfer.Add(requirement1);
             this.dstController.SelectedDstMapResultForTransfer.Add(requirement3);
-            this.dstController.SelectedDstMapResultForTransfer.Add(elementDefinition1);
-            this.dstController.SelectedDstMapResultForTransfer.Add(elementDefinition3);
+            this.dstController.SelectedDstMapResultForTransfer.AddRange(elementDefinition1.Parameter);
+            this.dstController.SelectedDstMapResultForTransfer.AddRange(elementDefinition1.ContainedElement);
+            this.dstController.SelectedDstMapResultForTransfer.AddRange(elementDefinition3.Parameter);
+            this.dstController.SelectedDstMapResultForTransfer.AddRange(elementDefinition3.ContainedElement);
 
             this.hubController.Setup(x => x.GetThingById(parameter.Iid, It.IsAny<Iteration>(), out parameter)).Returns(true);
 
@@ -771,6 +773,51 @@ namespace DEHEASysML.Tests.DstController
 
             this.repository.Setup(x => x.GetElementByGuid(unitElement.Object.ElementGUID)).Returns(unitElement.Object);
             Assert.IsTrue(this.dstController.TryGetValueType(parameterType, scale, out valueType));
+        }
+
+        [Test]
+        public void VerifyGetDefaultPackage()
+        {
+            this.dstController.CurrentRepository = this.repository.Object;
+            var modelPackage = new Mock<Package>();
+            modelPackage.Setup(x => x.Packages).Returns(new EnterpriseArchitectCollection());
+            this.repository.Setup(x => x.Models).Returns(new EnterpriseArchitectCollection() { modelPackage.Object });
+            var existingPackageElement = new Mock<Element>();
+            existingPackageElement.Setup(x => x.Type).Returns(StereotypeKind.Package.ToString());
+            existingPackageElement.Setup(x => x.ElementGUID).Returns(Guid.NewGuid().ToString());
+            existingPackageElement.Setup(x => x.Name).Returns($"COMET_{StereotypeKind.ValueType}s");
+            var existingPackage = new Mock<Package>();
+
+            this.repository.Setup(x => x.GetElementsByQuery("Simple", existingPackageElement.Object.Name))
+                .Returns(new EnterpriseArchitectCollection() { existingPackageElement.Object });
+
+            this.repository.Setup(x => x.GetElementsByQuery("Simple", $"COMET_{StereotypeKind.Block}s"))
+                .Returns(new EnterpriseArchitectCollection());
+
+            this.repository.Setup(x => x.GetPackageByGuid(existingPackageElement.Object.ElementGUID)).Returns(existingPackage.Object);
+
+            var defaultBlockPackage = this.dstController.GetDefaultPackage(StereotypeKind.Block);
+
+            Assert.IsNotNull(defaultBlockPackage);
+            Assert.AreNotEqual(existingPackage.Object, defaultBlockPackage);
+
+            var defaultValueTypePackage = this.dstController.GetDefaultPackage(StereotypeKind.ValueType);
+
+            Assert.IsNotNull(defaultValueTypePackage);
+            Assert.AreEqual(existingPackage.Object, defaultValueTypePackage);
+
+            var stateElement = new Mock<Element>();
+            stateElement.Setup(x => x.MetaType).Returns(StereotypeKind.State.ToString());
+            var statePackage = new Mock<Package>();
+            statePackage.Setup(x => x.Elements).Returns(new EnterpriseArchitectCollection() { stateElement.Object });
+            var subModelPackage = new Mock<Package>();
+            subModelPackage.Setup(x => x.Packages).Returns(new EnterpriseArchitectCollection() { statePackage.Object });
+            subModelPackage.Setup(x => x.Elements).Returns(new EnterpriseArchitectCollection());
+            modelPackage.Setup(x => x.Packages).Returns(new EnterpriseArchitectCollection() { subModelPackage.Object });
+
+            var defaultStatePackage = this.dstController.GetDefaultPackage(StereotypeKind.State);
+            Assert.IsNotNull(defaultStatePackage);
+            Assert.AreEqual(statePackage.Object, defaultStatePackage);
         }
     }
 }

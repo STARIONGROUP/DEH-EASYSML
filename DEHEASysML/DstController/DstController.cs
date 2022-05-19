@@ -140,6 +140,11 @@ namespace DEHEASysML.DstController
         private bool? isBusy;
 
         /// <summary>
+        /// A value indicating if a changes has been applied and a remap has to be reapplied
+        /// </summary>
+        private bool shouldRemap;
+
+        /// <summary>
         /// Initializes a new <see cref="DstController" />
         /// </summary>
         /// <param name="hubController">The <see cref="IHubController" /></param>
@@ -198,7 +203,7 @@ namespace DEHEASysML.DstController
         }
 
         /// <summary>
-        /// Corrspondance between a <see cref="Element"/> Guid of Stereotype ValueProperty new PropertyType Value
+        /// Correspondance between a <see cref="Element" /> Guid of Stereotype ValueProperty new PropertyType Value
         /// </summary>
         public Dictionary<string, int> UpdatePropertyTypes { get; } = new();
 
@@ -302,6 +307,7 @@ namespace DEHEASysML.DstController
         {
             this.IsFileOpen = true;
             this.OnAnyEvent(repository);
+            CDPMessageBus.Current.SendMessage(new UpdateDstNetChangePreview(true));
         }
 
         /// <summary>
@@ -313,6 +319,7 @@ namespace DEHEASysML.DstController
             this.CleanProject();
             this.IsFileOpen = false;
             this.OnAnyEvent(repository);
+            CDPMessageBus.Current.SendMessage(new UpdateDstNetChangePreview(true));
         }
 
         /// <summary>
@@ -321,8 +328,7 @@ namespace DEHEASysML.DstController
         /// <param name="repository">The <see cref="Repository" /></param>
         public void OnFileNew(Repository repository)
         {
-            this.IsFileOpen = true;
-            this.OnAnyEvent(repository);
+            this.OnFileOpen(repository);
         }
 
         /// <summary>
@@ -335,7 +341,15 @@ namespace DEHEASysML.DstController
         {
             if (!this.shouldIgnoreEvents)
             {
+                this.CleanProject();
                 this.OnAnyEvent(repository);
+            }
+
+            var element = this.CurrentRepository.GetElementByGuid(guid);
+
+            if (element != null)
+            {
+                CDPMessageBus.Current.SendMessage(new EnterpriseArchitectElementEvent(ChangeKind.Update, element.ElementID));
             }
         }
 
@@ -349,7 +363,9 @@ namespace DEHEASysML.DstController
         public bool TryGetElement(string name, StereotypeKind stereotype, out Element element)
         {
             var queryResult = this.CurrentRepository.GetElementsByQuery("Simple", name);
+
             element = queryResult.OfType<Element>().FirstOrDefault(x => x.Name == name && x.Stereotype.AreEquals(stereotype));
+
             return element != null;
         }
 
@@ -363,7 +379,9 @@ namespace DEHEASysML.DstController
         public bool TryGetElementByType(string name, StereotypeKind type, out Element element)
         {
             var queryResult = this.CurrentRepository.GetElementsByQuery("Simple", name);
+
             element = queryResult.OfType<Element>().FirstOrDefault(x => x.Name == name && x.MetaType.AreEquals(type));
+
             return element != null;
         }
 
@@ -378,7 +396,7 @@ namespace DEHEASysML.DstController
             package = null;
 
             var elementPackage = this.CurrentRepository.GetElementsByQuery("Simple", name)
-                .OfType<Element>().FirstOrDefault(x => x.Type == "Package" && x.Name == name);
+                .OfType<Element>().FirstOrDefault(x => x.Type.AreEquals(StereotypeKind.Package) && x.Name == name);
 
             if (elementPackage != null)
             {
@@ -597,27 +615,53 @@ namespace DEHEASysML.DstController
         /// <summary>
         /// Tries to get the block that define the correct given Interface
         /// </summary>
-        /// <param name="interfaceElement">The <see cref="Element"/></param>
-        /// <param name="blockDefinition">The retrieve block <see cref="Element"/></param>
-        /// <returns>a value indicating if the <see cref="Element"/> has been found</returns>
+        /// <param name="interfaceElement">The <see cref="Element" /></param>
+        /// <param name="blockDefinition">The retrieve block <see cref="Element" /></param>
+        /// <returns>a value indicating if the <see cref="Element" /> has been found</returns>
         public bool TryGetInterfaceImplementation(Element interfaceElement, out Element blockDefinition)
         {
             blockDefinition = null;
 
-            var providedInterface = this.CurrentRepository.GetElementsByQuery("Extended", StereotypeKind.ProvidedInterface.ToString())
-                .OfType<Element>().Where(x => x.Type.AreEquals(StereotypeKind.ProvidedInterface)).FirstOrDefault(x => x.Name == interfaceElement.Name);
+            var connector = interfaceElement.GetAllConnectorsOfElement().FirstOrDefault(x => x.Type.AreEquals(StereotypeKind.Realization));
 
-            if (providedInterface != null)
+            if (connector != null)
             {
-                var port = this.CurrentRepository.GetElementByID(providedInterface.ParentID);
-
-                if (port.PropertyType != 0)
-                {
-                    blockDefinition = this.currentRepository.GetElementByID(port.PropertyType);
-                }
+                blockDefinition = this.currentRepository.GetElementByID(connector.ClientID);
             }
 
             return blockDefinition != null;
+        }
+
+        /// <summary>
+        /// Handle the execution of the EA_OnPostNewPackage or EA_OnPreDeletePackage event
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        /// <param name="changeKind">The <see cref="ChangeKind" /></param>
+        /// <param name="value">The id of <see cref="Package" /></param>
+        public void OnPackageEvent(Repository repository, ChangeKind changeKind, int value)
+        {
+            CDPMessageBus.Current.SendMessage(new EnterpriseArchitectPackageEvent(changeKind, value));
+
+            if (changeKind == ChangeKind.Delete)
+            {
+                this.shouldRemap = true;
+            }
+        }
+
+        /// <summary>
+        /// Handle the execution of the EA_OnPostNewElement or EA_OnPreDeleteElement event
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        /// <param name="changeKind">The <see cref="ChangeKind" /></param>
+        /// <param name="value">The id of <see cref="Element" /></param>
+        public void OnElementEvent(Repository repository, ChangeKind changeKind, int value)
+        {
+            CDPMessageBus.Current.SendMessage(new EnterpriseArchitectElementEvent(changeKind, value));
+
+            if (changeKind == ChangeKind.Delete)
+            {
+                this.shouldRemap = true;
+            }
         }
 
         /// <summary>
@@ -753,8 +797,8 @@ namespace DEHEASysML.DstController
                 var (iterationClone, transaction) = this.GetIterationTransaction();
                 this.hubController.RegisterNewLogEntryToTransaction(content, transaction);
 
-                var stateDependsParameters = this.SelectedDstMapResultForTransfer.OfType<ElementDefinition>()
-                    .SelectMany(x => x.Parameter.Where(param => param.StateDependence != null));
+                var stateDependsParameters = this.SelectedDstMapResultForTransfer.OfType<Parameter>()
+                    .Where(x => x.StateDependence != null);
 
                 this.UpdateParametersAndValueSets(stateDependsParameters, iterationClone, transaction);
 
@@ -825,12 +869,12 @@ namespace DEHEASysML.DstController
         /// <returns>The number of mapped things loaded</returns>
         public int LoadMapping()
         {
-            var hadHubMapping = this.HubMapResult.Any();
             this.IsBusy = true;
             var elementsLoaded = 0;
 
             if (this.hubController.IsSessionOpen && this.hubController.OpenIteration != null)
             {
+                this.statusBar.Append("Loading previous mapping...");
                 elementsLoaded += this.LoadMappingFromDstToHub() + this.LoadMappingFromHubToDst();
             }
 
@@ -846,7 +890,7 @@ namespace DEHEASysML.DstController
 
             this.CurrentRepository.EnableUIUpdates = this.HubMapResult.IsEmpty;
 
-            if (this.hubController.IsSessionOpen && this.hubController.OpenIteration != null && (hadHubMapping || this.HubMapResult.Any()))
+            if (this.hubController.IsSessionOpen && this.hubController.OpenIteration != null)
             {
                 CDPMessageBus.Current.SendMessage(new UpdateDstNetChangePreview());
             }
@@ -859,6 +903,47 @@ namespace DEHEASysML.DstController
             }
 
             return elementsLoaded;
+        }
+
+        /// <summary>
+        /// Gets the Id of each parent of the given <see cref="Package" /> Id
+        /// </summary>
+        /// <param name="packageId">The <see cref="Package" /> id</param>
+        /// <param name="packagesId">A collection of all <see cref="Package" /> already found</param>
+        public void GetPackageParentId(int packageId, ref List<int> packagesId)
+        {
+            while (true)
+            {
+                var package = this.CurrentRepository.GetPackageByID(packageId);
+
+                if (!packagesId.Contains(package.PackageID))
+                {
+                    packagesId.Add(package.PackageID);
+
+                    if (package.ParentID != 0)
+                    {
+                        packageId = package.ParentID;
+                        continue;
+                    }
+                }
+
+                break;
+            }
+        }
+
+        /// <summary>
+        /// Handle the OnNotifyContextItemModified event from EA
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        /// <param name="guid">The guid of the Item</param>
+        /// <param name="objectType">The <see cref="ObjectType" /> of the item</param>
+        public void OnContextItemChanged(Repository repository, string guid, ObjectType objectType)
+        {
+            if (!this.shouldIgnoreEvents && this.shouldRemap)
+            {
+                this.OnAnyEvent(repository);
+                this.shouldRemap = false;
+            }
         }
 
         /// <summary>
@@ -1493,9 +1578,7 @@ namespace DEHEASysML.DstController
             var (iterationClone, transaction) = this.GetIterationTransaction();
 
             var parameters = this.SelectedDstMapResultForTransfer
-                .OfType<ElementDefinition>()
-                .SelectMany(x => x.Parameter)
-                .ToList();
+                .OfType<Parameter>().ToList();
 
             foreach (var parameter in parameters)
             {
@@ -1525,7 +1608,7 @@ namespace DEHEASysML.DstController
         /// <param name="valueSet">The <see cref="CDP4Common.EngineeringModelData.ParameterValueSet" /> containing new values</param>
         private void UpdateValueSet(ParameterValueSet toUpdate, IValueSet valueSet)
         {
-            this.exchangeHistory.Append(toUpdate, valueSet);
+            this.exchangeHistory.Append(toUpdate, valueSet, ParameterSwitchKind.MANUAL);
 
             toUpdate.Manual = valueSet.Manual;
             toUpdate.ValueSwitch = ParameterSwitchKind.MANUAL;
@@ -1538,16 +1621,20 @@ namespace DEHEASysML.DstController
         /// <param name="transaction">The <see cref="IThingTransaction" /></param>
         private void PrepareThingsForTransfer(Iteration iterationClone, IThingTransaction transaction)
         {
-            var thingsToTransfer = new List<Thing>(this.SelectedDstMapResultForTransfer.OfType<ElementDefinition>());
+            var thingsToTransfer = new List<Thing>(this.SelectedDstMapResultForTransfer.OfType<Parameter>().Select(x => x.Container));
+
+            thingsToTransfer.AddRange(this.SelectedDstMapResultForTransfer.OfType<ElementUsage>().Select(x => x.Container));
+
+            thingsToTransfer = thingsToTransfer.Distinct().ToList();
 
             thingsToTransfer.AddRange(this.SelectedDstMapResultForTransfer.OfType<Requirement>()
                 .Select(x => x.Container as RequirementsSpecification).Distinct());
 
-            var mappedElements = this.SelectedDstMapResultForTransfer.Select(x => x.Iid)
-                .Select(thingId => this.DstMapResult.OfType<EnterpriseArchitectBlockElement>()
-                                       .FirstOrDefault(x => x.HubElement.Iid == thingId) ??
-                                   (IMappedElementRowViewModel)this.DstMapResult.OfType<EnterpriseArchitectRequirementElement>()
-                                       .FirstOrDefault(x => x.HubElement.Iid == thingId))
+            var mappedElements = this.SelectedDstMapResultForTransfer
+                .Select(thing => this.DstMapResult.OfType<EnterpriseArchitectBlockElement>()
+                                     .FirstOrDefault(x => x.HubElement.Iid == thing.Container.Iid) ??
+                                 (IMappedElementRowViewModel)this.DstMapResult.OfType<EnterpriseArchitectRequirementElement>()
+                                     .FirstOrDefault(x => x.HubElement.Iid == thing.Iid))
                 .ToList();
 
             var relationships = mappedElements.SelectMany(x => x.RelationShips).GroupBy(x => x.Source.Iid)
@@ -1555,10 +1642,8 @@ namespace DEHEASysML.DstController
 
             foreach (var relationship in relationships.ToList())
             {
-                if ((this.SelectedDstMapResultForTransfer.All(x => x.Iid != relationship.Source.Container.Iid && x.Iid != relationship.Source.Iid)
-                     && relationship.Target.Original == null) ||
-                    (this.SelectedDstMapResultForTransfer.All(x => x.Iid != relationship.Target.Container.Iid
-                                                                   && x.Iid != relationship.Target.Iid) && relationship.Target.Original == null))
+                if ((this.SelectedDstMapResultForTransfer.All(x => x.Iid != relationship.Source.Iid) && relationship.Target.Original == null) ||
+                    (this.SelectedDstMapResultForTransfer.All(x => x.Iid != relationship.Target.Iid) && relationship.Target.Original == null))
                 {
                     relationships.RemoveAll(x => x.Iid == relationship.Iid);
                 }
@@ -1672,7 +1757,8 @@ namespace DEHEASysML.DstController
         {
             this.AddOrUpdateIterationAndTransaction(elementDefinition, iterationClone.Element, transaction);
 
-            foreach (var elementUsage in elementDefinition.ContainedElement)
+            foreach (var elementUsage in elementDefinition.ContainedElement
+                         .Where(x => this.SelectedDstMapResultForTransfer.Any(selected => selected.Iid == x.Iid)))
             {
                 if (this.SelectedDstMapResultForTransfer.All(x => x.Iid != elementUsage.ElementDefinition.Iid))
                 {
@@ -1682,7 +1768,8 @@ namespace DEHEASysML.DstController
                 this.AddOrUpdateIterationAndTransaction(elementUsage, elementDefinition.ContainedElement, transaction);
             }
 
-            foreach (var parameter in elementDefinition.Parameter)
+            foreach (var parameter in elementDefinition.Parameter
+                         .Where(x => this.SelectedDstMapResultForTransfer.Any(selected => selected.Iid == x.Iid)))
             {
                 transaction.CreateOrUpdate(parameter);
             }
@@ -1808,32 +1895,6 @@ namespace DEHEASysML.DstController
             }
 
             return new List<IMappedElementRowViewModel>();
-        }
-
-        /// <summary>
-        /// Gets the Id of each parent of the given <see cref="Package" /> Id
-        /// </summary>
-        /// <param name="packageId">The <see cref="Package" /> id</param>
-        /// <param name="packagesId">A collection of all <see cref="Package" /> already found</param>
-        private void GetPackageParentId(int packageId, ref List<int> packagesId)
-        {
-            while (true)
-            {
-                var package = this.CurrentRepository.GetPackageByID(packageId);
-
-                if (!packagesId.Contains(package.PackageID))
-                {
-                    packagesId.Add(package.PackageID);
-
-                    if (package.ParentID != 0)
-                    {
-                        packageId = package.ParentID;
-                        continue;
-                    }
-                }
-
-                break;
-            }
         }
 
         /// <summary>

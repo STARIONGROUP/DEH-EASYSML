@@ -313,6 +313,70 @@ namespace DEHEASysML
         }
 
         /// <summary>
+        /// This event occurs when a user drags a new Package from the Toolbox or Resources window onto a diagram,
+        /// or by selecting the New Package icon from the Project Browser.
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        /// <param name="info">The <see cref="EventProperties"/></param>
+        public bool EA_OnPostNewPackage(Repository repository, EventProperties info)
+        {
+            for(short propertiesIndex = 0; propertiesIndex < info.Count; propertiesIndex++)
+            {
+                this.dispatcher.OnNewPackage(repository, int.Parse((string)info.Get(propertiesIndex).Value));
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// This event occurs after a user has dragged a new element from the Toolbox or Resources window onto a diagram.
+        /// The notification is provided immediately after the element is added to the model. 
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        /// <param name="info">The <see cref="EventProperties"/></param>
+        public bool EA_OnPostNewElement(Repository repository, EventProperties info)
+        {
+            for (short propertiesIndex = 0; propertiesIndex < info.Count; propertiesIndex++)
+            {
+                this.dispatcher.OnNewElement(repository, int.Parse((string)info.Get(propertiesIndex).Value));
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// This event occurs when a user deletes an element from the Project Browser or on a diagram.
+        /// The notification is provided immediately before the element is deleted, so that the Add-In can disable deletion of the element.
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        /// <param name="info">The <see cref="EventProperties"/></param>
+        public bool EA_OnPreDeleteElement(Repository repository, EventProperties info)
+        {
+            for (short propertiesIndex = 0; propertiesIndex < info.Count; propertiesIndex++)
+            {
+                this.dispatcher.OnDeleteElement(repository, int.Parse((string)info.Get(propertiesIndex).Value));
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// This event occurs when a user attempts to permanently delete a Package from the Project Browser.
+        /// The notification is provided immediately before the Package is deleted, so that the Add-In can disable deletion of the Package.
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        /// <param name="info">The <see cref="EventProperties"/></param>
+        public bool EA_OnPreDeletePackage(Repository repository, EventProperties info)
+        {
+            for (short propertiesIndex = 0; propertiesIndex < info.Count; propertiesIndex++)
+            {
+                this.dispatcher.OnDeletePackage(repository, int.Parse((string)info.Get(propertiesIndex).Value));
+            }
+
+            return true;
+        }
+
+        /// <summary>
         /// This event occurs when a user has modified the context item. Add-Ins that require knowledge of when an item has been
         /// modified can subscribe to this broadcast function.
         /// </summary>
@@ -325,6 +389,19 @@ namespace DEHEASysML
         }
 
         /// <summary>
+        /// This event occurs after a user has selected an item anywhere in the Enterprise Architect GUI.
+        /// Add-Ins that require knowledge of the current item in context can subscribe to this broadcast function.
+        /// If ot = otRepository, then this function behaves in the same way as EA_FileOpen.
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository"/></param>
+        /// <param name="guid">Contains the GUID of the new context item</param>
+        /// <param name="objectType">The <see cref="ObjectType"/></param>
+        public void EA_OnContextItemChanged(Repository repository, string guid, ObjectType objectType)
+        {
+            this.dispatcher.OnContextItemChanged(repository, guid, objectType);
+        }
+
+            /// <summary>
         /// Asserts that a project is opened
         /// </summary>
         /// <param name="repository">The <see cref="Repository" /></param>

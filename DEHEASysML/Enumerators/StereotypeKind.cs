@@ -107,6 +107,16 @@ namespace DEHEASysML.Enumerators
         /// <summary>
         /// Used to represent the Partition MetaType
         /// </summary>
-        Partition
+        Partition,
+
+        /// <summary>
+        /// Used to represent the Package MetaType
+        /// </summary>
+        Package,
+
+        /// <summary>
+        /// Used to represent the Realization MetaType
+        /// </summary>
+        Realization
     }
 }

@@ -1,5 +1,5 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
-// <copyright file="StateRowViewModel.cs" company="RHEA System S.A.">
+// <copyright file="EnterpriseArchitectEvent.cs" company="RHEA System S.A.">
 // Copyright (c) 2020-2022 RHEA System S.A.
 // 
 // Author: Sam Gerené, Alex Vorobiev, Alexander van Delft, Nathanael Smiechowski, Antoine Théate.
@@ -22,50 +22,38 @@
 // </copyright>
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
+namespace DEHEASysML.Events
 {
-    using System.Linq;
+    using CDP4Common;
 
-    using DEHEASysML.Enumerators;
+    using CDP4Dal;
 
     using EA;
 
     /// <summary>
-    /// The <see cref="StateRowViewModel" /> represents an <see cref="Element" /> of Type State
+    /// An event for the <see cref="CDPMessageBus"/>
     /// </summary>
-    public class StateRowViewModel : ElementRowViewModel
+    public abstract class EnterpriseArchitectEvent
     {
         /// <summary>
-        /// Initializes a new <see cref="StateRowViewModel" />
+        /// The <see cref="ChangeKind" /> of the Event
         /// </summary>
-        /// <param name="parent">The parent row</param>
-        /// <param name="eaObject">The object to represent</param>
-        public StateRowViewModel(EnterpriseArchitectObjectBaseRowViewModel parent, Element eaObject) : base(parent, eaObject)
-        {
-            this.Initialize();
-        }
+        public ChangeKind ChangeKind { get; }
 
         /// <summary>
-        /// Compute the current row to initializes properties
+        /// The Id of the related <see cref="Element"/> or <see cref="Package"/>
         /// </summary>
-        public override void ComputeRow()
-        {
-            this.ContainedRows.Clear();
-
-            this.RowType = StereotypeKind.State.ToString();
-
-            foreach (var partition in this.RepresentedObject.Partitions.OfType<Partition>())
-            {
-                this.ContainedRows.Add(new PartitionRowViewModel(this, partition));
-            }
-        }
+        public int Id { get; }
 
         /// <summary>
-        /// Initializes this row properties
+        /// Initializes a new instance of the <see cref="EnterpriseArchitectEvent" /> class.
         /// </summary>
-        private void Initialize()
+        /// <param name="changeKind">The <see cref="ChangeKind"/></param>
+        /// <param name="id">The id</param>
+        protected EnterpriseArchitectEvent(ChangeKind changeKind, int id)
         {
-            this.UpdateProperties();
+            this.ChangeKind = changeKind;
+            this.Id = id;
         }
     }
 }

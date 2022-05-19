@@ -30,6 +30,8 @@ namespace DEHEASysML.Services.Dispatcher
 
     using Autofac;
 
+    using CDP4Common;
+
     using DEHEASysML.DstController;
     using DEHEASysML.Forms;
     using DEHEASysML.ViewModel;
@@ -141,6 +143,57 @@ namespace DEHEASysML.Services.Dispatcher
         public void OpenTransferHistory()
         {
             this.navigationService.ShowDialog<ExchangeHistory>();
+        }
+
+        /// <summary>
+        /// Handle the execution of the EA_OnPostNewPackage event
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository"/></param>
+        /// <param name="value">The id of the created <see cref="Package"/></param>
+        public void OnNewPackage(Repository repository, int value)
+        {
+            this.dstController.OnPackageEvent(repository, ChangeKind.Create,value);
+        }
+
+        /// <summary>
+        /// Handle the execution of the EA_OnPreDeletePackage event
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository"/></param>
+        /// <param name="value">The id of the deleted <see cref="Package"/></param>
+        public void OnDeletePackage(Repository repository, int value)
+        {
+            this.dstController.OnPackageEvent(repository, ChangeKind.Delete, value);
+        }
+
+        /// <summary>
+        /// Handle the OnContextItemChanged event from EA
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        /// <param name="guid">The guid of the Item</param>
+        /// <param name="objectType">The <see cref="ObjectType" /> of the item</param>
+        public void OnContextItemChanged(Repository repository, string guid, ObjectType objectType)
+        {
+            this.dstController.OnContextItemChanged(repository, guid, objectType);
+        }
+
+        /// <summary>
+        /// Handle the execution of the EA_OnPostNewElement event
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository"/></param>
+        /// <param name="value">The id of the created <see cref="Element"/></param>
+        public void OnNewElement(Repository repository, int value)
+        {
+            this.dstController.OnElementEvent(repository, ChangeKind.Create, value);
+        }
+
+        /// <summary>
+        /// Handle the execution of the EA_OnPreDeleteElement event
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository"/></param>
+        /// <param name="value">The id of the deleted <see cref="Element"/></param>
+        public void OnDeleteElement(Repository repository, int value)
+        {
+            this.dstController.OnElementEvent(repository, ChangeKind.Delete, value);
         }
 
         /// <summary>

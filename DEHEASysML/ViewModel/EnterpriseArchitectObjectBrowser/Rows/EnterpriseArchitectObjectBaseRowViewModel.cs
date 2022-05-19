@@ -24,14 +24,24 @@
 
 namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
 {
+    using System.Collections.Generic;
+
+    using DEHEASysML.ViewModel.Comparers;
+
     using ReactiveUI;
 
     /// <summary>
-    /// The <see cref="EnterpriseArchitectObjectBaseRowViewModel" /> represents the base of all rows view model to represents an
+    /// The <see cref="EnterpriseArchitectObjectBaseRowViewModel" /> represents the base of all rows view model to represents
+    /// an
     /// Enterprise Architect Object
     /// </summary>
-    public abstract class EnterpriseArchitectObjectBaseRowViewModel : ReactiveObject 
+    public abstract class EnterpriseArchitectObjectBaseRowViewModel : ReactiveObject
     {
+        /// <summary>
+        /// The <see cref="EnterpriseArchitectObjectBaseRowViewModel" /> <see cref="IComparer{T}" />
+        /// </summary>
+        protected static readonly IComparer<EnterpriseArchitectObjectBaseRowViewModel> ContainedRowsComparer = new EnterpriseArchitectObjectRowComparer();
+
         /// <summary>
         /// Backing field for <see cref="Name" />
         /// </summary>
@@ -46,6 +56,21 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
         /// Backing field for <see cref="RowType" />
         /// </summary>
         private string rowType;
+
+        /// <summary>
+        /// Backing field for <see cref="IsHighlighted" />
+        /// </summary>
+        private bool isHighlighted;
+
+        /// <summary>
+        /// Backing field for <see cref="Parent" />
+        /// </summary>
+        private EnterpriseArchitectObjectBaseRowViewModel parent;
+
+        /// <summary>
+        /// Backing field for <see cref="IsSelectedForTransfer" />
+        /// </summary>
+        private bool isSelectedForTransfer;
 
         /// <summary>
         /// The name of the represented object
@@ -78,6 +103,33 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
         /// The collection of contained <see cref="ContainedRows" />
         /// </summary>
         public ReactiveList<EnterpriseArchitectObjectBaseRowViewModel> ContainedRows { get; } = new();
+
+        /// <summary>
+        /// Gets or sets the value if the row is highlighted
+        /// </summary>
+        public bool IsHighlighted
+        {
+            get => this.isHighlighted;
+            set => this.RaiseAndSetIfChanged(ref this.isHighlighted, value);
+        }
+
+        /// <summary>
+        /// Gets or sets the parent of this row
+        /// </summary>
+        public EnterpriseArchitectObjectBaseRowViewModel Parent
+        {
+            get => this.parent;
+            set => this.RaiseAndSetIfChanged(ref this.parent, value);
+        }
+
+        /// <summary>
+        /// Gets or sets the value if the row is selected for transfer
+        /// </summary>
+        public bool IsSelectedForTransfer
+        {
+            get => this.isSelectedForTransfer;
+            set => this.RaiseAndSetIfChanged(ref this.isSelectedForTransfer, value);
+        }
 
         /// <summary>
         /// Compute the current row to initializes properties
