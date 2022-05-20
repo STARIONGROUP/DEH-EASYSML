@@ -25,16 +25,33 @@
 namespace DEHEASysML.ViewModel
 {
     using System;
+    using System.Collections.Generic;
+    using System.Linq;
     using System.Reactive.Linq;
 
+    using Autofac;
+
+    using CDP4Common.CommonData;
+    using CDP4Common.EngineeringModelData;
+
+    using CDP4Dal;
+
+    using DEHEASysML.DstController;
+    using DEHEASysML.Events;
+    using DEHEASysML.ViewModel.Dialogs.Interfaces;
     using DEHEASysML.ViewModel.Interfaces;
     using DEHEASysML.ViewModel.RequirementsBrowser;
     using DEHEASysML.Views;
+    using DEHEASysML.Views.Dialogs;
 
+    using DEHPCommon;
+    using DEHPCommon.Enumerators;
     using DEHPCommon.HubController.Interfaces;
     using DEHPCommon.Services.NavigationService;
+    using DEHPCommon.UserInterfaces.ViewModels;
     using DEHPCommon.UserInterfaces.ViewModels.Interfaces;
     using DEHPCommon.UserInterfaces.ViewModels.PublicationBrowser;
+    using DEHPCommon.UserInterfaces.ViewModels.Rows.ElementDefinitionTreeRows;
     using DEHPCommon.UserInterfaces.Views;
 
     using ReactiveUI;
@@ -81,9 +98,9 @@ namespace DEHEASysML.ViewModel
         private string connectButtonText = ConnectText;
 
         /// <summary>
-        /// Backing field for <see cref="AllowHubToDstMapping"/>
+        /// The <see cref="IDstController"/>
         /// </summary>
-        private bool allowHubToDstMapping;
+        private readonly IDstController dstController;
 
         /// <summary>
         /// Initializes a new <see cref="HubPanelViewModel" />
@@ -96,9 +113,10 @@ namespace DEHEASysML.ViewModel
         /// <param name="objectBrowser">The <see cref="IObjectBrowserViewModel" /></param>
         /// <param name="statusBar">The <see cref="IStatusBarControlViewModel" /></param>
         /// <param name="requirementsBrowser">The <see cref="IRequirementsBrowserViewModel" /></param>
+        /// <param name="dstController">The <see cref="IDstController"/></param>
         public HubPanelViewModel(INavigationService navigationService, IHubController hubController, IHubSessionControlViewModel sessionControl,
             IHubBrowserHeaderViewModel hubBrowserHeader, IPublicationBrowserViewModel publicationBrowser,
-            IObjectBrowserViewModel objectBrowser, IStatusBarControlViewModel statusBar, IRequirementsBrowserViewModel requirementsBrowser)
+            IObjectBrowserViewModel objectBrowser, IStatusBarControlViewModel statusBar, IRequirementsBrowserViewModel requirementsBrowser, IDstController dstController)
         {
             this.NavigationService = navigationService;
             this.hubController = hubController;
@@ -108,6 +126,7 @@ namespace DEHEASysML.ViewModel
             this.ObjectBrowser = objectBrowser;
             this.StatusBar = statusBar;
             this.RequirementsBrowser = requirementsBrowser;
+            this.dstController = dstController;
             this.InitializeCommandsAndObservables();
         }
 
@@ -130,18 +149,14 @@ namespace DEHEASysML.ViewModel
         }
 
         /// <summary>
-        /// Gets or sets the value whether the mapping from hub to dst is enabled
-        /// </summary>
-        public bool AllowHubToDstMapping
-        {
-            get => this.allowHubToDstMapping;
-            set => this.RaiseAndSetIfChanged(ref this.allowHubToDstMapping, value);
-        }
-
-        /// <summary>
         /// <see cref="ReactiveCommand{T}" /> for connecting to a data source
         /// </summary>
         public ReactiveCommand<object> ConnectCommand { get; set; }
+
+        /// <summary>
+        /// <see cref="ReactiveCommand"/> for mapping the topElement of the model
+        /// </summary>
+        public ReactiveCommand<object> MapTopElementCommand { get; set; }
 
         /// <summary>
         /// The <see cref="IObjectBrowserViewModel" />
@@ -241,11 +256,115 @@ namespace DEHEASysML.ViewModel
             this.WhenAnyValue(x => x.ObjectBrowser.IsBusy, 
                 x => x.RequirementsBrowser.IsBusy).Subscribe(_ => this.UpdateIsBusy());
 
-            this.ObjectBrowser.MapCommand = ReactiveCommand.Create(this.WhenAny(x => x.AllowHubToDstMapping,
-                (allow) => allow.Value));
+            var canMap = this.ObjectBrowser.CanMap.Merge(this.WhenAny(
+                x => x.dstController.IsFileOpen,
+                (s) => s.Value));
 
-            this.RequirementsBrowser.MapCommand = ReactiveCommand.Create(this.WhenAny(x => x.AllowHubToDstMapping,
-                (allow) => allow.Value));
+            this.ObjectBrowser.MapCommand = ReactiveCommand.Create(canMap);
+            this.ObjectBrowser.MapCommand.Subscribe(_ => this.MapCommandObjectExecute());
+
+            this.RequirementsBrowser.MapCommand = ReactiveCommand.Create(canMap);
+            this.RequirementsBrowser.MapCommand.Subscribe(_ => this.MapCommandRequirementsExecute());
+
+            this.ObjectBrowser.ContextMenu.IsEmptyChanged.Where(x => !x).Subscribe(_ => this.AddMapTopElementCommand());
+
+            this.MapTopElementCommand = ReactiveCommand.Create(canMap);
+            this.MapTopElementCommand.Subscribe(_ => this.MapTopElementCommandExecute());
+        }
+
+        /// <summary>
+        /// Adds the <see cref="MapTopElementCommand"/> to the <see cref="IObjectBrowserViewModel.ContextMenu"/>
+        /// </summary>
+        private void AddMapTopElementCommand()
+        {
+            this.ObjectBrowser.ContextMenu.Add(new ContextMenuItemViewModel("Map Top Element", "", this.MapTopElementCommand
+                , MenuItemKind.Edit, ClassKind.NotThing));
+        }
+
+        /// <summary>
+        /// Maps the Top Element of the model
+        /// </summary>
+        private void MapTopElementCommandExecute()
+        {
+            this.IsBusy = true;
+
+            if (this.hubController.OpenIteration.TopElement != null)
+            {
+                this.OpenHubDialog(new List<Thing>(){this.hubController.OpenIteration.TopElement});
+            }
+        }
+
+        /// <summary>
+        /// Executes the <see cref="IRequirementsBrowserViewModel.MapCommand" />
+        /// </summary>
+        private void MapCommandRequirementsExecute()
+        {
+            this.IsBusy = true;
+            var requirements = this.RetrieveAllSelectedRequirements();
+            this.OpenHubDialog(new List<Thing>(requirements));
+        }
+
+        /// <summary>
+        /// Gets the collection of all selected <see cref="Requirement"/>
+        /// This collection include requirement included inside selected <see cref="RequirementsContainer"/>
+        /// </summary>
+        /// <returns>A collection of <see cref="Requirement"/></returns>
+        private IEnumerable<Requirement> RetrieveAllSelectedRequirements()
+        {
+            var requirements = new List<Requirement>();
+
+            foreach (var selectedThing in this.RequirementsBrowser.SelectedThings)
+            {
+                switch (selectedThing)
+                {
+                    case RequirementsSpecificationRowViewModel requirementsSpecificationRow:
+                        requirements.AddRange(requirementsSpecificationRow.Thing.Requirement.Where(x => !x.IsDeprecated));
+                        break;
+                    case RequirementRowViewModel requirementRow when !requirementRow.Thing.IsDeprecated:
+                        requirements.Add(requirementRow.Thing);
+                        break;
+                    case RequirementsGroupRowViewModel requirementsGroupRow:
+                        requirements.AddRange(requirementsGroupRow.GetAllRequirementsChildren());
+                        break;
+                }
+            }
+
+            return requirements.Distinct();
+        }
+
+        /// <summary>
+        /// Executes the <see cref="IObjectBrowserViewModel.MapCommand" />
+        /// </summary>
+        private void MapCommandObjectExecute()
+        {
+            this.IsBusy = true;
+
+            var elementDefinitions = this.ObjectBrowser.SelectedThings
+                .OfType<ElementDefinitionRowViewModel>().Select(x => x.Thing);
+
+            this.OpenHubDialog(new List<Thing>(elementDefinitions));
+        }
+
+        /// <summary>
+        /// Opens the <see cref="HubMappingConfigurationDialog"/>
+        /// </summary>
+        /// <param name="things">A collection of selected <see cref="Thing"/></param>
+        private void OpenHubDialog(List<Thing> things)
+        {
+            if (things.Any())
+            {
+                var viewModel = AppContainer.Container.Resolve<IHubMappingConfigurationDialogViewModel>();
+                viewModel.Initialize(things);
+                this.IsBusy = false;
+                this.NavigationService.ShowDialog<HubMappingConfigurationDialog, IHubMappingConfigurationDialogViewModel>(viewModel);
+
+                if (this.dstController.HubMapResult.Any())
+                {
+                    CDPMessageBus.Current.SendMessage(new UpdateDstNetChangePreview());
+                }
+            }
+
+            this.IsBusy = false;
         }
 
         /// <summary>
@@ -257,7 +376,7 @@ namespace DEHEASysML.ViewModel
             var objectBrowserIsBusy = this.ObjectBrowser.IsBusy;
 
             this.IsBusy = objectBrowserIsBusy != null && requirementsBrowserIsBusy != null
-                                                      && objectBrowserIsBusy.Value && requirementsBrowserIsBusy.Value;
+                                                      && (objectBrowserIsBusy.Value || requirementsBrowserIsBusy.Value);
         }
     }
 }

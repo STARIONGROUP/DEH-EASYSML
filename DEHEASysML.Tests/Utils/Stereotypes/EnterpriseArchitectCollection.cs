@@ -28,7 +28,12 @@ namespace DEHEASysML.Tests.Utils.Stereotypes
     using System.Collections.Generic;
     using System.Diagnostics.CodeAnalysis;
 
+    using DEHEASysML.Enumerators;
+    using DEHEASysML.Extensions;
+
     using EA;
+
+    using Moq;
 
     /// <summary>
     /// The <see cref="EnterpriseArchitectCollection" /> is used for test purposed. As all constructors of all class used by
@@ -113,13 +118,23 @@ namespace DEHEASysML.Tests.Utils.Stereotypes
         }
 
         /// <summary>
-        /// Adds a new object to the contained objects (Not Used)
+        /// Adds a new object to the contained objects
         /// </summary>
         /// <param name="Name">The name of the object</param>
         /// <param name="Type">The Type if the object</param>
         /// <returns>The created object</returns>
         public object AddNew(string Name, string Type)
         {
+            if (Type.AreEquals(StereotypeKind.Dependency) || Type.AreEquals(StereotypeKind.Abstraction))
+            {
+                return new Mock<Connector>().Object;
+            }
+
+            if (Type.AreEquals(StereotypeKind.Package))
+            {
+                return new Mock<Package>().Object;
+            }
+
             return null;
         }
 

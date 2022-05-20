@@ -65,6 +65,7 @@ namespace DEHEASysML.Tests.MappingRules
         private BlockDefinitionToElementDefinitionMappingRule rule;
         private Mock<IHubController> hubController;
         private Mock<IDstController> dstController;
+        private Mock<IMappingConfigurationService> mappingConfiguration;
         private Uri uri;
         private Assembler assembler;
         private DomainOfExpertise domain;
@@ -73,7 +74,6 @@ namespace DEHEASysML.Tests.MappingRules
         private ModelReferenceDataLibrary referenceDataLibrary;
         private Mock<Element> block;
         private Mock<Repository> repository;
-        private Mock<IMappingConfigurationService> mappingConfiguration;
 
         [SetUp]
         public void Setup()
@@ -117,6 +117,21 @@ namespace DEHEASysML.Tests.MappingRules
             var massValueProperty = new Mock<Element>();
             massValueProperty.Setup(x => x.Stereotype).Returns(StereotypeKind.ValueProperty.ToString());
             massValueProperty.Setup(x => x.Name).Returns("mass");
+            massValueProperty.Setup(x => x.ElementID).Returns(11245);
+
+            var dependencyConnector = new Mock<Connector>();
+            dependencyConnector.Setup(x => x.Type).Returns(StereotypeKind.Dependency.ToString());
+            dependencyConnector.Setup(x => x.ClientID).Returns(massValueProperty.Object.ElementID);
+
+            var state = new Mock<Element>();
+            state.Setup(x => x.ElementID).Returns(125);
+            state.Setup(x => x.Type).Returns(StereotypeKind.State.ToString());
+            dependencyConnector.Setup(x => x.SupplierID).Returns(state.Object.ElementID);
+            state.Setup(x => x.Name).Returns("State");
+            state.Setup(x => x.Partitions).Returns(new EnterpriseArchitectCollection());
+
+            massValueProperty.Setup(x => x.Connectors).Returns(new EnterpriseArchitectCollection(){dependencyConnector.Object});
+
             var massCustomProperty = new Mock<CustomProperty>();
             massCustomProperty.Setup(x => x.Name).Returns("default");
             massCustomProperty.Setup(x => x.Value).Returns("45");
@@ -134,6 +149,7 @@ namespace DEHEASysML.Tests.MappingRules
             heightCustomProperty.Setup(x => x.Value).Returns((string)null);
             heightValueProperty.Setup(x => x.CustomProperties).Returns(new EnterpriseArchitectCollection { heightCustomProperty.Object });
             heightValueProperty.Setup(x => x.TaggedValuesEx).Returns(new EnterpriseArchitectCollection());
+            heightValueProperty.Setup(x => x.Connectors).Returns(new EnterpriseArchitectCollection());
 
             var boolValueProperty = new Mock<Element>();
             boolValueProperty.Setup(x => x.Stereotype).Returns(StereotypeKind.ValueProperty.ToString());
@@ -143,6 +159,7 @@ namespace DEHEASysML.Tests.MappingRules
             boolCustomProperty.Setup(x => x.Value).Returns("true");
             boolValueProperty.Setup(x => x.CustomProperties).Returns(new EnterpriseArchitectCollection { boolCustomProperty.Object });
             boolValueProperty.Setup(x => x.TaggedValuesEx).Returns(new EnterpriseArchitectCollection());
+            boolValueProperty.Setup(x => x.Connectors).Returns(new EnterpriseArchitectCollection());
 
             var stringValueProperty = new Mock<Element>();
             stringValueProperty.Setup(x => x.Stereotype).Returns(StereotypeKind.ValueProperty.ToString());
@@ -152,6 +169,7 @@ namespace DEHEASysML.Tests.MappingRules
             stringCustomProperty.Setup(x => x.Value).Returns("aValue");
             stringValueProperty.Setup(x => x.CustomProperties).Returns(new EnterpriseArchitectCollection { stringCustomProperty.Object });
             stringValueProperty.Setup(x => x.TaggedValuesEx).Returns(new EnterpriseArchitectCollection());
+            stringValueProperty.Setup(x => x.Connectors).Returns(new EnterpriseArchitectCollection());
 
             this.block = new Mock<Element>();
             this.block.Setup(x => x.Name).Returns("AName");
@@ -171,6 +189,7 @@ namespace DEHEASysML.Tests.MappingRules
 
             this.repository= new Mock<Repository>();
             this.repository.Setup(x => x.GetElementByGuid("unitValue")).Returns(unitElement.Object);
+            this.repository.Setup(x => x.GetElementByID(state.Object.ElementID)).Returns(state.Object);
 
             this.dstController = new Mock<IDstController>();
             this.dstController.Setup(x => x.CurrentRepository).Returns(this.repository.Object);

@@ -26,7 +26,12 @@ namespace DEHEASysML.ViewModel.Dialogs
 {
     using System;
 
+    using CDP4Common.CommonData;
+
     using DEHEASysML.DstController;
+    using DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Interfaces;
+    using DEHEASysML.ViewModel.RequirementsBrowser;
+    using DEHEASysML.ViewModel.Rows;
 
     using DEHPCommon.HubController.Interfaces;
     using DEHPCommon.UserInterfaces.Behaviors;
@@ -57,6 +62,21 @@ namespace DEHEASysML.ViewModel.Dialogs
         protected readonly IDstController DstController;
 
         /// <summary>
+        /// Backing field for <see cref="SelectedItem" />
+        /// </summary>
+        private IMappedElementRowViewModel selectedItem;
+
+        /// <summary>
+        /// Backing field for <see cref="CanExecuteMapToNewElement" />
+        /// </summary>
+        private bool canExecuteMapToNewElement;
+
+        /// <summary>
+        /// Backing field for <see cref="SelectedObjectBrowserThing" />
+        /// </summary>
+        private Thing selectedObjectBrowserThing;
+
+        /// <summary>
         /// Backing field for <see cref="IsBusy" />
         /// </summary>
         private bool isBusy;
@@ -66,10 +86,18 @@ namespace DEHEASysML.ViewModel.Dialogs
         /// </summary>
         /// <param name="hubController">The <see cref="IHubController" /></param>
         /// <param name="dstController">The <see cref="IDstController" /></param>
-        protected MappingConfigurationDialogViewModel(IHubController hubController, IDstController dstController)
+        /// <param name="enterpriseArchitectObject">The <see cref="IEnterpriseArchitectObjectBrowserViewModel" /></param>
+        /// <param name="objectBrowser">The <see cref="IObjectBrowserViewModel" /></param>
+        /// <param name="requirementsBrowser">The <see cref="IObjectBrowserViewModel" /></param>
+        protected MappingConfigurationDialogViewModel(IHubController hubController, IDstController dstController,
+            IEnterpriseArchitectObjectBrowserViewModel enterpriseArchitectObject, IObjectBrowserViewModel objectBrowser,
+            IRequirementsBrowserViewModel requirementsBrowser)
         {
             this.HubController = hubController;
             this.DstController = dstController;
+            this.EnterpriseArchitectObjectBrowser = enterpriseArchitectObject;
+            this.ObjectBrowser = objectBrowser;
+            this.RequirementsBrowser = requirementsBrowser;
 
             this.CancelCommand = ReactiveCommand.Create();
             this.CancelCommand.Subscribe(_ => this.CloseWindowBehavior?.Close());
@@ -77,6 +105,43 @@ namespace DEHEASysML.ViewModel.Dialogs
             this.ResetCommand = ReactiveCommand.Create();
             this.ResetCommand.Subscribe(_ => this.PreMap());
         }
+
+        /// <summary>
+        /// Gets or sets the element selected inside any Hub Browser
+        /// </summary>
+        public Thing SelectedObjectBrowserThing
+        {
+            get => this.selectedObjectBrowserThing;
+            set => this.RaiseAndSetIfChanged(ref this.selectedObjectBrowserThing, value);
+        }
+
+        /// <summary>
+        /// Gets or sets the selected row
+        /// </summary>
+        public IMappedElementRowViewModel SelectedItem
+        {
+            get => this.selectedItem;
+            set => this.RaiseAndSetIfChanged(ref this.selectedItem, value);
+        }
+
+        /// <summary>
+        /// The collection of <see cref="IMappedElementRowViewModel" />
+        /// </summary>
+        public ReactiveList<IMappedElementRowViewModel> MappedElements { get; } = new();
+
+        /// <summary>
+        /// Asserts that the <see cref="MapToNewElementCommand" /> can be executed or not
+        /// </summary>
+        public bool CanExecuteMapToNewElement
+        {
+            get => this.canExecuteMapToNewElement;
+            set => this.RaiseAndSetIfChanged(ref this.canExecuteMapToNewElement, value);
+        }
+
+        /// <summary>
+        /// Gets or sets the command that allows to map the selected row to a new Hub Element
+        /// </summary>
+        public ReactiveCommand<object> MapToNewElementCommand { get; set; }
 
         /// <summary>
         /// Gets the <see cref="ReactiveCommand" /> to Reset the premapping
@@ -96,6 +161,21 @@ namespace DEHEASysML.ViewModel.Dialogs
         /// Gets or sets the <see cref="ICloseWindowViewModel" />
         /// </summary>
         public ICloseWindowBehavior CloseWindowBehavior { get; set; }
+
+        /// <summary>
+        /// The <see cref="IEnterpriseArchitectObjectBrowserViewModel" />
+        /// </summary>
+        public IEnterpriseArchitectObjectBrowserViewModel EnterpriseArchitectObjectBrowser { get; }
+
+        /// <summary>
+        /// The <see cref="IObjectBrowserViewModel" />
+        /// </summary>
+        public IObjectBrowserViewModel ObjectBrowser { get; }
+
+        /// <summary>
+        /// Gets or set the <see cref="RequirementsBrowser" />
+        /// </summary>
+        public IRequirementsBrowserViewModel RequirementsBrowser { get; }
 
         /// <summary>
         /// Gets the <see cref="ReactiveCommand" /> to continue

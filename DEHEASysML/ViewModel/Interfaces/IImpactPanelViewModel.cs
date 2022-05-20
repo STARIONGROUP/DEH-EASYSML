@@ -29,5 +29,9 @@ namespace DEHEASysML.ViewModel.Interfaces
     /// </summary>
     public interface IImpactPanelViewModel
     {
+        /// <summary>
+        /// Asserts if this view model is busy or not
+        /// </summary>
+        bool? IsBusy { get; set; }
     }
 }

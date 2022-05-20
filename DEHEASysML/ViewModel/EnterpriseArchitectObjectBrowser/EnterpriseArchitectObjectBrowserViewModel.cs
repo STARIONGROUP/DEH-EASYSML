@@ -28,9 +28,11 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser
     using System.Collections.Generic;
     using System.Linq;
 
+    using DEHEASysML.ViewModel.Comparers;
     using DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Interfaces;
     using DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows;
 
+    using DEHPCommon.Extensions;
     using DEHPCommon.UserInterfaces.ViewModels;
     using DEHPCommon.UserInterfaces.ViewModels.Interfaces;
 
@@ -44,6 +46,11 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser
     /// </summary>
     public class EnterpriseArchitectObjectBrowserViewModel : ReactiveObject, IEnterpriseArchitectObjectBrowserViewModel, IHaveContextMenuViewModel
     {
+        /// <summary>
+        /// The <see cref="EnterpriseArchitectObjectBaseRowViewModel" /> <see cref="IComparer{T}" />
+        /// </summary>
+        protected static readonly IComparer<EnterpriseArchitectObjectBaseRowViewModel> ContainedRowsComparer = new EnterpriseArchitectObjectRowComparer();
+
         /// <summary>
         /// Backing field for <see cref="IsBusy" />
         /// </summary>
@@ -89,7 +96,7 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser
         /// <summary>
         /// Gets the collection of <see cref="EnterpriseArchitectObjectBaseRowViewModel" /> to be displayed in the tree
         /// </summary>
-        public ReactiveList<EnterpriseArchitectObjectBaseRowViewModel> Things { get; } = new();
+        public ReactiveList<EnterpriseArchitectObjectBaseRowViewModel> Things { get; } = new() { ChangeTrackingEnabled = true};
 
         /// <summary>
         /// Gets the Context Menu for the implementing view model
@@ -131,7 +138,7 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser
 
             foreach (var repositoryModel in models.Where(x => packagesIdList.Contains(x.PackageID)))
             {
-                this.Things.Add(new ModelRowViewModel(repositoryModel, visibleElements, packagesIdList));
+                this.Things.SortedInsert(new ModelRowViewModel(repositoryModel, visibleElements, packagesIdList), ContainedRowsComparer);
             }
         }
 

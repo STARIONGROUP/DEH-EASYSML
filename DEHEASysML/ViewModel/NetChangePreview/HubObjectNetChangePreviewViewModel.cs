@@ -41,7 +41,9 @@ namespace DEHEASysML.ViewModel.NetChangePreview
     using DEHPCommon.HubController.Interfaces;
     using DEHPCommon.Services.ObjectBrowserTreeSelectorService;
     using DEHPCommon.UserInterfaces.ViewModels;
+    using DEHPCommon.UserInterfaces.ViewModels.Interfaces;
     using DEHPCommon.UserInterfaces.ViewModels.NetChangePreview;
+    using DEHPCommon.UserInterfaces.ViewModels.Rows;
     using DEHPCommon.UserInterfaces.ViewModels.Rows.ElementDefinitionTreeRows;
 
     using ReactiveUI;
@@ -128,17 +130,16 @@ namespace DEHEASysML.ViewModel.NetChangePreview
         {
             switch (row)
             {
+                case ParameterRowViewModel parameterRowViewModel when this.IsThingTransferable(parameterRowViewModel.Thing) && !this.IsContainedInElementUsage(parameterRowViewModel):
+                    this.WhenItemSelectedChanges(parameterRowViewModel);
+                    break;
+
+                case ElementUsageRowViewModel elementUsageRowViewModel when this.IsThingTransferable(elementUsageRowViewModel.Thing):
+                    this.WhenItemSelectedChanges(elementUsageRowViewModel);
+                    break;
+
                 case ElementDefinitionRowViewModel elementDefinitionRow when this.IsThingTransferable(elementDefinitionRow.Thing):
-                    elementDefinitionRow.IsSelectedForTransfer = !elementDefinitionRow.IsSelectedForTransfer;
-                    this.AddOrRemoveToSelectedThingsToTransfer(elementDefinitionRow);
-                    break;
-
-                case ParameterOrOverrideBaseRowViewModel parameterRow:
-                    this.WhenItemSelectedChanges(parameterRow.ContainerViewModel);
-                    break;
-
-                case ParameterGroupRowViewModel parameterGroupRow:
-                    this.WhenItemSelectedChanges(parameterGroupRow.ContainerViewModel);
+                    this.SelectDeselectElementDefinitionRowToTransfer(elementDefinitionRow);
                     break;
             }
         }
@@ -151,9 +152,8 @@ namespace DEHEASysML.ViewModel.NetChangePreview
         {
             foreach (var hubElement in this.mappedBlocks.Select(x => x.HubElement))
             {
-                this.AddOrRemoveToSelectedThingsToTransfer(hubElement, areSelected);
                 this.GetElementDefinitionRowViewModel(hubElement, out var elementDefinitionRowViewModel);
-                elementDefinitionRowViewModel.IsSelectedForTransfer = areSelected;
+                this.SelectDeselectElementDefinitionRowToTransfer(elementDefinitionRowViewModel, areSelected);
             }
         }
 
@@ -183,6 +183,122 @@ namespace DEHEASysML.ViewModel.NetChangePreview
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Verifies that a <see cref="IHaveContainerViewModel" /> is not part of an <see cref="ElementUsageRowViewModel"/>
+        /// </summary>
+        /// <param name="containedRow">A <see cref="IHaveContainerViewModel"/></param>
+        /// <returns>A value indicating if the <see cref="IHaveContainerViewModel" /> if part of an <see cref="ElementUsageRowViewModel"/></returns>
+        private bool IsContainedInElementUsage(IHaveContainerViewModel containedRow)
+        {
+            return containedRow.ContainerViewModel switch
+            {
+                ElementUsageRowViewModel => true,
+                ParameterGroupRowViewModel parameterGroup => this.IsContainedInElementUsage(parameterGroup),
+                _ => false
+            };
+        }
+
+        /// <summary>
+        /// Select or deselect an <see cref="ElementDefinitionRowViewModel" /> to transfer
+        /// </summary>
+        /// <param name="elementDefinitionRow">The <see cref="ElementDefinitionRowViewModel" /></param>
+        private void SelectDeselectElementDefinitionRowToTransfer(ElementDefinitionRowViewModel elementDefinitionRow)
+        {
+            this.SelectDeselectElementDefinitionRowToTransfer(elementDefinitionRow, !elementDefinitionRow.IsSelectedForTransfer);
+        }
+
+        /// <summary>
+        /// Select or deselect an <see cref="ElementDefinitionRowViewModel" /> to transfer
+        /// </summary>
+        /// <param name="elementDefinitionRow">the <see cref="ElementDefinitionRowViewModel" /></param>
+        /// <param name="isSelected">A value indicating if the <see cref="ElementDefinitionRowViewModel" /> is selected or not</param>
+        private void SelectDeselectElementDefinitionRowToTransfer(ElementDefinitionRowViewModel elementDefinitionRow, bool isSelected)
+        {
+            elementDefinitionRow.IsSelectedForTransfer = isSelected;
+
+            foreach (var transferableRow in this.GetAllTransferableRows(elementDefinitionRow))
+            {
+                switch (transferableRow)
+                {
+                    case ParameterRowViewModel parameterRow:
+                        parameterRow.IsSelectedForTransfer = elementDefinitionRow.IsSelectedForTransfer;
+                        break;
+                    case ElementUsageRowViewModel elementUsageRow:
+                        elementUsageRow.IsSelectedForTransfer = elementDefinitionRow.IsSelectedForTransfer;
+                        break;
+                }
+            }
+
+            this.AddOrRemoveToSelectedThingsToTransfer(elementDefinitionRow);
+        }
+
+        /// <summary>
+        /// Retrieves all transferable rows contained inside a <see cref="IHaveContainedRows" />
+        /// </summary>
+        /// <param name="row">The <see cref="IHaveContainedRows" /></param>
+        /// <returns>A collection of transferable rows</returns>
+        private IEnumerable<IHaveContainerViewModel> GetAllTransferableRows(IHaveContainedRows row)
+        {
+            var transferableRows = new List<IHaveContainerViewModel>();
+
+            foreach (var containedRow in row.ContainedRows)
+            {
+                switch (containedRow)
+                {
+                    case ElementUsageRowViewModel elementUsageRow:
+                        transferableRows.Add(elementUsageRow);
+                        break;
+
+                    case ParameterRowViewModel parameterRow:
+                        transferableRows.Add(parameterRow);
+                        break;
+                    case ParameterGroupRowViewModel parameterGroupRow:
+                        transferableRows.AddRange(this.GetAllTransferableRows(parameterGroupRow));
+                        break;
+                }
+            }
+
+            return transferableRows;
+        }
+
+        /// <summary>
+        /// Occurs when a <see cref="RowViewModelBase{TThing}" /> has been selected or deselected
+        /// </summary>
+        /// <typeparam name="TThing">A <see cref="Thing" /></typeparam>
+        /// <param name="row">The <see cref="RowViewModelBase{TThing}" /></param>
+        private void WhenItemSelectedChanges<TThing>(RowViewModelBase<TThing> row) where TThing : Thing
+        {
+            row.IsSelectedForTransfer = !row.IsSelectedForTransfer;
+
+            if (row.ContainerViewModel is ElementDefinitionRowViewModel elementDefinitionRow)
+            {
+                elementDefinitionRow.IsSelectedForTransfer = this.IsAnyChildrenSelectedForTransfer(elementDefinitionRow);
+            }
+
+            this.AddOrRemoveToSelectedThingsToTransfer(row.Thing, row.IsSelectedForTransfer);
+        }
+
+        /// <summary>
+        /// Verifies in all children of this row if there is any row selected for transfer
+        /// </summary>
+        /// <param name="row">The row to check the children</param>
+        /// <returns>True if any of the children is selected</returns>
+        private bool IsAnyChildrenSelectedForTransfer(IHaveContainedRows row)
+        {
+            foreach (var children in row.ContainedRows)
+            {
+                switch (children)
+                {
+                    case ParameterGroupRowViewModel parameterGroupRowViewModel when this.IsAnyChildrenSelectedForTransfer(parameterGroupRowViewModel):
+                    case ParameterOrOverrideBaseRowViewModel { IsSelectedForTransfer: true }:
+                    case ElementUsageRowViewModel { IsSelectedForTransfer: true }:
+                        return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -225,6 +341,16 @@ namespace DEHEASysML.ViewModel.NetChangePreview
         }
 
         /// <summary>
+        /// Verifies that the <see cref="Thing" /> is transferable
+        /// </summary>
+        /// <param name="thing">The <see cref="Thing" /></param>
+        /// <returns>An assert</returns>
+        private bool IsThingTransferable(Thing thing)
+        {
+            return thing.Container is ElementDefinition elementDefinition && this.IsThingTransferable(elementDefinition);
+        }
+
+        /// <summary>
         /// Adds or removes an <see cref="ElementDefinitionRowViewModel" /> to the selected thing to transfer
         /// </summary>
         /// <param name="elementDefinitionRow">The <see cref="ElementDefinitionRowViewModel" /></param>
@@ -240,12 +366,30 @@ namespace DEHEASysML.ViewModel.NetChangePreview
         /// <param name="isSelected">A value indicating wheter to select the element for transfer</param>
         private void AddOrRemoveToSelectedThingsToTransfer(ElementDefinition elementDefinition, bool isSelected)
         {
+            foreach (var parameter in elementDefinition.Parameter)
+            {
+                this.AddOrRemoveToSelectedThingsToTransfer(parameter, isSelected);
+            }
+
+            foreach (var elementUsage in elementDefinition.ContainedElement)
+            {
+                this.AddOrRemoveToSelectedThingsToTransfer(elementUsage, isSelected);
+            }
+        }
+
+        /// <summary>
+        /// Adds or removes a <see cref="Thing" /> to the selected thing to transfer
+        /// </summary>
+        /// <param name="thing">The <see cref="Thing" /></param>
+        /// <param name="isSelected">A value indicating wheter to select the element for transfer</param>
+        private void AddOrRemoveToSelectedThingsToTransfer(Thing thing, bool isSelected)
+        {
             this.dstController.SelectedDstMapResultForTransfer.RemoveAll(this.dstController.SelectedDstMapResultForTransfer
-                .Where(x => x.Iid == elementDefinition.Iid).ToList());
+                .Where(x => x.Iid == thing.Iid).ToList());
 
             if (isSelected)
             {
-                this.dstController.SelectedDstMapResultForTransfer.Add(elementDefinition);
+                this.dstController.SelectedDstMapResultForTransfer.Add(thing);
             }
         }
 
@@ -291,6 +435,30 @@ namespace DEHEASysML.ViewModel.NetChangePreview
             }
 
             elementDefinitionRowViewModel.IsHighlighted = true;
+            this.HighlightContainedRows(elementDefinitionRowViewModel);
+        }
+
+        /// <summary>
+        /// Highlighs all rows contained inside the <see cref="IHaveContainedRows" />
+        /// </summary>
+        /// <param name="container">The <see cref="IHaveContainedRows" /></param>
+        private void HighlightContainedRows(IHaveContainedRows container)
+        {
+            foreach (var containedRow in container.ContainedRows)
+            {
+                switch (containedRow)
+                {
+                    case ParameterOrOverrideBaseRowViewModel parameterOrOverrideBaseRowViewModel:
+                        parameterOrOverrideBaseRowViewModel.IsHighlighted = true;
+                        break;
+                    case ElementUsageRowViewModel elementUsageRowViewModel:
+                        elementUsageRowViewModel.IsHighlighted = true;
+                        break;
+                    case ParameterGroupRowViewModel parameterGroupRowView:
+                        this.HighlightContainedRows(parameterGroupRowView);
+                        break;
+                }
+            }
         }
     }
 }

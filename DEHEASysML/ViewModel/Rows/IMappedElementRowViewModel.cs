@@ -30,6 +30,8 @@ namespace DEHEASysML.ViewModel.Rows
 
     using DEHEASysML.Enumerators;
 
+    using ReactiveUI;
+
     /// <summary>
     /// Interface definition for <see cref="MappedElementRowViewModel{TThing}"/>
     /// </summary>
@@ -59,5 +61,10 @@ namespace DEHEASysML.ViewModel.Rows
         /// A collection of <see cref="BinaryRelationship" />
         /// </summary>
         List<BinaryRelationship> RelationShips { get; }
+
+        /// <summary>
+        /// A collection of <see cref="object"/> for the contained rows
+        /// </summary>
+        ReactiveList<object> ContainedRows { get; }
     }
 }

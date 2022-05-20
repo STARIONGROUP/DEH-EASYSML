@@ -77,6 +77,7 @@ namespace DEHEASysML.Tests.DstController
         private Mock<INavigationService> navigationService;
         private Mock<IMappingConfigurationService> mappingConfiguration;
         private Iteration iteration;
+        private Mock<Element> blockElement;
 
         [SetUp]
         public void Setup()
@@ -112,8 +113,11 @@ namespace DEHEASysML.Tests.DstController
             this.hubController.Setup(x => x.RegisterNewLogEntryToTransaction(It.IsAny<string>(), It.IsAny<ThingTransaction>()));
 
             this.repository = new Mock<Repository>();
+            this.repository.Setup(x => x.EnableUIUpdates);
             this.package = new Mock<Package>();
             this.package.Setup(x => x.Elements).Returns(new EnterpriseArchitectCollection());
+            this.package.Setup(x => x.PackageID).Returns(1);
+            this.package.Setup(x => x.ParentID).Returns(0);
 
             var requirementPackage = new Mock<Package>();
             var blocPackage = new Mock<Package>();
@@ -126,13 +130,15 @@ namespace DEHEASysML.Tests.DstController
             valueTypePackage.Setup(x => x.Elements).Returns(new EnterpriseArchitectCollection() {valueTypeElement.Object });
             valueTypePackage.Setup(x => x.Packages).Returns(new EnterpriseArchitectCollection());
 
-            var blockElement = new Mock<Element>();
-            blockElement.Setup(x => x.Stereotype).Returns(StereotypeKind.Block.ToString());
-            blocPackage.Setup(x => x.Elements).Returns(new EnterpriseArchitectCollection() { blockElement.Object });
+            this.blockElement = new Mock<Element>();
+            this.blockElement.Setup(x => x.Stereotype).Returns(StereotypeKind.Block.ToString());
+            this.blockElement.Setup(x => x.ElementGUID).Returns(Guid.NewGuid().ToString);
+            blocPackage.Setup(x => x.Elements).Returns(new EnterpriseArchitectCollection() { this.blockElement.Object });
 
             var requirement = new Mock<Element>();
             requirement.Setup(x => x.Stereotype).Returns(StereotypeKind.Requirement.ToString());
             requirementPackage.Setup(x => x.Elements).Returns(new EnterpriseArchitectCollection() { requirement.Object });
+            requirement.Setup(x => x.ElementGUID).Returns(Guid.NewGuid().ToString);
             this.package.Setup(x => x.Packages).Returns(new EnterpriseArchitectCollection() { requirementPackage.Object, blocPackage.Object });
 
             this.mappingEngine = new Mock<IMappingEngine>();
@@ -168,6 +174,11 @@ namespace DEHEASysML.Tests.DstController
             this.dstController.MappingDirection = MappingDirection.FromHubToDst;
             Assert.AreEqual(MappingDirection.FromHubToDst, this.dstController.MappingDirection);
             Assert.IsEmpty(this.dstController.SelectedGroupsForTransfer);
+            Assert.IsEmpty(this.dstController.UpdatedCollections);
+            Assert.IsEmpty(this.dstController.UpdatedValuePropretyValues);
+            Assert.IsEmpty(this.dstController.UpdatedRequirementValues);
+            Assert.IsNull(this.dstController.IsBusy);
+            Assert.IsFalse(this.dstController.IsFileOpen);
         }
 
         [Test]
@@ -231,6 +242,7 @@ namespace DEHEASysML.Tests.DstController
             var connector = new Mock<Connector>();
             connector.Setup(x => x.ClientID).Returns(52);
             connector.Setup(x => x.SupplierID).Returns(152);
+            connector.Setup(x => x.Stereotype).Returns(StereotypeKind.Usage.ToString());
 
             var interfaceBlock = new Mock<Element>();
             var portblock = new Mock<Element>();
@@ -301,17 +313,24 @@ namespace DEHEASysML.Tests.DstController
         {
             this.repository.Setup(x => x.GetTreeSelectedPackage()).Returns(this.package.Object);
             Assert.AreEqual(2, this.dstController.GetAllElementsInsidePackage(this.repository.Object).Count());
+
+            this.dstController.CreatedElements.Add(this.blockElement.Object);
+
+            Assert.AreEqual(1, this.dstController.GetAllElementsInsidePackage(this.repository.Object).Count());
         }
 
         [Test]
         public void VerifyMapAndPremap()
         {
+            this.dstController.CurrentRepository = this.repository.Object;
             Assert.IsEmpty(this.dstController.DstMapResult);
 
             var elementsToMap = new List<IMappedElementRowViewModel>
             {
                 new EnterpriseArchitectBlockElement(null, null, MappingDirection.FromDstToHub),
-                new EnterpriseArchitectBlockElement(null, null, MappingDirection.FromDstToHub)
+                new EnterpriseArchitectBlockElement(null, null, MappingDirection.FromDstToHub),
+                new ElementDefinitionMappedElement(null, null, MappingDirection.FromHubToDst),
+                new RequirementMappedElement(null, null, MappingDirection.FromHubToDst)
             };
 
             this.mappingEngine.Setup(x => x.Map(It.IsAny<(bool, List<EnterpriseArchitectBlockElement>)>()))
@@ -320,9 +339,9 @@ namespace DEHEASysML.Tests.DstController
             this.mappingEngine.Setup(x => x.Map(It.IsAny<(bool, List<EnterpriseArchitectRequirementElement>)>()))
                 .Returns(null);
 
-            Assert.DoesNotThrow(() => this.dstController.PreMap(elementsToMap));
+            Assert.DoesNotThrow(() => this.dstController.PreMap(elementsToMap, MappingDirection.FromDstToHub));
             Assert.IsEmpty(this.dstController.DstMapResult);
-            Assert.DoesNotThrow(() => this.dstController.Map(elementsToMap));
+            Assert.DoesNotThrow(() => this.dstController.Map(elementsToMap, MappingDirection.FromDstToHub));
             Assert.IsEmpty(this.dstController.DstMapResult);
 
             this.mappingEngine.Setup(x => x.Map(It.IsAny<(bool, List<EnterpriseArchitectBlockElement>)>()))
@@ -331,9 +350,9 @@ namespace DEHEASysML.Tests.DstController
             this.mappingEngine.Setup(x => x.Map(It.IsAny<(bool, List<EnterpriseArchitectRequirementElement>)>()))
                 .Returns(new List<MappedRequirementRowViewModel>());
 
-            Assert.DoesNotThrow(() => this.dstController.PreMap(elementsToMap));
+            Assert.DoesNotThrow(() => this.dstController.PreMap(elementsToMap, MappingDirection.FromDstToHub));
             Assert.IsEmpty(this.dstController.DstMapResult);
-            Assert.DoesNotThrow(() => this.dstController.Map(elementsToMap));
+            Assert.DoesNotThrow(() => this.dstController.Map(elementsToMap, MappingDirection.FromDstToHub));
             Assert.IsEmpty(this.dstController.DstMapResult);
 
             this.mappingEngine.Setup(x => x.Map(It.IsAny<(bool, List<EnterpriseArchitectBlockElement>)>()))
@@ -348,18 +367,35 @@ namespace DEHEASysML.Tests.DstController
                     new MappedRequirementRowViewModel(null, null, MappingDirection.FromDstToHub)
                 });
 
-            Assert.DoesNotThrow(() => this.dstController.PreMap(elementsToMap));
+            Assert.DoesNotThrow(() => this.dstController.PreMap(elementsToMap, MappingDirection.FromDstToHub));
             Assert.IsEmpty(this.dstController.DstMapResult);
-            Assert.DoesNotThrow(() => this.dstController.Map(elementsToMap));
+            Assert.DoesNotThrow(() => this.dstController.Map(elementsToMap, MappingDirection.FromDstToHub));
             Assert.AreEqual(2,this.dstController.DstMapResult.Count);
 
             this.statusBarControlViewModel.Verify(x => 
-                    x.Append(It.IsAny<string>(), It.IsAny<StatusBarMessageSeverity>()), Times.Exactly(2));
+                    x.Append(It.IsAny<string>(), It.IsAny<StatusBarMessageSeverity>()), Times.Exactly(5));
+
+            this.mappingEngine.Setup(x => x.Map(It.IsAny<(bool, List<ElementDefinitionMappedElement>)>()))
+                .Returns(new List<MappedElementDefinitionRowViewModel>()
+                {
+                    new MappedElementDefinitionRowViewModel(null, null, MappingDirection.FromHubToDst)
+                });
+
+            this.mappingEngine.Setup(x => x.Map(It.IsAny<(bool, List<RequirementMappedElement>)>()))
+                .Returns(new List<MappedRequirementRowViewModel>()
+                {
+                    new MappedRequirementRowViewModel(null, null, MappingDirection.FromHubToDst)
+                });
+
+            Assert.DoesNotThrow(() => this.dstController.Map(elementsToMap, MappingDirection.FromHubToDst));
+            Assert.AreEqual(2, this.dstController.HubMapResult.Count);
         }
 
         [Test]
         public void VerifyTransferToHub()
         {
+            this.dstController.CurrentRepository = this.repository.Object;
+
             Assert.DoesNotThrowAsync(async () => await this.dstController.TransferMappedThingsToHub());
 
             this.navigationService.Setup(x =>
@@ -560,8 +596,10 @@ namespace DEHEASysML.Tests.DstController
             this.dstController.DstMapResult.Add(new EnterpriseArchitectRequirementElement(requirement3, null, MappingDirection.FromDstToHub));
             this.dstController.SelectedDstMapResultForTransfer.Add(requirement1);
             this.dstController.SelectedDstMapResultForTransfer.Add(requirement3);
-            this.dstController.SelectedDstMapResultForTransfer.Add(elementDefinition1);
-            this.dstController.SelectedDstMapResultForTransfer.Add(elementDefinition3);
+            this.dstController.SelectedDstMapResultForTransfer.AddRange(elementDefinition1.Parameter);
+            this.dstController.SelectedDstMapResultForTransfer.AddRange(elementDefinition1.ContainedElement);
+            this.dstController.SelectedDstMapResultForTransfer.AddRange(elementDefinition3.Parameter);
+            this.dstController.SelectedDstMapResultForTransfer.AddRange(elementDefinition3.ContainedElement);
 
             this.hubController.Setup(x => x.GetThingById(parameter.Iid, It.IsAny<Iteration>(), out parameter)).Returns(true);
 
@@ -571,6 +609,7 @@ namespace DEHEASysML.Tests.DstController
         [Test]
         public void VerifyLoadMapping()
         {
+            this.dstController.CurrentRepository = this.repository.Object;
             Assert.DoesNotThrow(() => this.dstController.LoadMapping());
             this.hubController.Setup(x => x.OpenIteration).Returns((Iteration)null);
             this.hubController.Setup(x => x.IsSessionOpen).Returns(true);
@@ -595,6 +634,191 @@ namespace DEHEASysML.Tests.DstController
             Assert.AreEqual(1, this.dstController.LoadMapping());
 
             Assert.DoesNotThrow(() => this.dstController.ResetConfigurationMapping());
+        }
+
+        [Test]
+        public void VerifyTryGetAndAddFromRepository()
+        {
+            this.dstController.CurrentRepository = this.repository.Object;
+            var element = new Mock<Element>();
+            element.Setup(x => x.Name).Returns("element");
+            element.Setup(x => x.Stereotype).Returns("block");
+
+            this.repository.Setup(x => x.GetElementsByQuery("Simple", "element")).Returns(new EnterpriseArchitectCollection()
+            {
+                element.Object
+            });
+
+            this.repository.Setup(x => x.GetElementsByQuery("Simple", "req")).Returns(new EnterpriseArchitectCollection());
+
+            Assert.IsFalse(this.dstController.TryGetElement("element", StereotypeKind.Requirement, out var retrievedElement));
+            Assert.IsFalse(this.dstController.TryGetElement("req", StereotypeKind.Requirement, out  retrievedElement));
+            Assert.IsTrue(this.dstController.TryGetElement("element", StereotypeKind.Block, out  retrievedElement));
+
+            var packageElement = new Mock<Element>();
+            packageElement.Setup(x => x.Name).Returns("pack");
+            packageElement.Setup(x => x.ElementGUID).Returns(Guid.NewGuid().ToString());
+            packageElement.Setup(x => x.Type).Returns("Package");
+            this.repository.Setup(x => x.GetPackageByGuid(packageElement.Object.ElementGUID)).Returns(this.package.Object);
+
+            this.repository.Setup(x => x.GetElementsByQuery("Simple", "pack")).Returns(new EnterpriseArchitectCollection()
+            {
+                packageElement.Object
+            });
+
+            Assert.IsFalse(this.dstController.TryGetPackage("req", out var retrievedPackage));
+            Assert.IsTrue(this.dstController.TryGetPackage("pack", out  retrievedPackage));
+        }
+
+        [Test]
+        public void VerifyTransferToDst()
+        {
+            this.dstController.CurrentRepository = this.repository.Object;
+            this.repository.Setup(x => x.RefreshModelView(0));
+
+            var requirement = new Mock<Element>();
+            requirement.Setup(x => x.Stereotype).Returns(StereotypeKind.Requirement.ToString());
+            requirement.Setup(x => x.ElementGUID).Returns(Guid.NewGuid().ToString());
+            requirement.Setup(x => x.PackageID).Returns(1);
+
+            var taggedValueId = new Mock<TaggedValue>();
+            taggedValueId.Setup(x => x.Name).Returns("id");
+            taggedValueId.Setup(x => x.Value);
+            taggedValueId.Setup(x => x.Update());
+            var taggedValueText = new Mock<TaggedValue>();
+            taggedValueText.Setup(x => x.Name).Returns("text");
+            taggedValueText.Setup(x => x.Notes);
+            taggedValueText.Setup(x => x.Update());
+
+            requirement.Setup(x => x.TaggedValuesEx).Returns(new EnterpriseArchitectCollection()
+            {
+                taggedValueText, taggedValueId
+            });
+
+            this.dstController.UpdatedRequirementValues[requirement.Object.ElementGUID] = ("M05", "aText");
+            this.dstController.CreatedElements.Add(requirement.Object);
+
+            var block = new Mock<Element>();
+            block.Setup(x => x.Stereotype).Returns(StereotypeKind.Block.ToString());
+            block.Setup(x => x.ElementGUID).Returns(Guid.NewGuid().ToString());
+
+            var customProperty = new Mock<CustomProperty>();
+            customProperty.Setup(x => x.Name).Returns("default");
+            customProperty.Setup(x => x.Value);
+
+            var property = new Mock<Element>();
+            property.Setup(x => x.Stereotype).Returns(StereotypeKind.ValueProperty.ToString());
+            property.Setup(x => x.ElementGUID).Returns(Guid.NewGuid().ToString());
+            property.Setup(x => x.CustomProperties).Returns(new EnterpriseArchitectCollection() { customProperty.Object });
+            property.Setup(x => x.Connectors).Returns(new EnterpriseArchitectCollection());
+            block.Setup(x => x.Elements).Returns(new EnterpriseArchitectCollection() { property.Object });
+            block.Setup(x => x.EmbeddedElements).Returns(new EnterpriseArchitectCollection());
+            this.dstController.UpdatedValuePropretyValues[property.Object.ElementGUID] = "423";
+
+            var createdPackage = new Mock<Package>();
+            createdPackage.Setup(x => x.ParentID).Returns(1);
+            createdPackage.Setup(x => x.PackageID).Returns(4);
+            createdPackage.Setup(x => x.PackageGUID).Returns(Guid.NewGuid().ToString());
+            this.repository.Setup(x => x.GetPackageByID(4)).Returns(createdPackage.Object);
+            this.repository.Setup(x => x.GetPackageByID(1)).Returns(this.package.Object);
+            this.package.Setup(x => x.Packages).Returns(new EnterpriseArchitectCollection() { createdPackage.Object });
+            this.dstController.CreatedPackages.Add(createdPackage.Object);
+
+            this.dstController.SelectedHubMapResultForTransfer.Add(block.Object);
+            this.dstController.SelectedHubMapResultForTransfer.Add(requirement.Object);
+            Assert.DoesNotThrowAsync( async () => await this.dstController.TransferMappedThingsToDst());
+        }
+
+        [Test]
+        public void VerifyTryGetValueType()
+        {
+            this.dstController.CurrentRepository = this.repository.Object;
+
+            this.repository.Setup(x => x.GetElementsByQuery("Extended", StereotypeKind.ValueType.ToString()))
+                .Returns(new EnterpriseArchitectCollection());
+
+            var parameterType = new SimpleQuantityKind()
+            {
+                Name = "mass",
+                ShortName = "mass"
+            };
+
+            var scale = new RatioScale()
+            {
+                Name = "kilogram",
+                ShortName = "kg"
+            };
+
+            Assert.IsFalse(this.dstController.TryGetValueType(parameterType, scale, out var valueType));
+
+            var existingValueType = new Mock<Element>();
+            existingValueType.Setup(x => x.Stereotype).Returns(StereotypeKind.ValueType.ToString());
+            existingValueType.Setup(x => x.Name).Returns("mass");
+            existingValueType.Setup(x => x.TaggedValuesEx).Returns(new EnterpriseArchitectCollection());
+
+            this.repository.Setup(x => x.GetElementsByQuery("Extended", StereotypeKind.ValueType.ToString()))
+                .Returns(new EnterpriseArchitectCollection(){existingValueType.Object});
+
+            Assert.IsFalse(this.dstController.TryGetValueType(parameterType, scale, out valueType));
+            existingValueType.Setup(x => x.Name).Returns("mass[kg]");
+            Assert.IsFalse(this.dstController.TryGetValueType(parameterType, scale, out valueType));
+
+            var unitElement = new Mock<Element>();
+            unitElement.Setup(x => x.ElementGUID).Returns(Guid.NewGuid().ToString());
+            unitElement.Setup(x => x.Name).Returns("kg");
+
+            var taggedValue = new Mock<TaggedValue>();
+            taggedValue.Setup(x => x.Name).Returns("unit");
+            taggedValue.Setup(x => x.Value).Returns(unitElement.Object.ElementGUID);
+            existingValueType.Setup(x => x.TaggedValuesEx).Returns(new EnterpriseArchitectCollection(){taggedValue.Object});
+
+            this.repository.Setup(x => x.GetElementByGuid(unitElement.Object.ElementGUID)).Returns(unitElement.Object);
+            Assert.IsTrue(this.dstController.TryGetValueType(parameterType, scale, out valueType));
+        }
+
+        [Test]
+        public void VerifyGetDefaultPackage()
+        {
+            this.dstController.CurrentRepository = this.repository.Object;
+            var modelPackage = new Mock<Package>();
+            modelPackage.Setup(x => x.Packages).Returns(new EnterpriseArchitectCollection());
+            this.repository.Setup(x => x.Models).Returns(new EnterpriseArchitectCollection() { modelPackage.Object });
+            var existingPackageElement = new Mock<Element>();
+            existingPackageElement.Setup(x => x.Type).Returns(StereotypeKind.Package.ToString());
+            existingPackageElement.Setup(x => x.ElementGUID).Returns(Guid.NewGuid().ToString());
+            existingPackageElement.Setup(x => x.Name).Returns($"COMET_{StereotypeKind.ValueType}s");
+            var existingPackage = new Mock<Package>();
+
+            this.repository.Setup(x => x.GetElementsByQuery("Simple", existingPackageElement.Object.Name))
+                .Returns(new EnterpriseArchitectCollection() { existingPackageElement.Object });
+
+            this.repository.Setup(x => x.GetElementsByQuery("Simple", $"COMET_{StereotypeKind.Block}s"))
+                .Returns(new EnterpriseArchitectCollection());
+
+            this.repository.Setup(x => x.GetPackageByGuid(existingPackageElement.Object.ElementGUID)).Returns(existingPackage.Object);
+
+            var defaultBlockPackage = this.dstController.GetDefaultPackage(StereotypeKind.Block);
+
+            Assert.IsNotNull(defaultBlockPackage);
+            Assert.AreNotEqual(existingPackage.Object, defaultBlockPackage);
+
+            var defaultValueTypePackage = this.dstController.GetDefaultPackage(StereotypeKind.ValueType);
+
+            Assert.IsNotNull(defaultValueTypePackage);
+            Assert.AreEqual(existingPackage.Object, defaultValueTypePackage);
+
+            var stateElement = new Mock<Element>();
+            stateElement.Setup(x => x.MetaType).Returns(StereotypeKind.State.ToString());
+            var statePackage = new Mock<Package>();
+            statePackage.Setup(x => x.Elements).Returns(new EnterpriseArchitectCollection() { stateElement.Object });
+            var subModelPackage = new Mock<Package>();
+            subModelPackage.Setup(x => x.Packages).Returns(new EnterpriseArchitectCollection() { statePackage.Object });
+            subModelPackage.Setup(x => x.Elements).Returns(new EnterpriseArchitectCollection());
+            modelPackage.Setup(x => x.Packages).Returns(new EnterpriseArchitectCollection() { subModelPackage.Object });
+
+            var defaultStatePackage = this.dstController.GetDefaultPackage(StereotypeKind.State);
+            Assert.IsNotNull(defaultStatePackage);
+            Assert.AreEqual(statePackage.Object, defaultStatePackage);
         }
     }
 }

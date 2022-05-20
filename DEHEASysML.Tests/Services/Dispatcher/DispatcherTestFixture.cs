@@ -29,6 +29,8 @@ namespace DEHEASysML.Tests.Services.Dispatcher
 
     using Autofac;
 
+    using CDP4Common;
+
     using DEHEASysML.DstController;
     using DEHEASysML.Services.Dispatcher;
     using DEHEASysML.ViewModel;
@@ -68,7 +70,9 @@ namespace DEHEASysML.Tests.Services.Dispatcher
             this.dstController.Setup(x => x.OnFileNew(this.repository.Object));
             this.dstController.Setup(x => x.OnFileOpen(this.repository.Object));
             this.dstController.Setup(x => x.OnNotifyContextItemModified(this.repository.Object, It.IsAny<string>(),It.IsAny<ObjectType>()));
-
+            this.dstController.Setup(x => x.OnContextItemChanged(this.repository.Object, It.IsAny<string>(),It.IsAny<ObjectType>()));
+            this.dstController.Setup(x => x.OnPackageEvent(It.IsAny<Repository>(), It.IsAny<ChangeKind>(), It.IsAny<int>()));
+            this.dstController.Setup(x => x.OnElementEvent(It.IsAny<Repository>(), It.IsAny<ChangeKind>(), It.IsAny<int>()));
             this.dstController.Setup(x => x.RetrieveAllParentsIdPackage(It.IsAny<IEnumerable<Element>>()))
                 .Returns(new List<int>());
 
@@ -150,6 +154,11 @@ namespace DEHEASysML.Tests.Services.Dispatcher
             Assert.DoesNotThrow(() => this.dispatcher.OnFileClose(this.repository.Object));
             Assert.DoesNotThrow(() => this.dispatcher.OnFileOpen(this.repository.Object));
             Assert.DoesNotThrow(() => this.dispatcher.OnNotifyContextItemModified(this.repository.Object, Guid.NewGuid().ToString(), ObjectType.otDiagram));
+            Assert.DoesNotThrow(() => this.dispatcher.OnContextItemChanged(this.repository.Object, Guid.NewGuid().ToString(), ObjectType.otDiagram));
+            Assert.DoesNotThrow(() => this.dispatcher.OnNewElement(this.repository.Object, 45));
+            Assert.DoesNotThrow(() => this.dispatcher.OnDeleteElement(this.repository.Object, 45));
+            Assert.DoesNotThrow(() => this.dispatcher.OnNewPackage(this.repository.Object, 45));
+            Assert.DoesNotThrow(() => this.dispatcher.OnDeletePackage(this.repository.Object, 45));
 
             this.dstController.Verify(x => x.OnFileNew(this.repository.Object), Times.Once);
             this.dstController.Verify(x => x.OnFileClose(this.repository.Object), Times.Once);

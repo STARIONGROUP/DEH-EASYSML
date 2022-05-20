@@ -79,6 +79,23 @@ namespace DEHEASysML.ViewModel.RequirementsBrowser
         }
 
         /// <summary>
+        /// Gets a collection of all <see cref="Requirement"/>s that are contained under this row view model
+        /// </summary>
+        /// <returns></returns>
+        public List<Requirement> GetAllRequirementsChildren()
+        {
+            var requirementsChildren = new List<Requirement>();
+            requirementsChildren.AddRange(this.ContainedRows.OfType<RequirementRowViewModel>().Select(x => x.Thing));
+
+            foreach (var requirementsGroupRow in this.ContainedRows.OfType<RequirementsGroupRowViewModel>())
+            {
+                requirementsChildren.AddRange(requirementsGroupRow.GetAllRequirementsChildren());
+            }
+
+            return requirementsChildren;
+        }
+
+        /// <summary>
         /// The <see cref="ObjectChangedEvent" /> event-handler.
         /// </summary>
         /// <param name="objectChange">The <see cref="ObjectChangedEvent" /></param>

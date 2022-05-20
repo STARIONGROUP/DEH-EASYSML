@@ -27,9 +27,12 @@ namespace DEHEASysML.DstController
     using System;
     using System.Collections.Generic;
 
+    using CDP4Common;
     using CDP4Common.CommonData;
     using CDP4Common.EngineeringModelData;
+    using CDP4Common.SiteDirectoryData;
 
+    using DEHEASysML.Enumerators;
     using DEHEASysML.ViewModel.Rows;
 
     using DEHPCommon.Enumerators;
@@ -66,12 +69,12 @@ namespace DEHEASysML.DstController
         MappingDirection MappingDirection { get; set; }
 
         /// <summary>
-        /// A collection of <see cref="Thing" /> selected for the transfer
+        /// A collection of <see cref="CDP4Common.CommonData.Thing" /> selected for the transfer
         /// </summary>
         ReactiveList<Thing> SelectedDstMapResultForTransfer { get; }
 
         /// <summary>
-        /// A collection of all <see cref="RequirementsGroup" /> that should be transfered
+        /// A collection of all <see cref="CDP4Common.EngineeringModelData.RequirementsGroup" /> that should be transfered
         /// </summary>
         ReactiveList<RequirementsGroup> SelectedGroupsForTransfer { get; }
 
@@ -89,6 +92,48 @@ namespace DEHEASysML.DstController
         /// A collection of <see cref="Thing" /> selected for the transfer
         /// </summary>
         ReactiveList<Element> SelectedHubMapResultForTransfer { get; }
+
+        /// <summary>
+        /// Gets the correspondance to the new value of a ValueProperty
+        /// </summary>
+        Dictionary<string, string> UpdatedValuePropretyValues { get; }
+
+        /// <summary>
+        /// A collection of <see cref="Element" /> that has been created
+        /// </summary>
+        List<Element> CreatedElements { get; }
+
+        /// <summary>
+        /// Gets the correspondance to the new value of a ValueProperty
+        /// </summary>
+        Dictionary<string, (string id, string text)> UpdatedRequirementValues { get; }
+
+        /// <summary>
+        /// Value asserting if the <see cref="DstController" /> is busy
+        /// </summary>
+        bool? IsBusy { get; set; }
+
+        /// <summary>
+        /// Correspondance between a state <see cref="Element" /> and a collection of the <see cref="Partition" /> where it as been
+        /// modified and the <see cref="ChangeKind" /> applied
+        /// to the partitions
+        /// </summary>
+        Dictionary<Element, List<(Partition, ChangeKind)>> ModifiedPartitions { get; }
+
+        /// <summary>
+        /// A collectior of <see cref="Connector" /> that has been created during the mapping from hub to dst
+        /// </summary>
+        List<Connector> CreatedConnectors { get; }
+
+        /// <summary>
+        /// Correspondance between a <see cref="Element"/> Guid of Stereotype ValueProperty and new PropertyType Value
+        /// </summary>
+        Dictionary<string, int> UpdatePropertyTypes { get; }
+
+        /// <summary>
+        /// A collection of <see cref="BinaryRelationship"/> that has been mapped based on <see cref="Connector"/>
+        /// </summary>
+        List<BinaryRelationship> MappedConnectorsToBinaryRelationships { get; }
 
         /// <summary>
         /// Handle to clear everything when Enterprise Architect close
@@ -131,7 +176,8 @@ namespace DEHEASysML.DstController
         /// Map all <see cref="IMappedElementRowViewModel" />
         /// </summary>
         /// <param name="elements">The collection of <see cref="IMappedElementRowViewModel" /></param>
-        void Map(List<IMappedElementRowViewModel> elements);
+        /// <param name="mappingDirectionToMap">The <see cref="MappingDirection" /></param>
+        void Map(List<IMappedElementRowViewModel> elements, MappingDirection mappingDirectionToMap);
 
         /// <summary>
         /// Gets all requirements present inside a model
@@ -194,8 +240,9 @@ namespace DEHEASysML.DstController
         /// Premaps all <see cref="IMappedElementRowViewModel" />
         /// </summary>
         /// <param name="elements"></param>
+        /// <param name="mappingDirectionToMap">The <see cref="MappingDirection" /></param>
         /// <returns>The collection of premapped <see cref="IMappedElementRowViewModel" /></returns>
-        List<IMappedElementRowViewModel> PreMap(List<IMappedElementRowViewModel> elements);
+        List<IMappedElementRowViewModel> PreMap(List<IMappedElementRowViewModel> elements, MappingDirection mappingDirectionToMap);
 
         /// <summary>
         /// Transfers the mapped variables to the Hub data source
@@ -214,5 +261,119 @@ namespace DEHEASysML.DstController
         /// </summary>
         /// <returns>The number of mapped things loaded</returns>
         int LoadMapping();
+
+        /// <summary>
+        /// Tries to get an <see cref="Element" />
+        /// </summary>
+        /// <param name="name">The name of the <see cref="Element" /></param>
+        /// <param name="stereotype">The stereotype applied to the <see cref="Element" /></param>
+        /// <param name="element">The <see cref="Element" /></param>
+        /// <returns>A value asserting if the <see cref="Element" /> has been found</returns>
+        bool TryGetElement(string name, StereotypeKind stereotype, out Element element);
+
+        /// <summary>
+        /// Tries to get a ValueType
+        /// </summary>
+        /// <param name="parameterType">The <see cref="ParameterType" /></param>
+        /// <param name="scale">The <see cref="MeasurementScale" /></param>
+        /// <param name="valueType">The <see cref="Element" /> representing the ValueType</param>
+        /// <returns>A value indicating if the <see cref="Element" /> has been found</returns>
+        bool TryGetValueType(ParameterType parameterType, MeasurementScale scale, out Element valueType);
+
+        /// <summary>
+        /// Gets the default <see cref="Package" /> where Element of the given StereoType are stored
+        /// </summary>
+        /// <param name="stereotypeKind">The <see cref="StereotypeKind" /></param>
+        /// <returns>The default package</returns>
+        Package GetDefaultPackage(StereotypeKind stereotypeKind);
+
+        /// <summary>
+        /// Adds a new <see cref="Element" /> to the given <see cref="Collection" />
+        /// </summary>
+        /// <param name="collection">The collection where to add the element</param>
+        /// <param name="name">The <see cref="name" /> of the <see cref="Element" /></param>
+        /// <param name="type">The type of the <see cref="Element" /></param>
+        /// <param name="stereotypeKind">The <see cref="Stereotype" /> to apply</param>
+        /// <returns>The added <see cref="Element" /></returns>
+        Element AddNewElement(Collection collection, string name, string type, StereotypeKind stereotypeKind);
+
+        /// <summary>
+        /// Tries to get a <see cref="Package" />
+        /// </summary>
+        /// <param name="name">The name of the <see cref="Package" /></param>
+        /// <param name="package">The <see cref="Package" /></param>
+        /// <returns>A value indicating if the <see cref="Package" /> has been found</returns>
+        bool TryGetPackage(string name, out Package package);
+
+        /// <summary>
+        /// Adds a new <see cref="Package" /> under the given <see cref="Package" />
+        /// </summary>
+        /// <param name="parentPackage">The parent <see cref="Package" /></param>
+        /// <param name="name">The name of the new package</param>
+        /// <returns></returns>
+        Package AddNewPackage(Package parentPackage, string name);
+
+        /// <summary>
+        /// Retrieve all <see cref="Element" /> of stereotype block or requirement contained in the project
+        /// </summary>
+        /// <returns>A collection of <see cref="Element" /></returns>
+        List<Element> GetAllBlocksAndRequirementsOfRepository();
+
+        /// <summary>
+        /// Tries to get an <see cref="Element" /> that represents by his type
+        /// </summary>
+        /// <param name="name">The name of the <see cref="Element" /></param>
+        /// <param name="type">The type of the Element</param>
+        /// <param name="element">The <see cref="Element" /></param>
+        /// <returns>A value asserting if the Element has been found</returns>
+        bool TryGetElementByType(string name, StereotypeKind type, out Element element);
+
+        /// <summary>
+        /// Tries to get an <see cref="Element" /> representing a Requirement based on is Id and on his name
+        /// </summary>
+        /// <param name="name">The name of the <see cref="Element" /></param>
+        /// <param name="id">The Id of the requirement</param>
+        /// <param name="elementRequirement">The retrieved <see cref="Element" /></param>
+        /// <returns>A value indicating if the <see cref="Element" /> has been found</returns>
+        bool TryGetRequirement(string name, string id, out Element elementRequirement);
+
+        /// <summary>
+        /// Tries to get the block that define the correct given Interface
+        /// </summary>
+        /// <param name="interfaceElement">The <see cref="Element"/></param>
+        /// <param name="blockDefinition">The retrieve block <see cref="Element"/></param>
+        /// <returns>a value indicating if the <see cref="Element"/> has been found</returns>
+        bool TryGetInterfaceImplementation(Element interfaceElement, out Element blockDefinition);
+
+        /// <summary>
+        /// Handle the execution of the EA_OnPostNewPackage or EA_OnPreDeletePackage event
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository"/></param>
+        /// <param name="changeKind">The <see cref="ChangeKind"/></param>
+        /// <param name="value">The id of <see cref="Package"/></param>
+        void OnPackageEvent(Repository repository, ChangeKind changeKind,int value);
+
+        /// <summary>
+        /// Handle the execution of the EA_OnPostNewElement or EA_OnPreDeleteElement event
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository"/></param>
+        /// <param name="changeKind">The <see cref="ChangeKind"/></param>
+        /// <param name="value">The id of <see cref="Element"/></param>
+        void OnElementEvent(Repository repository, ChangeKind changeKind, int value);
+
+        /// <summary>
+        /// Gets the Id of each parent of the given <see cref="Package" /> Id
+        /// </summary>
+        /// <param name="packageId">The <see cref="Package" /> id</param>
+        /// <param name="packagesId">A collection of all <see cref="Package" /> already found</param>
+        void GetPackageParentId(int packageId, ref List<int> packagesId);
+
+        /// <summary>
+        /// Handle the OnNotifyContextItemModified event from EA
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        /// <param name="guid">The guid of the Item</param>
+        /// <param name="objectType">The <see cref="ObjectType" /> of the item</param>
+        void OnContextItemChanged(Repository repository, string guid, ObjectType objectType);
     }
 }

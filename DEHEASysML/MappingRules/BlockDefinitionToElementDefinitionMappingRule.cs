@@ -37,6 +37,7 @@ namespace DEHEASysML.MappingRules
     using CDP4Common.Types;
 
     using DEHEASysML.DstController;
+    using DEHEASysML.Enumerators;
     using DEHEASysML.Extensions;
     using DEHEASysML.Services.MappingConfiguration;
     using DEHEASysML.Utils.Stereotypes;
@@ -92,6 +93,16 @@ namespace DEHEASysML.MappingRules
         private readonly (string shortname, string name) isLeafCategoryNames = ("LEA", "isLeaf");
 
         /// <summary>
+        /// A collection of <see cref="PossibleFiniteStateList" /> created during the mapping
+        /// </summary>
+        private readonly List<PossibleFiniteStateList> createdPossibleFiniteStateLists = new();
+
+        /// <summary>
+        /// A collection of <see cref="ActualFiniteStateList" /> created during the mapping
+        /// </summary>
+        private readonly List<ActualFiniteStateList> createdActualFiniteStateLists = new();
+
+        /// <summary>
         /// Collection containing relation for a Port, used for the creation of future <see cref="BinaryRelationship" />
         /// </summary>
         private readonly List<(Element, EnterpriseArchitectBlockElement, ElementUsage)> portsToConnect = new();
@@ -135,6 +146,12 @@ namespace DEHEASysML.MappingRules
                 this.Elements = new List<EnterpriseArchitectBlockElement>(elements);
 
                 this.portsToConnect.Clear();
+
+                this.createdPossibleFiniteStateLists.RemoveAll(x => this.HubController.OpenIteration
+                    .PossibleFiniteStateList.Any(possibleFiniteState => x.Iid == possibleFiniteState.Iid) || x.Container?.Iid != this.HubController.OpenIteration.Iid);
+
+                this.createdActualFiniteStateLists.RemoveAll(x => this.HubController.OpenIteration
+                    .ActualFiniteStateList.Any(actualFiniteStateList => x.Iid == actualFiniteStateList.Iid || x.Container?.Iid != this.HubController.OpenIteration.Iid));
 
                 foreach (var mappedElement in this.Elements.ToList())
                 {
@@ -190,13 +207,18 @@ namespace DEHEASysML.MappingRules
 
                 var elementUsageName = $"{interfaceBlock.Name}_Impl";
 
+                if (this.DstController.TryGetInterfaceImplementation(interfaceBlock, out var blockDefinition))
+                {
+                    elementUsageName = blockDefinition.Name;
+                }
+
                 var interfaceElementUsage = this.portsToConnect
                     .FirstOrDefault(x => x.Item1.PropertyTypeName as string == elementUsageName).Item3;
 
                 if (interfaceElementUsage == null)
                 {
                     interfaceElementUsage = this.HubController.OpenIteration.Element.SelectMany(x => x.ContainedElement)
-                        .FirstOrDefault(x => x.Name == elementUsageName);
+                        .FirstOrDefault(x => x.Name == elementUsageName)?.Clone(false);
 
                     if (interfaceElementUsage == null)
                     {
@@ -290,6 +312,7 @@ namespace DEHEASysML.MappingRules
                     parameter = existingParameter.Clone(true);
                 }
 
+                this.VerifyStateDependency(parameter, property);
                 this.UpdateValueSet(parameter, valueOfProperty);
 
                 elementDefinition.Parameter.RemoveAll(x => x.Iid == parameter.Iid);
@@ -323,6 +346,269 @@ namespace DEHEASysML.MappingRules
             this.MapCategory(elementDefinition, this.isAbstractCategoryNames, element.Abstract == "1", true);
             this.MapCategory(elementDefinition, this.isActiveCategoryNames, element.IsActive, false);
             this.MapCategory(elementDefinition, this.isEncapsulatedCategoryNames, isEncapsulated, true);
+        }
+
+        /// <summary>
+        /// Verifies that the <see cref="Parameter" /> has to be State Dependent or not
+        /// </summary>
+        /// <param name="parameter">The <see cref="Parameter" /></param>
+        /// <param name="property">The <see cref="Element" /> property</param>
+        private void VerifyStateDependency(Parameter parameter, Element property)
+        {
+            var dependencies = property.GetAllConnectorsOfElement().Where(x => x.Type.AreEquals(StereotypeKind.Dependency)
+                                                                               && x.ClientID == property.ElementID).ToList();
+
+            if (!dependencies.Any())
+            {
+                parameter.StateDependence = null;
+                return;
+            }
+
+            var possibleFiniteStateList = new List<PossibleFiniteStateList>();
+
+            foreach (var dependency in dependencies)
+            {
+                var state = this.DstController.CurrentRepository.GetElementByID(dependency.SupplierID);
+
+                if (state.Type.AreEquals(StereotypeKind.State))
+                {
+                    possibleFiniteStateList.Add(this.GetOrCreatePossibleFiniteState(state));
+                }
+            }
+
+            if (!possibleFiniteStateList.Any())
+            {
+                parameter.StateDependence = null;
+                return;
+            }
+
+            parameter.StateDependence = this.GetOrCreateActualFiniteStateList(possibleFiniteStateList);
+        }
+
+        /// <summary>
+        /// Gets or create the <see cref="ActualFiniteStateList" />
+        /// </summary>
+        /// <param name="possibleFiniteStateListCollection">
+        /// A collection of <see cref="PossibleFiniteStateList" /> that the
+        /// <see cref="ActualFiniteStateList" /> should contains
+        /// </param>
+        /// <returns>The created or retrieved <see cref="ActualFiniteStateList" /></returns>
+        private ActualFiniteStateList GetOrCreateActualFiniteStateList(List<PossibleFiniteStateList> possibleFiniteStateListCollection)
+        {
+            var actualFiniteStateList = this.GetActualFiniteStateListFromCollection(this.HubController.OpenIteration.ActualFiniteStateList.ToList(),
+                                            possibleFiniteStateListCollection)?.Clone(true)
+                                        ?? this.GetActualFiniteStateListFromCollection(this.createdActualFiniteStateLists.ToList(),
+                                            possibleFiniteStateListCollection)?.Clone(true)
+                                        ?? this.CreateActualFiniteStateList(possibleFiniteStateListCollection);
+
+            actualFiniteStateList.PossibleFiniteStateList.Clear();
+
+            foreach (var possibleFiniteStateList in possibleFiniteStateListCollection)
+            {
+                actualFiniteStateList.PossibleFiniteStateList.Add(possibleFiniteStateList);
+            }
+
+            this.UpdateActualFiniteStateList(actualFiniteStateList);
+            return actualFiniteStateList;
+        }
+
+        /// <summary>
+        /// Update the <see cref="ActualFiniteStateList" /> to apply change on the NetChangePreview.
+        /// </summary>
+        /// <param name="actualFiniteStateList">The <see cref="ActualFiniteStateList" /> to update</param>
+        private void UpdateActualFiniteStateList(ActualFiniteStateList actualFiniteStateList)
+        {
+            var combinations = this.GetAllPossibleCombination(actualFiniteStateList.PossibleFiniteStateList.ToList());
+            actualFiniteStateList.ActualState.Clear();
+
+            foreach (var combination in combinations)
+            {
+                actualFiniteStateList.ActualState.Add(new ActualFiniteState
+                {
+                    PossibleState = combination,
+                    Iid = Guid.NewGuid()
+                });
+            }
+        }
+
+        /// <summary>
+        /// Generates all possible combination crossing all <see cref="PossibleFiniteState" /> from all
+        /// <see cref="PossibleFiniteStateList" />
+        /// </summary>
+        /// <param name="possibleFiniteStateLists">A collection of <see cref="PossibleFiniteStateList" /></param>
+        /// <returns>A collection of <see cref="PossibleFiniteState" /></returns>
+        private List<List<PossibleFiniteState>> GetAllPossibleCombination(List<PossibleFiniteStateList> possibleFiniteStateLists)
+        {
+            var allPossibleFiniteState = new List<List<PossibleFiniteState>>();
+
+            foreach (var possibleFiniteStateList in possibleFiniteStateLists)
+            {
+                allPossibleFiniteState.Add(possibleFiniteStateList.PossibleState.ToList());
+            }
+
+            IEnumerable<List<PossibleFiniteState>> combinations = new List<List<PossibleFiniteState>> { new() };
+
+            foreach (var possibleFinites in allPossibleFiniteState)
+            {
+                combinations = combinations.SelectMany(combi => possibleFinites.Select(x =>
+                {
+                    var newList = combi.ToList();
+                    newList.Add(x);
+                    return newList;
+                }).ToList());
+            }
+
+            return combinations.ToList();
+        }
+
+        /// <summary>
+        /// Creates a <see cref="ActualFiniteStateList" /> based on a collection of <see cref="PossibleFiniteStateList" />
+        /// </summary>
+        /// <param name="possibleFiniteStateListCollection">
+        /// The collection of <see cref="possibleFiniteStateListCollection" />
+        /// </param>
+        /// <returns></returns>
+        private ActualFiniteStateList CreateActualFiniteStateList(List<PossibleFiniteStateList> possibleFiniteStateListCollection)
+        {
+            var actualFiniteStateList = new ActualFiniteStateList
+            {
+                Iid = Guid.NewGuid(),
+                Owner = this.Owner,
+                Container = this.HubController.OpenIteration
+            };
+
+            foreach (var possibleFiniteStateList in possibleFiniteStateListCollection)
+            {
+                actualFiniteStateList.PossibleFiniteStateList.Add(possibleFiniteStateList);
+            }
+
+            this.createdActualFiniteStateLists.Add(actualFiniteStateList);
+
+            return actualFiniteStateList;
+        }
+
+        /// <summary>
+        /// Gets an <see cref="ActualFiniteStateList" /> contained inside a collection
+        /// </summary>
+        /// <param name="actualFiniteStateLists">A collection to look into</param>
+        /// <param name="possibleFiniteStateListCollection">
+        /// The <see cref="PossibleFiniteStateList" /> that compose the
+        /// <see cref="ActualFiniteStateList" />
+        /// </param>
+        /// <returns>A <see cref="ActualFiniteStateList" /> if found, null if not present inside the collection</returns>
+        private ActualFiniteStateList GetActualFiniteStateListFromCollection(IEnumerable<ActualFiniteStateList> actualFiniteStateLists,
+            List<PossibleFiniteStateList> possibleFiniteStateListCollection)
+        {
+            var matchOnNumberOfPossibleFinitieState = actualFiniteStateLists
+                .Where(x => x.PossibleFiniteStateList.Count == possibleFiniteStateListCollection.Count)
+                .ToList();
+
+            return matchOnNumberOfPossibleFinitieState.FirstOrDefault(finiteStateList =>
+                finiteStateList.PossibleFiniteStateList.All(possibleState =>
+                    possibleFiniteStateListCollection.Any(x => x.Iid == possibleState.Iid)));
+        }
+
+        /// <summary>
+        /// Gets or creates a <see cref="PossibleFiniteStateList" /> based on a State <see cref="Element" />
+        /// </summary>
+        /// <param name="state">The state <see cref="Element" /></param>
+        /// <returns>The retrieved or created <see cref="PossibleFiniteStateList" />></returns>
+        private PossibleFiniteStateList GetOrCreatePossibleFiniteState(Element state)
+        {
+            var partitions = state.Partitions.OfType<Partition>().Select(x => x.Name).ToList();
+
+            if (!partitions.Any())
+            {
+                partitions.Add(state.Name);
+            }
+
+            var possibleFiniteStateList = this.HubController.OpenIteration.PossibleFiniteStateList
+                                              .FirstOrDefault(x => x.Name == state.Name || x.ShortName == state.Name.GetShortName())?.Clone(true)
+                                          ?? this.createdPossibleFiniteStateLists
+                                              .FirstOrDefault(x => x.Name == state.Name || x.ShortName == state.Name.GetShortName())
+                                          ?? this.CreatePossibleFiniteStateList(state.Name);
+
+            this.UpdatePossibleFiniteStateList(possibleFiniteStateList, partitions);
+
+            return possibleFiniteStateList;
+        }
+
+        /// <summary>
+        /// Update the current <see cref="PossibleFiniteStateList" /> based on the name of partitions
+        /// </summary>
+        /// <param name="possibleFiniteStateList">The <see cref="PossibleFiniteStateList" /></param>
+        /// <param name="statesName">
+        /// A collection of name to populate the <see cref="PossibleFiniteStateList.PossibleState" />
+        /// </param>
+        private void UpdatePossibleFiniteStateList(PossibleFiniteStateList possibleFiniteStateList, List<string> statesName)
+        {
+            var finiteStates = possibleFiniteStateList.PossibleState;
+
+            for (var finiteStateIndex = statesName.Count; finiteStateIndex < finiteStates.Count; finiteStateIndex++)
+            {
+                finiteStates.Remove(finiteStates[finiteStateIndex]);
+            }
+
+            for (var namesIndex = 0; namesIndex < statesName.Count; namesIndex++)
+            {
+                if (finiteStates.Count > namesIndex)
+                {
+                    this.UpdatePossibleFiniteState(finiteStates[namesIndex], statesName[namesIndex]);
+                }
+                else
+                {
+                    possibleFiniteStateList.PossibleState.Add(this.CreatePossibleFiniteState(statesName[namesIndex]));
+                }
+            }
+        }
+
+        /// <summary>
+        /// Creates a <see cref="PossibleFiniteState" /> based on a named
+        /// </summary>
+        /// <param name="name">The name of the <see cref="PossibleFiniteState" /></param>
+        /// <returns>The created <see cref="PossibleFiniteState" /></returns>
+        private PossibleFiniteState CreatePossibleFiniteState(string name)
+        {
+            return new PossibleFiniteState
+            {
+                Iid = Guid.NewGuid(),
+                Name = name,
+                ShortName = name.GetShortName(),
+                Container = this.HubController.OpenIteration
+            };
+        }
+
+        /// <summary>
+        /// Updates a <see cref="PossibleFiniteState" /> based on a name
+        /// </summary>
+        /// <param name="finiteState">The <see cref="PossibleFiniteState" /></param>
+        /// <param name="name">The name of the state</param>
+        private void UpdatePossibleFiniteState(PossibleFiniteState finiteState, string name)
+        {
+            if (finiteState.Name != name || finiteState.ShortName != name.GetShortName())
+            {
+                finiteState.Name = name;
+                finiteState.ShortName = name.GetShortName();
+            }
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="PossibleFiniteStateList" />
+        /// </summary>
+        /// <param name="name">The name of the <see cref="PossibleFiniteStateList" /></param>
+        /// <returns>A new <see cref="PossibleFiniteStateList" /></returns>
+        private PossibleFiniteStateList CreatePossibleFiniteStateList(string name)
+        {
+            var possibleFiniteStateList = new PossibleFiniteStateList
+            {
+                Iid = Guid.NewGuid(),
+                Name = name,
+                ShortName = name.GetShortName(),
+                Owner = this.Owner
+            };
+
+            this.createdPossibleFiniteStateLists.Add(possibleFiniteStateList);
+            return possibleFiniteStateList;
         }
 
         /// <summary>
@@ -402,7 +688,7 @@ namespace DEHEASysML.MappingRules
         /// <param name="partProperty">The PartProperty</param>
         private void MapPartProperty(ElementDefinition container, Element partProperty)
         {
-            if (container == null)
+            if (container == null || partProperty.PropertyType == 0)
             {
                 return;
             }
@@ -414,9 +700,8 @@ namespace DEHEASysML.MappingRules
             {
                 mappedElement = new EnterpriseArchitectBlockElement(this.GetOrCreateElementDefinition(partPropertyBlock), partPropertyBlock, MappingDirection.FromDstToHub);
                 this.Elements.Add(mappedElement);
+                this.MapElement(mappedElement);
             }
-
-            this.MapElement(mappedElement);
 
             if (container.ContainedElement.Any(x => x.ElementDefinition.Iid == mappedElement.HubElement.Iid))
             {
@@ -436,35 +721,69 @@ namespace DEHEASysML.MappingRules
         }
 
         /// <summary>
-        /// Update the correct value set depened of the selected <paramref name="valueOfProperty" />
+        /// Update the correct value set depend of the selected <paramref name="parameter" />
         /// </summary>
         /// <param name="parameter">The <see cref="Parameter" /> to update the value set</param>
         /// <param name="valueOfProperty">The new value</param>
         private void UpdateValueSet(Parameter parameter, string valueOfProperty)
         {
-            ParameterValueSet valueSet;
-
-            if (parameter.Original != null || parameter.ValueSet.Any())
+            if (parameter.StateDependence == null)
             {
-                valueSet = (ParameterValueSet)parameter.QueryParameterBaseValueSet(null, null);
+                this.CreateOrUpdateParameterValueSet(parameter, null);
             }
             else
             {
-                valueSet = new ParameterValueSet
+                foreach (var actualFiniteState in parameter.StateDependence.ActualState)
+                {
+                    this.CreateOrUpdateParameterValueSet(parameter, actualFiniteState);
+                }
+
+                if (parameter.ValueSet.FirstOrDefault(x => x.ActualState == null) == null)
+                {
+                    parameter.ValueSet.Add(new ParameterValueSet
+                    {
+                        Iid = Guid.NewGuid(),
+                        Reference = new ValueArray<string>(),
+                        Formula = new ValueArray<string>(),
+                        Published = new ValueArray<string>(),
+                        Computed = new ValueArray<string>(),
+                        ActualState = null
+                    });
+                }
+            }
+
+            foreach (var valueSet in parameter.ValueSet)
+            {
+                valueSet.ValueSwitch = ParameterSwitchKind.MANUAL;
+                var valueToSet = string.IsNullOrEmpty(valueOfProperty) ? "-" : valueOfProperty;
+                valueSet.Manual = new ValueArray<string>(new[] { FormattableString.Invariant($"{valueToSet}") });
+            }
+        }
+
+        /// <summary>
+        /// Creates or update a <see cref="ParameterValueSetBase" /> for the given <see cref="Parameter" /> and
+        /// <see cref="ActualFiniteState" />
+        /// </summary>
+        /// <param name="parameter">The <see cref="Parameter" /></param>
+        /// <param name="actualFiniteState">The <see cref="ActualFiniteState" /></param>
+        /// <param name="valueOfProperty">The value to assign to the <see cref="ParameterValueSetBase" /></param>
+        /// <returns>The <see cref="ParameterValueSetBase" /></returns>
+        private void CreateOrUpdateParameterValueSet(Parameter parameter, ActualFiniteState actualFiniteState)
+        {
+            if (!((parameter.Original != null || parameter.ValueSet.Any()) && actualFiniteState == null))
+            {
+                var valueSet = new ParameterValueSet
                 {
                     Iid = Guid.NewGuid(),
                     Reference = new ValueArray<string>(),
                     Formula = new ValueArray<string>(),
                     Published = new ValueArray<string>(),
-                    Computed = new ValueArray<string>()
+                    Computed = new ValueArray<string>(),
+                    ActualState = actualFiniteState
                 };
 
                 parameter.ValueSet.Add(valueSet);
             }
-
-            valueSet.ValueSwitch = ParameterSwitchKind.MANUAL;
-            var valueToSet = string.IsNullOrEmpty(valueOfProperty) ? "-" : valueOfProperty;
-            valueSet.Manual = new ValueArray<string>(new[] { FormattableString.Invariant($"{valueToSet}") });
         }
 
         /// <summary>
@@ -489,8 +808,8 @@ namespace DEHEASysML.MappingRules
                     ParameterType newParameterType;
 
                     if (decimal.TryParse(valueOfProperty, out _) ||
-                        property.GetUnitOfValueProperty()?.Value != null &&
-                        this.DstController.CurrentRepository.GetElementByGuid(property.GetUnitOfValueProperty().Value) != null)
+                        (property.GetUnitOfValueProperty()?.Value != null &&
+                         this.DstController.CurrentRepository.GetElementByGuid(property.GetUnitOfValueProperty().Value) != null))
                     {
                         newParameterType = new SimpleQuantityKind();
 

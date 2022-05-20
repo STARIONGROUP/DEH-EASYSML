@@ -64,21 +64,6 @@ namespace DEHEASysML.ViewModel.Dialogs
         private List<Element> elements;
 
         /// <summary>
-        /// Backing field for <see cref="SelectedItem" />
-        /// </summary>
-        private IMappedElementRowViewModel selectedItem;
-
-        /// <summary>
-        /// Backing field for <see cref="SelectedObjectBrowserThing" />
-        /// </summary>
-        private Thing selectedObjectBrowserThing;
-
-        /// <summary>
-        /// Backing field for <see cref="CanExecuteMapToNewElement" />
-        /// </summary>
-        private bool canExecuteMapToNewElement;
-
-        /// <summary>
         /// Initializes a new <see cref="MappingConfigurationDialogViewModel" />
         /// </summary>
         /// <param name="hubController">The <see cref="IHubController" /></param>
@@ -88,66 +73,10 @@ namespace DEHEASysML.ViewModel.Dialogs
         /// <param name="requirementsBrowser">The <see cref="IObjectBrowserViewModel" /></param>
         public DstMappingConfigurationDialogViewModel(IHubController hubController, IDstController dstController,
             IEnterpriseArchitectObjectBrowserViewModel enterpriseArchitectObject, IObjectBrowserViewModel objectBrowser,
-            IRequirementsBrowserViewModel requirementsBrowser) : base(hubController, dstController)
+            IRequirementsBrowserViewModel requirementsBrowser) : base(hubController, dstController, enterpriseArchitectObject, objectBrowser, requirementsBrowser)
         {
-            this.EnterpriseArchitectObjectBrowser = enterpriseArchitectObject;
-            this.ObjectBrowser = objectBrowser;
-            this.RequirementsBrowser = requirementsBrowser;
-
             this.InitializeObservablesAndCommands();
         }
-
-        /// <summary>
-        /// Gets or sets the selected row
-        /// </summary>
-        public IMappedElementRowViewModel SelectedItem
-        {
-            get => this.selectedItem;
-            set => this.RaiseAndSetIfChanged(ref this.selectedItem, value);
-        }
-
-        /// <summary>
-        /// Gets or sets the element selected inside any Hub Browser
-        /// </summary>
-        public Thing SelectedObjectBrowserThing
-        {
-            get => this.selectedObjectBrowserThing;
-            set => this.RaiseAndSetIfChanged(ref this.selectedObjectBrowserThing, value);
-        }
-
-        /// <summary>
-        /// The collection of <see cref="IMappedElementRowViewModel" />
-        /// </summary>
-        public ReactiveList<IMappedElementRowViewModel> MappedElements { get; } = new();
-
-        /// <summary>
-        /// The <see cref="IEnterpriseArchitectObjectBrowserViewModel" />
-        /// </summary>
-        public IEnterpriseArchitectObjectBrowserViewModel EnterpriseArchitectObjectBrowser { get; }
-
-        /// <summary>
-        /// The <see cref="IObjectBrowserViewModel" />
-        /// </summary>
-        public IObjectBrowserViewModel ObjectBrowser { get; }
-
-        /// <summary>
-        /// Gets or set the <see cref="RequirementsBrowser" />
-        /// </summary>
-        public IRequirementsBrowserViewModel RequirementsBrowser { get; }
-
-        /// <summary>
-        /// Asserts that the <see cref="MapToNewElementCommand" /> can be executed or not
-        /// </summary>
-        public bool CanExecuteMapToNewElement
-        {
-            get => this.canExecuteMapToNewElement;
-            set => this.RaiseAndSetIfChanged(ref this.canExecuteMapToNewElement, value);
-        }
-
-        /// <summary>
-        /// Gets or sets the command that allows to map the selected row to a new Hub Element
-        /// </summary>
-        public ReactiveCommand<object> MapToNewElementCommand { get; set; }
 
         /// <summary>
         /// Gets the Context Menu for the implementing view model
@@ -198,8 +127,8 @@ namespace DEHEASysML.ViewModel.Dialogs
             }
 
             var newElementsToMap = this.elements.Where(x => this.MappedElements
-                    .OfType<EnterpriseArchitectRequirementElement>()
-                    .All(mapped => mapped.DstElement.ElementGUID != x.ElementGUID) && 
+                                                                .OfType<EnterpriseArchitectRequirementElement>()
+                                                                .All(mapped => mapped.DstElement.ElementGUID != x.ElementGUID) &&
                                                             x.Stereotype.AreEquals(StereotypeKind.Requirement))
                 .Select(requirement => new EnterpriseArchitectRequirementElement(null, requirement, MappingDirection.FromDstToHub))
                 .Cast<IMappedElementRowViewModel>().ToList();
@@ -210,7 +139,7 @@ namespace DEHEASysML.ViewModel.Dialogs
                 .Select(block => new EnterpriseArchitectBlockElement(null, block, MappingDirection.FromDstToHub))
                 .Cast<IMappedElementRowViewModel>().ToList());
 
-            var newMappingCollection = this.DstController.PreMap(newElementsToMap);
+            var newMappingCollection = this.DstController.PreMap(newElementsToMap, MappingDirection.FromDstToHub);
 
             foreach (var mappedElement in newMappingCollection)
             {
@@ -228,10 +157,7 @@ namespace DEHEASysML.ViewModel.Dialogs
         {
             this.ContinueCommand = ReactiveCommand.Create();
 
-            this.ContinueCommand.Subscribe(_ => this.ExecuteContinueCommand(() =>
-            {
-                this.DstController.Map(this.MappedElements.ToList());
-            }));
+            this.ContinueCommand.Subscribe(_ => this.ExecuteContinueCommand(() => { this.DstController.Map(this.MappedElements.ToList(), MappingDirection.FromDstToHub); }));
 
             this.MapToNewElementCommand = ReactiveCommand.Create(this.WhenAnyValue(x => x.CanExecuteMapToNewElement));
             this.MapToNewElementCommand.Subscribe(_ => this.ExecuteMapToNewElementCommand());
@@ -242,7 +168,7 @@ namespace DEHEASysML.ViewModel.Dialogs
             this.WhenAnyValue(x => x.SelectedItem)
                 .Subscribe(_ => this.PopulateContextMenu());
 
-           this.ObjectBrowser.SelectedThings.CountChanged.Where(x => x >= 1)
+            this.ObjectBrowser.SelectedThings.CountChanged.Where(x => x >= 1)
                 .Subscribe(_ => this.ReduiceCollectionAndUpdateSelectedThing(this.ObjectBrowser.SelectedThings));
 
             this.RequirementsBrowser.SelectedThings.CountChanged.Where(x => x >= 1)
@@ -253,7 +179,7 @@ namespace DEHEASysML.ViewModel.Dialogs
         }
 
         /// <summary>
-        /// Reduice the collection to habe always only one element inside it
+        /// Reduice the collection to have always only one element inside it
         /// </summary>
         /// <param name="collection">The collection</param>
         private void ReduiceCollectionAndUpdateSelectedThing(IReactiveList<object> collection)

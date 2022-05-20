@@ -77,7 +77,7 @@ namespace DEHEASysML.MappingRules
             foreach (var mappedElement in mappedElements)
             {
                 this.MappingConfiguration.AddToExternalIdentifierMap(mappedElement.HubElement.Iid, mappedElement.DstElement.ElementGUID,
-                    MappingDirection.FromDstToHub);
+                   mappedElement.MappingDirection);
             }
         }
     }

@@ -59,5 +59,14 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
         {
             this.Value = this.RepresentedObject.GetValueOfPropertyValue();
         }
+
+        /// <summary>
+        /// Overrides the <see cref="EnterpriseArchitectObjectBaseRowViewModel.Value"/> of this row
+        /// </summary>
+        /// <param name="newValue">The <see cref="newValue"/></param>
+        public void OverrideValue(string newValue)
+        {
+            this.Value = newValue;
+        }
     }
 }

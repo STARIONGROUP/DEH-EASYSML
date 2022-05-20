@@ -24,12 +24,15 @@
 
 namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
 {
+    using System.Linq;
+
+    using DEHEASysML.Enumerators;
     using DEHEASysML.Extensions;
 
     using EA;
 
     /// <summary>
-    /// The <see cref="BlockRowViewModel" /> represents an <see cref="Element"/> of Stereotype Block
+    /// The <see cref="BlockRowViewModel" /> represents an <see cref="Element" /> of Stereotype Block
     /// </summary>
     public class BlockRowViewModel : ElementRowViewModel
     {
@@ -38,20 +41,14 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
         /// </summary>
         /// <param name="parent">The parent row</param>
         /// <param name="eaObject">The object to represent</param>
-        /// <param name="shouldShowEverything">A value asserting if the row should display its contained <see cref="Element"/></param>
-        public BlockRowViewModel(EnterpriseArchitectObjectBaseRowViewModel parent, Element eaObject, bool shouldShowEverything) 
+        /// <param name="shouldShowEverything">
+        /// A value asserting if the row should display its contained <see cref="Element" />
+        /// </param>
+        public BlockRowViewModel(EnterpriseArchitectObjectBaseRowViewModel parent, Element eaObject, bool shouldShowEverything)
             : base(parent, eaObject)
         {
             this.ShouldShowEverything = shouldShowEverything;
             this.Initialize();
-        }
-
-        /// <summary>
-        /// Initializes this row properties
-        /// </summary>
-        private void Initialize()
-        {
-            this.UpdateProperties();
         }
 
         /// <summary>
@@ -61,16 +58,18 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
         {
             if (this.ShouldShowEverything)
             {
-                foreach (var valueProperty in this.RepresentedObject.GetAllValuePropertiesOfElement())
-                {
-                    this.ContainedRows.Add(new ValuePropertyRowViewModel(this, valueProperty));
-                }
-
-                foreach (var partProperty in this.RepresentedObject.GetAllPartPropertiesOfElement())
-                {
-                    this.ContainedRows.Add(new PartPropertyRowViewModel(this, partProperty));
-                }
+                this.UpdateContainedRowsOfStereotype(StereotypeKind.ValueProperty, this.RepresentedObject.Elements.GetAllValuePropertiesOfElement().ToList());
+                this.UpdateContainedRowsOfStereotype(StereotypeKind.PartProperty, this.RepresentedObject.Elements.GetAllPartPropertiesOfElement().ToList());
+                this.UpdateContainedRowsOfStereotype(StereotypeKind.Port, this.RepresentedObject.Elements.GetAllPortsOfElement().ToList());
             }
+        }
+
+        /// <summary>
+        /// Initializes this row properties
+        /// </summary>
+        private void Initialize()
+        {
+            this.UpdateProperties();
         }
     }
 }

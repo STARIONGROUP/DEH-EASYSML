@@ -105,5 +105,41 @@ namespace DEHEASysML.Services.Dispatcher
         /// Open the Transfer History dialog
         /// </summary>
         void OpenTransferHistory();
+
+        /// <summary>
+        /// Handle the execution of the EA_OnPostNewPackage event
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository"/></param>
+        /// <param name="value">The id of the created <see cref="Package"/></param>
+        void OnNewPackage(Repository repository, int value);
+
+        /// <summary>
+        /// Handle the execution of the EA_OnPostNewElement event
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository"/></param>
+        /// <param name="value">The id of the created <see cref="Element"/></param>
+        void OnNewElement(Repository repository, int value);
+
+        /// <summary>
+        /// Handle the execution of the EA_OnPreDeleteElement event
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository"/></param>
+        /// <param name="value">The id of the deleted <see cref="Element"/></param>
+        void OnDeleteElement(Repository repository, int value);
+
+        /// <summary>
+        /// Handle the execution of the EA_OnPreDeletePackage event
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository"/></param>
+        /// <param name="value">The id of the deleted <see cref="Package"/></param>
+        void OnDeletePackage(Repository repository, int value);
+
+        /// <summary>
+        /// Handle the OnContextItemChanged event from EA
+        /// </summary>
+        /// <param name="repository">The <see cref="Repository" /></param>
+        /// <param name="guid">The guid of the Item</param>
+        /// <param name="objectType">The <see cref="ObjectType" /> of the item</param>
+        void OnContextItemChanged(Repository repository, string guid, ObjectType objectType);
     }
 }

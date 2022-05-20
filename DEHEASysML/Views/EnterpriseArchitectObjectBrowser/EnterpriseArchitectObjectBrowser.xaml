@@ -6,7 +6,6 @@
              xmlns:rows="clr-namespace:DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows"
              xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
              xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
-             xmlns:requirementsBrowser="clr-namespace:DEHEASysML.ViewModel.RequirementsBrowser"
              xmlns:behaviors="clr-namespace:DEHPCommon.UserInterfaces.Behaviors;assembly=DEHPCommon"
              xmlns:dxmvvm="http://schemas.devexpress.com/winfx/2008/xaml/mvvm"
              mc:Ignorable="d" 
@@ -91,11 +90,50 @@
                     </StackPanel>
                 </dx:MeasurePixelSnapper>
             </HierarchicalDataTemplate>
-            <HierarchicalDataTemplate DataType="{x:Type requirementsBrowser:RequirementRowViewModel}" ItemsSource="{Binding ContainedRows}">
+            <HierarchicalDataTemplate DataType="{x:Type rows:ElementRequirementRowViewModel}" ItemsSource="{Binding ContainedRows}">
                 <dx:MeasurePixelSnapper>
                     <StackPanel Orientation="Horizontal">
                         <dx:PixelSnapper>
                             <Image Style="{StaticResource ThingIcon}" Source="{dx:DXImage 'SvgImages/Business Objects/BO_Report.svg'}"/>
+                        </dx:PixelSnapper>
+
+                        <ContentPresenter x:Name="defaultRowPresenter"
+                                          Content="{Binding}"
+                                          ContentTemplate="{Binding View.DefaultDataRowTemplate}"/>
+                    </StackPanel>
+                </dx:MeasurePixelSnapper>
+            </HierarchicalDataTemplate>
+            <HierarchicalDataTemplate DataType="{x:Type rows:PortRowViewModel}" ItemsSource="{Binding ContainedRows}">
+                <dx:MeasurePixelSnapper>
+                    <StackPanel Orientation="Horizontal">
+                        <dx:PixelSnapper>
+                            <Image Style="{StaticResource ThingIcon}" Source="{dx:DXImage 'SvgImages/DiagramIcons/connector.svg'}"/>
+                        </dx:PixelSnapper>
+
+                        <ContentPresenter x:Name="defaultRowPresenter"
+                                          Content="{Binding}"
+                                          ContentTemplate="{Binding View.DefaultDataRowTemplate}"/>
+                    </StackPanel>
+                </dx:MeasurePixelSnapper>
+            </HierarchicalDataTemplate>
+            <HierarchicalDataTemplate DataType="{x:Type rows:StateRowViewModel}" ItemsSource="{Binding ContainedRows}">
+                <dx:MeasurePixelSnapper>
+                    <StackPanel Orientation="Horizontal">
+                        <dx:PixelSnapper>
+                            <Image Style="{StaticResource ThingIcon}" Source="{dx:DXImage 'SvgImages/DiagramIcons/Figures/figures3.svg'}"/>
+                        </dx:PixelSnapper>
+
+                        <ContentPresenter x:Name="defaultRowPresenter"
+                                          Content="{Binding}"
+                                          ContentTemplate="{Binding View.DefaultDataRowTemplate}"/>
+                    </StackPanel>
+                </dx:MeasurePixelSnapper>
+            </HierarchicalDataTemplate>
+            <HierarchicalDataTemplate DataType="{x:Type rows:PartitionRowViewModel}" ItemsSource="{Binding ContainedRows}">
+                <dx:MeasurePixelSnapper>
+                    <StackPanel Orientation="Horizontal">
+                        <dx:PixelSnapper>
+                            <Image Style="{StaticResource ThingIcon}" Source="{dx:DXImage 'SvgImages/Spreadsheet/ChartGridlinesHorizontal_Major.svg'}"/>
                         </dx:PixelSnapper>
 
                         <ContentPresenter x:Name="defaultRowPresenter"
