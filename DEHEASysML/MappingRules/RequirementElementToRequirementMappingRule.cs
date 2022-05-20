@@ -243,7 +243,7 @@ namespace DEHEASysML.MappingRules
             if (!mappedElement.ShouldCreateNewTargetElement && mappedElement.HubElement != null)
             {
                 this.UpdateRequirementProperties(mappedElement.DstElement, mappedElement.HubElement);
-                var requirementSpecification = mappedElement.HubElement.Container as RequirementsSpecification;
+                var requirementSpecification = (mappedElement.HubElement.Container as RequirementsSpecification).Clone(true);
                 requirementSpecification.Requirement.RemoveAll(x => x.Iid == mappedElement.HubElement.Iid);
                 requirementSpecification.Requirement.Add(mappedElement.HubElement);
                 return;
@@ -519,6 +519,12 @@ namespace DEHEASysML.MappingRules
                 ?.Clone(true) ?? this.CreateDefinition();
 
             definition.Content = requirementElement.GetRequirementText();
+
+            if (string.IsNullOrEmpty(definition.Content))
+            {
+                definition.Content = "-";
+            }
+
             requirement.Definition.RemoveAll(x => x.Iid == definition.Iid);
             requirement.Definition.Add(definition);
         }

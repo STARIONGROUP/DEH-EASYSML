@@ -160,7 +160,7 @@ namespace DEHEASysML.Tests.MappingRules
 
             var embeddedElements = new EnterpriseArchitectCollection();
             var blockElement = new Mock<Element>();
-            blockElement.Setup(x => x.EmbeddedElements).Returns(embeddedElements);
+            blockElement.Setup(x => x.Elements).Returns(embeddedElements);
             blockElement.Setup(x => x.ElementGUID).Returns(Guid.NewGuid().ToString());
 
             var taggedValue = new Mock<TaggedValue>();
@@ -182,6 +182,7 @@ namespace DEHEASysML.Tests.MappingRules
             property.Setup(x => x.PropertyType);
             property.Setup(x => x.ElementGUID).Returns(Guid.NewGuid().ToString());
             property.Setup(x => x.Connectors).Returns(new EnterpriseArchitectCollection());
+            property.Setup(x => x.CustomProperties).Returns(new EnterpriseArchitectCollection());
 
             var state = new Mock<Element>();
             state.Setup(x => x.Partitions).Returns(new EnterpriseArchitectCollection());

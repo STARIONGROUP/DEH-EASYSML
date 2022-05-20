@@ -242,6 +242,7 @@ namespace DEHEASysML.Tests.DstController
             var connector = new Mock<Connector>();
             connector.Setup(x => x.ClientID).Returns(52);
             connector.Setup(x => x.SupplierID).Returns(152);
+            connector.Setup(x => x.Stereotype).Returns(StereotypeKind.Usage.ToString());
 
             var interfaceBlock = new Mock<Element>();
             var portblock = new Mock<Element>();
@@ -372,7 +373,7 @@ namespace DEHEASysML.Tests.DstController
             Assert.AreEqual(2,this.dstController.DstMapResult.Count);
 
             this.statusBarControlViewModel.Verify(x => 
-                    x.Append(It.IsAny<string>(), It.IsAny<StatusBarMessageSeverity>()), Times.Exactly(2));
+                    x.Append(It.IsAny<string>(), It.IsAny<StatusBarMessageSeverity>()), Times.Exactly(5));
 
             this.mappingEngine.Setup(x => x.Map(It.IsAny<(bool, List<ElementDefinitionMappedElement>)>()))
                 .Returns(new List<MappedElementDefinitionRowViewModel>()

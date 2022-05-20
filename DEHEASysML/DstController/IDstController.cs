@@ -131,6 +131,11 @@ namespace DEHEASysML.DstController
         Dictionary<string, int> UpdatePropertyTypes { get; }
 
         /// <summary>
+        /// A collection of <see cref="BinaryRelationship"/> that has been mapped based on <see cref="Connector"/>
+        /// </summary>
+        List<BinaryRelationship> MappedConnectorsToBinaryRelationships { get; }
+
+        /// <summary>
         /// Handle to clear everything when Enterprise Architect close
         /// </summary>
         void Disconnect();

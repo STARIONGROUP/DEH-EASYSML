@@ -243,7 +243,7 @@ namespace DEHEASysML.MappingRules
         /// <returns>A value indicating if the port and definition has been retrieved or created correctly</returns>
         private bool GetOrCreatePort(ElementUsage elementUsage, Element containerElement, ref Element port, ref Element definition)
         {
-            port = containerElement.GetAllPortsOfElement().FirstOrDefault(x => (string)x.PropertyTypeName == elementUsage.Name)
+            port = containerElement.Elements.GetAllPortsOfElement().FirstOrDefault(x => (string)x.PropertyTypeName == elementUsage.Name)
                    ?? this.DstController.AddNewElement(containerElement.Elements, "", "Port", StereotypeKind.Port);
 
             definition = containerElement.GetAllPortsDefinitionOfElement().FirstOrDefault(x => x.Name == elementUsage.Name)
@@ -307,9 +307,11 @@ namespace DEHEASysML.MappingRules
 
                 this.VerifyStateDependency(parameter, property);
                 this.UpdateValue(parameter, property);
+                property.Update();
             }
 
             element.Update();
+            element.Elements.Refresh();
         }
 
         /// <summary>
@@ -489,7 +491,10 @@ namespace DEHEASysML.MappingRules
                 valueToAssign = string.Empty;
             }
 
-            this.DstController.UpdatedValuePropretyValues[property.ElementGUID] = valueToAssign;
+            if (valueToAssign != property.GetValueOfPropertyValue())
+            {
+                this.DstController.UpdatedValuePropretyValues[property.ElementGUID] = valueToAssign;
+            }
         }
 
         /// <summary>
@@ -601,7 +606,7 @@ namespace DEHEASysML.MappingRules
         }
 
         /// <summary>
-        /// Tries to get an exisitng <see cref="Element" /> representing a ValueProperty contained into an <see cref="Element" />
+        /// Tries to get an existing <see cref="Element" /> representing a ValueProperty contained into an <see cref="Element" />
         /// that matches with the provided <see cref="ParameterOrOverrideBase" />
         /// </summary>
         /// <param name="element">The <see cref="Element" /></param>
@@ -610,7 +615,8 @@ namespace DEHEASysML.MappingRules
         /// <returns>A value indicating whether the ValueProperty could be found</returns>
         private bool TryGetExistingProperty(Element element, ParameterOrOverrideBase parameter, out Element property)
         {
-            property = element.GetValuePropertyOfElement(parameter.ParameterType.Name) ?? element.GetValuePropertyOfElement(parameter.ParameterType.ShortName);
+            property = element.Elements.GetValuePropertyOfElement(parameter.ParameterType.Name) 
+                       ?? element.Elements.GetValuePropertyOfElement(parameter.ParameterType.ShortName);
 
             return property != null;
         }
@@ -645,7 +651,7 @@ namespace DEHEASysML.MappingRules
         /// <param name="element">The child <see cref="Element" /></param>
         private void UpdateContainement(Element parent, Element element)
         {
-            var partProperty = parent.GetAllPartPropertiesOfElement().FirstOrDefault(x => x.PropertyType == element.ElementID)
+            var partProperty = parent.Elements.GetAllPartPropertiesOfElement().FirstOrDefault(x => x.PropertyType == element.ElementID)
                                ?? this.DstController.AddNewElement(parent.EmbeddedElements, element.Name, "Property", StereotypeKind.PartProperty);
 
             partProperty.PropertyType = element.ElementID;

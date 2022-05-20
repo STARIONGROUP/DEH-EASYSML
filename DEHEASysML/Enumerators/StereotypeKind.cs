@@ -117,6 +117,21 @@ namespace DEHEASysML.Enumerators
         /// <summary>
         /// Used to represent the Realization MetaType
         /// </summary>
-        Realization
+        Realization,
+
+        /// <summary>
+        /// Used to represent the Trace StereoType
+        /// </summary>
+        Trace,
+
+        /// <summary>
+        /// Used to represent the Satisfy StereoType
+        /// </summary>
+        Satisfy,
+
+        /// <summary>
+        /// Used To represent the Abstraction MetaType
+        /// </summary>
+        Abstraction
     }
 }

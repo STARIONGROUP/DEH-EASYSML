@@ -84,7 +84,18 @@ namespace DEHEASysML.Extensions
         /// <returns>The <see cref="Element" /> if exists</returns>
         public static Element GetValuePropertyOfElement(this Element element, string propertyName)
         {
-            return element.EmbeddedElements.OfType<Element>().FirstOrDefault(x => x.Stereotype.AreEquals(StereotypeKind.ValueProperty) && x.Name == propertyName);
+            return element.EmbeddedElements.GetValuePropertyOfElement(propertyName);
+        }
+
+        /// <summary>
+        /// Retrieve an <see cref="Element" /> representing a ValueProperty where the name corresponds
+        /// </summary>
+        /// <param name="collection">The <see cref="Collection" /> that may contains the ValueProperty</param>
+        /// <param name="propertyName">The name of the property</param>
+        /// <returns>The <see cref="Element" /> if exists</returns>
+        public static Element GetValuePropertyOfElement(this Collection collection, string propertyName)
+        {
+            return collection.OfType<Element>().FirstOrDefault(x => x.Stereotype.AreEquals(StereotypeKind.ValueProperty) && x.Name == propertyName);
         }
 
         /// <summary>

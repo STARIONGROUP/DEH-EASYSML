@@ -284,7 +284,7 @@ namespace DEHEASysML.MappingRules
             if (!this.DstController.TryGetElement(requirement.Name, StereotypeKind.Requirement, out requirementElement)
                 || requirement.ShortName != requirementElement.GetRequirementId())
             {
-                requirementElement = this.DstController.AddNewElement(this.DstController.GetDefaultPackage(StereotypeKind.Block).Elements,
+                requirementElement = this.DstController.AddNewElement(this.DstController.GetDefaultPackage(StereotypeKind.Requirement).Elements,
                     requirement.Name, "requirement", StereotypeKind.Requirement);
 
                 requirementElement.Update();
