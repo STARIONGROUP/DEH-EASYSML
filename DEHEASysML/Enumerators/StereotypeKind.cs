@@ -115,9 +115,9 @@ namespace DEHEASysML.Enumerators
         Package,
 
         /// <summary>
-        /// Used to represent the Realization MetaType
+        /// Used to represent the Realisation MetaType
         /// </summary>
-        Realization,
+        Realisation,
 
         /// <summary>
         /// Used to represent the Trace StereoType
