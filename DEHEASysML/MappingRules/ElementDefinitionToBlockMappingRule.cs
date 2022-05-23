@@ -161,7 +161,7 @@ namespace DEHEASysML.MappingRules
                 var interfaceElement = this.GetOrCreateInterface(relationsShip.Name);
 
                 this.CreateOrUpdateConnector(portDefinition, interfaceElement
-                    , targetType == StereotypeKind.RequiredInterface ? StereotypeKind.Usage : StereotypeKind.Realization);
+                    , targetType == StereotypeKind.RequiredInterface ? StereotypeKind.Usage : StereotypeKind.Realisation);
 
                 var embeddedInterface = port.EmbeddedElements.OfType<Element>().FirstOrDefault(x => x.MetaType.AreEquals(targetType))
                                         ?? this.DstController.AddNewElement(port.Elements, interfaceElement.Name, targetType.ToString(), targetType);
@@ -652,10 +652,11 @@ namespace DEHEASysML.MappingRules
         private void UpdateContainement(Element parent, Element element)
         {
             var partProperty = parent.Elements.GetAllPartPropertiesOfElement().FirstOrDefault(x => x.PropertyType == element.ElementID)
-                               ?? this.DstController.AddNewElement(parent.EmbeddedElements, element.Name, "Property", StereotypeKind.PartProperty);
+                               ?? this.DstController.AddNewElement(parent.Elements, element.Name, "Property", StereotypeKind.PartProperty);
 
             partProperty.PropertyType = element.ElementID;
             partProperty.Update();
+            parent.Elements.Refresh();
         }
 
         /// <summary>

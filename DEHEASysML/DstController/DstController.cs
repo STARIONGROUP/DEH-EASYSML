@@ -599,7 +599,7 @@ namespace DEHEASysML.DstController
         public (Element port, Element interfaceElement) ResolvePort(Element port)
         {
             var propertyTypeElement = this.CurrentRepository.GetElementByID(port.PropertyType);
-            var connector = propertyTypeElement.GetAllConnectorsOfElement().FirstOrDefault(x => x.Stereotype.AreEquals(StereotypeKind.Usage));
+            var connector = propertyTypeElement.GetAllConnectorsOfElement().FirstOrDefault(x => x.Type.AreEquals(StereotypeKind.Usage));
 
             return connector == null ? (null, propertyTypeElement) : this.ResolveConnector(connector);
         }
@@ -627,7 +627,7 @@ namespace DEHEASysML.DstController
         {
             blockDefinition = null;
 
-            var connector = interfaceElement.GetAllConnectorsOfElement().FirstOrDefault(x => x.Type.AreEquals(StereotypeKind.Realization));
+            var connector = interfaceElement.GetAllConnectorsOfElement().FirstOrDefault(x => x.Type.AreEquals(StereotypeKind.Realisation));
 
             if (connector != null)
             {
@@ -1212,8 +1212,9 @@ namespace DEHEASysML.DstController
                     property.Update();
                     property.CustomProperties.Refresh();
                     this.UpdatedValuePropretyValues.Remove(property.ElementGUID);
-                    this.CreatedElements.RemoveAll(x => x.ElementGUID == property.ElementGUID);
                 }
+
+                this.CreatedElements.RemoveAll(x => x.ElementGUID == property.ElementGUID);
 
                 if (this.UpdatePropertyTypes.TryGetValue(property.ElementGUID, out var newValueType))
                 {

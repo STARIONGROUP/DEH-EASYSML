@@ -242,7 +242,7 @@ namespace DEHEASysML.Tests.DstController
             var connector = new Mock<Connector>();
             connector.Setup(x => x.ClientID).Returns(52);
             connector.Setup(x => x.SupplierID).Returns(152);
-            connector.Setup(x => x.Stereotype).Returns(StereotypeKind.Usage.ToString());
+            connector.Setup(x => x.Type).Returns(StereotypeKind.Usage.ToString());
 
             var interfaceBlock = new Mock<Element>();
             var portblock = new Mock<Element>();
