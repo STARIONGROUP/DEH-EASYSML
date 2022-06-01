@@ -1,5 +1,5 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
-// <copyright file="IMappingConfigurationServiceDialogViewModel.cs" company="RHEA System S.A.">
+// <copyright file="IMappingListPanelViewModel.cs" company="RHEA System S.A.">
 // Copyright (c) 2020-2022 RHEA System S.A.
 // 
 // Author: Sam Gerené, Alex Vorobiev, Alexander van Delft, Nathanael Smiechowski, Antoine Théate.
@@ -22,12 +22,16 @@
 // </copyright>
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace DEHEASysML.ViewModel.Dialogs.Interfaces
+namespace DEHEASysML.ViewModel.Interfaces
 {
     /// <summary>
-    /// Interface definition for <see cref="MappingConfigurationServiceDialogViewModel"/>
+    /// Interface definition for <see cref="MappingListPanelViewModel" />
     /// </summary>
-    public interface IMappingConfigurationServiceDialogViewModel
+    public interface IMappingListPanelViewModel
     {
+        /// <summary>
+        /// Asserts if this view model is busy or not
+        /// </summary>
+        bool? IsBusy { get; set; }
     }
 }

@@ -1,5 +1,5 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
-// <copyright file="ImpactPanelControl.Designer.cs" company="RHEA System S.A.">
+// <copyright file="MappingListPanelControl.Designer.cs" company="RHEA System S.A.">
 // Copyright (c) 2020-2022 RHEA System S.A.
 // 
 // Author: Sam Gerené, Alex Vorobiev, Alexander van Delft, Nathanael Smiechowski, Antoine Théate.
@@ -22,6 +22,7 @@
 // </copyright>
 // --------------------------------------------------------------------------------------------------------------------
 
+
 namespace DEHEASysML.Forms
 {
     using System;
@@ -30,6 +31,7 @@ namespace DEHEASysML.Forms
     using System.Windows.Forms.Integration;
 
     using Autofac;
+
     using DEHEASysML.ViewModel.Interfaces;
     using DEHEASysML.Views;
 
@@ -40,10 +42,10 @@ namespace DEHEASysML.Forms
     using DevExpress.Xpf.Core;
 
     /// <summary>
-    /// Interaction logic for the <see cref="ImpactPanelControl" />
+    /// Interaction logic for the <see cref="MappingListPanelControl" />
     /// </summary>
     [ExcludeFromCodeCoverage]
-    partial class ImpactPanelControl
+    partial class MappingListPanelControl
     {
         /// <summary> 
         /// Required designer variable.
@@ -53,12 +55,12 @@ namespace DEHEASysML.Forms
         /// <summary>
         /// The <see cref="ElementHost"/>
         /// </summary>
-        private ElementHost impactPanelHost;
+        private ElementHost mappingViewPanelHost;
 
         /// <summary>
-        /// The <see cref="IImpactPanelViewModel"/>
+        /// The <see cref="IMappingListPanelViewModel"/>
         /// </summary>
-        private IImpactPanelViewModel impactPanelViewModel;
+        private IMappingListPanelViewModel mappingListPanelViewModel;
 
         /// <summary> 
         /// Clean up any resources being used.
@@ -82,31 +84,31 @@ namespace DEHEASysML.Forms
         private void InitializeComponent()
         {
             Cursor.Current = Cursors.WaitCursor;
-            this.impactPanelHost = new System.Windows.Forms.Integration.ElementHost();
+            this.mappingViewPanelHost = new System.Windows.Forms.Integration.ElementHost();
             this.SuspendLayout();
             // 
-            // impactPanelHost
+            // mappingViewPanelHost
             // 
-            this.impactPanelHost.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.impactPanelHost.Location = new System.Drawing.Point(0, 0);
-            this.impactPanelHost.Name = "impactPanelHost";
-            this.impactPanelHost.Size = new System.Drawing.Size(552, 343);
-            this.impactPanelHost.TabIndex = 0;
-            this.impactPanelHost.Text = "impactPanelHost";
-            var impactPanel = new ImpactPanel();
-            this.impactPanelViewModel = AppContainer.Container.Resolve<IImpactPanelViewModel>();
-            impactPanel.DataContext = impactPanelViewModel;
-            this.impactPanelHost.Child = impactPanel;
+            this.mappingViewPanelHost.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.mappingViewPanelHost.Location = new System.Drawing.Point(0, 0);
+            this.mappingViewPanelHost.Name = "mappingViewPanelHost";
+            this.mappingViewPanelHost.Size = new System.Drawing.Size(552, 343);
+            this.mappingViewPanelHost.TabIndex = 0;
+            this.mappingViewPanelHost.Text = "mappingViewPanelHost";
+            var mappingListPanel = new MappingListPanel();
+            this.mappingListPanelViewModel = AppContainer.Container.Resolve<IMappingListPanelViewModel>();
+            mappingListPanel.DataContext = this.mappingListPanelViewModel;
+            this.mappingViewPanelHost.Child = mappingListPanel;
             // 
             // HubPanelControl
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.Controls.Add(this.impactPanelHost);
-            this.Name = "ImpactPanelControl";
+            this.Controls.Add(this.mappingViewPanelHost);
+            this.Name = "MappingListPanelControl";
             Cursor.Current = Cursors.Default;
-            this.WhenAnyValue(x => x.impactPanelViewModel.IsBusy).Subscribe(this.SetCursor);
-            ThemeManager.SetTheme(impactPanel, Theme.Default);
+            this.WhenAnyValue(x => x.mappingListPanelViewModel.IsBusy).Subscribe(this.SetCursor);
+            ThemeManager.SetTheme(mappingListPanel, Theme.Default);
             this.ResumeLayout(false);
         }
 

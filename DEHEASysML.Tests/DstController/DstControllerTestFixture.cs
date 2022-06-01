@@ -45,6 +45,7 @@ namespace DEHEASysML.Tests.DstController
     using DEHEASysML.ViewModel.Rows;
 
     using DEHPCommon.Enumerators;
+    using DEHPCommon.Events;
     using DEHPCommon.HubController.Interfaces;
     using DEHPCommon.MappingEngine;
     using DEHPCommon.Services.ExchangeHistory;
@@ -163,6 +164,12 @@ namespace DEHEASysML.Tests.DstController
             createdPackage.Setup(x => x.ParentID).Returns(parentId);
             this.repository.Setup(x => x.GetPackageByID(createdPackage.Object.PackageID)).Returns(createdPackage.Object);
             return createdPackage;
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            CDPMessageBus.Current.ClearSubscriptions();
         }
 
         [Test]
@@ -632,6 +639,8 @@ namespace DEHEASysML.Tests.DstController
             mappedElements.Add(new EnterpriseArchitectBlockElement(null, null, MappingDirection.FromDstToHub));
 
             Assert.AreEqual(1, this.dstController.LoadMapping());
+
+            Assert.DoesNotThrow(() => CDPMessageBus.Current.SendMessage(new HubSessionControlEvent()));
 
             Assert.DoesNotThrow(() => this.dstController.ResetConfigurationMapping());
         }

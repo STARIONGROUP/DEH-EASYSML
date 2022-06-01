@@ -75,6 +75,7 @@ namespace DEHEASysML.Tests.ViewModel.Dialogs
         private ReactiveList<IMappedElementRowViewModel> hubMapResult;
         private List<IMappedElementRowViewModel> premapResult;
         private Mock<ICloseWindowBehavior> closeWindow;
+        private Mock<IStatusBarControlViewModel> statusBar;
 
         [SetUp]
         public void Setup()
@@ -89,6 +90,8 @@ namespace DEHEASysML.Tests.ViewModel.Dialogs
 
             this.closeWindow = new Mock<ICloseWindowBehavior>();
             this.closeWindow.Setup(x => x.Close());
+
+            this.statusBar = new Mock<IStatusBarControlViewModel>();
 
             var repository = new Mock<Repository>();
             repository.Setup(x => x.Models).Returns(new EnterpriseArchitectCollection());
@@ -113,11 +116,12 @@ namespace DEHEASysML.Tests.ViewModel.Dialogs
             this.requirementBrowser.Setup(x => x.SelectedThings).Returns(this.requirementBrowserSelectedThings);
 
             this.viewModel = new HubMappingConfigurationDialogViewModel(this.hubController.Object, this.dstController.Object,
-                this.eaObjectBrowser.Object, this.objectBrowser.Object, this.requirementBrowser.Object)
+                this.eaObjectBrowser.Object, this.objectBrowser.Object, this.requirementBrowser.Object, this.statusBar.Object)
             {
                 CloseWindowBehavior = this.closeWindow.Object
             };
         }
+
         private Mock<Element> CreateElement(StereotypeKind stereotype)
         {
             var element = new Mock<Element>();

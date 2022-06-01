@@ -23,7 +23,7 @@
     <None Remove="Resources\icon.ico" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="DEHPCommon" Version="1.0.263" />
+    <PackageReference Include="DEHPCommon" Version="1.0.267" />
     <PackageReference Include="NLog" Version="4.6.8" />
     <PackageReference Include="reactiveui" Version="6.5.0" />
     <PackageReference Include="Rx-Linq" Version="2.2.5" />

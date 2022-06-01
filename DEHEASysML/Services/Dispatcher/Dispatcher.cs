@@ -55,12 +55,17 @@ namespace DEHEASysML.Services.Dispatcher
         /// <summary>
         /// The name of the <see cref="HubPanelControl" /> inside EA
         /// </summary>
-        private const string HubPanelName = "Hub Panel";
+        public const string HubPanelName = "Hub Panel";
 
         /// <summary>
         /// The name of the <see cref="ImpactPanelControl" /> inside EA
         /// </summary>
-        private const string ImpactPanelName = "Impact Panel";
+        public const string ImpactPanelName = "Impact Panel";
+
+        /// <summary>
+        /// The name of the <see cref="ImpactPanelControl" /> inside EA
+        /// </summary>
+        public const string MappingListPanelName = "Mapping List Panel";
 
         /// <summary>
         /// The <see cref="IDstController" />
@@ -135,6 +140,14 @@ namespace DEHEASysML.Services.Dispatcher
         public void ShowImpactPanel()
         {
             this.HandleTabVisibility(ImpactPanelName, typeof(ImpactPanelControl).ToString());
+        }
+
+        /// <summary>
+        /// Show the Mapping List Panel to the user
+        /// </summary>
+        public void ShowMappingListPanel()
+        {
+            this.HandleTabVisibility(MappingListPanelName, typeof(MappingListPanelControl).ToString());
         }
 
         /// <summary>
