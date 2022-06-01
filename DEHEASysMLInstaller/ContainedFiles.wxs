@@ -48,6 +48,9 @@
 				<Class Id="{9FA962D5-42B3-3D4E-A2D8-D7082E24E031}" Context="InprocServer32" Description="DEHEASysML.Forms.ImpactPanelControl" ThreadingModel="both" ForeignServer="mscoree.dll">
 					<ProgId Id="DEHEASysML.Forms.ImpactPanelControl" Description="DEHEASysML.Forms.ImpactPanelControl" />
 				</Class>
+				<Class Id="{387C63DC-9B66-4D40-A363-A0C4F1EE2B50}" Context="InprocServer32" Description="DEHEASysML.Forms.MappingViewPanelControl" ThreadingModel="both" ForeignServer="mscoree.dll">
+					<ProgId Id="DEHEASysML.Forms.MappingViewPanelControl" Description="DEHEASysML.Forms.MappingViewPanelControl" />
+				</Class>
 				<Class Id="{F8F393B6-194A-3511-867E-E51955739159}" Context="InprocServer32" Description="DEHEASysML.App" ThreadingModel="both" ForeignServer="mscoree.dll">
 					<ProgId Id="DEHEASysML.App" Description="DEHEASysML.App" />
 				</Class>

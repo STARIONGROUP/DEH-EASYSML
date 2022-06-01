@@ -38,6 +38,8 @@ namespace DEHEASysML.Forms
 
     using System;
 
+    using DevExpress.Xpf.Core;
+
     /// <summary>
     /// Interaction logic for the <see cref="HubPanelControl" />
     /// </summary>
@@ -105,6 +107,7 @@ namespace DEHEASysML.Forms
             this.Name = "HubPanelControl";
             Cursor.Current = Cursors.Default;
             this.WhenAnyValue(x => x.hubPanelViewModel.IsBusy).Subscribe(this.SetCursor);
+            ThemeManager.SetTheme(hubPanel, Theme.Default);
             this.ResumeLayout(false);
         }
 

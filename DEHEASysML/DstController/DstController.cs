@@ -46,6 +46,7 @@ namespace DEHEASysML.DstController
     using DEHEASysML.ViewModel.Rows;
 
     using DEHPCommon.Enumerators;
+    using DEHPCommon.Events;
     using DEHPCommon.HubController.Interfaces;
     using DEHPCommon.MappingEngine;
     using DEHPCommon.Services.ExchangeHistory;
@@ -1440,6 +1441,8 @@ namespace DEHEASysML.DstController
         /// </summary>
         private void RemoveUntransferedElements()
         {
+            this.CreatedElements.Reverse();
+
             foreach (var createdElement in this.CreatedElements)
             {
                 try
@@ -1456,11 +1459,6 @@ namespace DEHEASysML.DstController
                              || createdElement.Stereotype.AreEquals(StereotypeKind.PartProperty) || createdElement.MetaType.AreEquals(StereotypeKind.Port)
                              || (createdElement.Stereotype.AreEquals(StereotypeKind.Block) && createdElement.ParentID != 0))
                     {
-                        if (this.CreatedElements.Any(x => x.ElementID == createdElement.ParentID))
-                        {
-                            continue;
-                        }
-
                         collection = this.CurrentRepository.GetElementByID(createdElement.ParentID).Elements;
                     }
 
@@ -1571,6 +1569,10 @@ namespace DEHEASysML.DstController
 
             this.hubController.WhenAnyValue(x => x.OpenIteration)
                 .Where(x => x == null).Subscribe(_ => this.ResetConfigurationMapping());
+
+            CDPMessageBus.Current.Listen<HubSessionControlEvent>()
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Subscribe(_ => this.LoadMapping());
         }
 
         /// <summary>

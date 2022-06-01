@@ -62,6 +62,11 @@ namespace DEHEASysML.ViewModel.Dialogs
         protected readonly IDstController DstController;
 
         /// <summary>
+        /// The <see cref="IStatusBarControlViewModel" />
+        /// </summary>
+        protected readonly IStatusBarControlViewModel StatusBar;
+
+        /// <summary>
         /// Backing field for <see cref="SelectedItem" />
         /// </summary>
         private IMappedElementRowViewModel selectedItem;
@@ -89,15 +94,17 @@ namespace DEHEASysML.ViewModel.Dialogs
         /// <param name="enterpriseArchitectObject">The <see cref="IEnterpriseArchitectObjectBrowserViewModel" /></param>
         /// <param name="objectBrowser">The <see cref="IObjectBrowserViewModel" /></param>
         /// <param name="requirementsBrowser">The <see cref="IObjectBrowserViewModel" /></param>
+        /// <param name="statusBar">The <see cref="IStatusBarControlViewModel"/></param>
         protected MappingConfigurationDialogViewModel(IHubController hubController, IDstController dstController,
             IEnterpriseArchitectObjectBrowserViewModel enterpriseArchitectObject, IObjectBrowserViewModel objectBrowser,
-            IRequirementsBrowserViewModel requirementsBrowser)
+            IRequirementsBrowserViewModel requirementsBrowser, IStatusBarControlViewModel statusBar)
         {
             this.HubController = hubController;
             this.DstController = dstController;
             this.EnterpriseArchitectObjectBrowser = enterpriseArchitectObject;
             this.ObjectBrowser = objectBrowser;
             this.RequirementsBrowser = requirementsBrowser;
+            this.StatusBar = statusBar;
 
             this.CancelCommand = ReactiveCommand.Create();
             this.CancelCommand.Subscribe(_ => this.CloseWindowBehavior?.Close());

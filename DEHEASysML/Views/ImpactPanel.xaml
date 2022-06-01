@@ -52,7 +52,7 @@
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
                 <Label Grid.ColumnSpan="2" Background="Transparent" VerticalAlignment="Center" HorizontalAlignment="Right" Content="{Binding CurrentMappingConfigurationName}"/>
-                 <Button Grid.Column="2" Content="Mapping configuration" Width="150" Height="30" ToolTip="Enables to modify the mapping configuration" Command="{Binding OpenMappingConfigurationDialog}"/> 
+                 <Button Grid.Column="2" Content="Mapping Configuration" Width="150" Height="30" ToolTip="Enables to modify the mapping configuration" Command="{Binding OpenMappingConfigurationDialog}"/> 
                  </Grid>
             <dx:DXTabControl Name="HubEngineeringModelPreview" Grid.Row="2" 
                              SelectedIndex="{Binding CurrentMappingDirection}">
