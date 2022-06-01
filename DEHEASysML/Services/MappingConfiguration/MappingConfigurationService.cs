@@ -253,11 +253,14 @@ namespace DEHEASysML.Services.MappingConfiguration
                 return;
             }
 
-            this.ExternalIdentifierMap.Correspondence.Add(new IdCorrespondence
+            var newCorrespondence = new IdCorrespondence
             {
                 ExternalId = JsonConvert.SerializeObject(externalIdentifier),
                 InternalThing = internalId
-            });
+            };
+
+            this.ExternalIdentifierMap.Correspondence.Add(newCorrespondence);
+            this.correspondences.Add(new ValueTuple<Guid, ExternalIdentifier, Guid>(internalId, externalIdentifier, newCorrespondence.Iid));
         }
 
         /// <summary>
