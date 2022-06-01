@@ -18,9 +18,9 @@
     </UserControl.Resources>
     <Grid HorizontalAlignment="Stretch" ToolTip="{Binding ToolTip}">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="300" />
             <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="300"/>
         </Grid.ColumnDefinitions>
         <Border Grid.Column="0" BorderBrush="DarkGray" BorderThickness="1">
             <Grid Background="AliceBlue">
