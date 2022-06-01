@@ -1,5 +1,5 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
-// <copyright file="IMappedElementRowViewModel.cs" company="RHEA System S.A.">
+// <copyright file="MappedThing.cs" company="RHEA System S.A.">
 // Copyright (c) 2020-2022 RHEA System S.A.
 // 
 // Author: Sam Gerené, Alex Vorobiev, Alexander van Delft, Nathanael Smiechowski, Antoine Théate.
@@ -24,54 +24,59 @@
 
 namespace DEHEASysML.ViewModel.Rows
 {
-    using System.Collections.Generic;
+    using CDP4Common.CommonData;
 
-    using CDP4Common.EngineeringModelData;
-
-    using DEHEASysML.Enumerators;
-
-    using DEHPCommon.Enumerators;
+    using EA;
 
     using ReactiveUI;
 
     /// <summary>
-    /// Interface definition for <see cref="MappedElementRowViewModel{TThing}"/>
+    /// Represents either a <see cref="Thing" /> or <see cref="Element" />
     /// </summary>
-    public interface IMappedElementRowViewModel
+    public class MappedThing : ReactiveObject
     {
         /// <summary>
-        /// Gets or sets the <see cref="MappedRowStatus"/>
+        /// Backing field for <see cref="Name" />
         /// </summary>
-        MappedRowStatus MappedRowStatus { get; set; }
+        private string name;
 
         /// <summary>
-        /// The name of the Target Element
+        /// Backing field for <see cref="Value" />
         /// </summary>
-        string TargetElementName { get; set; }
+        private object value;
 
         /// <summary>
-        /// The name of the Source Element
+        /// Initializes a new <see cref="MappedThing"/>
         /// </summary>
-        string SourceElementName { get; set; }
+        /// <param name="name"></param>
+        /// <param name="value"></param>
+        public MappedThing(string name, object value)
+        {
+            this.name = name;
+            this.value = value;
+        }
 
         /// <summary>
-        /// Gets or sets a value indicating wheter this row represents a mapping done to a new element
+        /// Gets or sets the name
         /// </summary>
-        bool ShouldCreateNewTargetElement { get; set; }
+        public string Name
+        {
+            get => this.name;
+            set => this.RaiseAndSetIfChanged(ref this.name, value);
+        }
 
         /// <summary>
-        /// A collection of <see cref="BinaryRelationship" />
+        /// Gets or sets the value
         /// </summary>
-        List<BinaryRelationship> RelationShips { get; }
+        public object Value
+        {
+            get => this.value;
+            set => this.RaiseAndSetIfChanged(ref this.value, value);
+        }
 
         /// <summary>
-        /// A collection of <see cref="object"/> for the contained rows
+        /// A collection of <see cref="MappedThing"/>
         /// </summary>
-        ReactiveList<object> ContainedRows { get; }
-
-        /// <summary>
-        /// The <see cref="MappingDirection " />
-        /// </summary>
-        MappingDirection MappingDirection { get; set; }
+        public ReactiveList<MappedThing> ContainedRows { get; } = new();
     }
 }

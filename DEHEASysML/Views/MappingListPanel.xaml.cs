@@ -1,5 +1,5 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
-// <copyright file="IMappingConfigurationServiceDialogViewModel.cs" company="RHEA System S.A.">
+// <copyright file="MappingListPanel.xaml.cs" company="RHEA System S.A.">
 // Copyright (c) 2020-2022 RHEA System S.A.
 // 
 // Author: Sam Gerené, Alex Vorobiev, Alexander van Delft, Nathanael Smiechowski, Antoine Théate.
@@ -22,12 +22,22 @@
 // </copyright>
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace DEHEASysML.ViewModel.Dialogs.Interfaces
+namespace DEHEASysML.Views
 {
+    using System.Diagnostics.CodeAnalysis;
+
     /// <summary>
-    /// Interface definition for <see cref="MappingConfigurationServiceDialogViewModel"/>
+    /// Interaction logic for MappingListPanel.xaml
     /// </summary>
-    public interface IMappingConfigurationServiceDialogViewModel
+    public partial class MappingListPanel
     {
+        /// <summary>
+        /// Initializes a new <see cref="MappingListPanel" />
+        /// </summary>
+        [ExcludeFromCodeCoverage]
+        public MappingListPanel()
+        {
+            this.InitializeComponent();
+        }
     }
 }

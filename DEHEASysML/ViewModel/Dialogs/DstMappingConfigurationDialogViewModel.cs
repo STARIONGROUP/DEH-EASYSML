@@ -71,9 +71,11 @@ namespace DEHEASysML.ViewModel.Dialogs
         /// <param name="enterpriseArchitectObject">The <see cref="IEnterpriseArchitectObjectBrowserViewModel" /></param>
         /// <param name="objectBrowser">The <see cref="IObjectBrowserViewModel" /></param>
         /// <param name="requirementsBrowser">The <see cref="IObjectBrowserViewModel" /></param>
+        /// <param name="statusBar">The <see cref="IStatusBarControlViewModel"/></param>
         public DstMappingConfigurationDialogViewModel(IHubController hubController, IDstController dstController,
             IEnterpriseArchitectObjectBrowserViewModel enterpriseArchitectObject, IObjectBrowserViewModel objectBrowser,
-            IRequirementsBrowserViewModel requirementsBrowser) : base(hubController, dstController, enterpriseArchitectObject, objectBrowser, requirementsBrowser)
+            IRequirementsBrowserViewModel requirementsBrowser, IStatusBarControlViewModel statusBar) 
+            : base(hubController, dstController, enterpriseArchitectObject, objectBrowser, requirementsBrowser, statusBar)
         {
             this.InitializeObservablesAndCommands();
         }
@@ -157,7 +159,18 @@ namespace DEHEASysML.ViewModel.Dialogs
         {
             this.ContinueCommand = ReactiveCommand.Create();
 
-            this.ContinueCommand.Subscribe(_ => this.ExecuteContinueCommand(() => { this.DstController.Map(this.MappedElements.ToList(), MappingDirection.FromDstToHub); }));
+            this.ContinueCommand.Subscribe(_ => this.ExecuteContinueCommand(() =>
+            {
+                try
+                {
+                    this.DstController.Map(this.MappedElements.ToList(), MappingDirection.FromDstToHub);
+                }
+                catch (Exception ex)
+                {
+                    this.StatusBar.Append($"An error occured during the mapping : {ex.Message}");
+                    this.CloseWindowBehavior?.Close();
+                }
+            }));
 
             this.MapToNewElementCommand = ReactiveCommand.Create(this.WhenAnyValue(x => x.CanExecuteMapToNewElement));
             this.MapToNewElementCommand.Subscribe(_ => this.ExecuteMapToNewElementCommand());

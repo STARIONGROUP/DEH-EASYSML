@@ -54,6 +54,8 @@ namespace DEHEASysML
     using DEHPCommon.Services.ObjectBrowserTreeSelectorService;
     using DEHPCommon.UserInterfaces.ViewModels.Interfaces;
 
+    using DevExpress.Xpf.Core;
+
     using EA;
 
     using NLog;
@@ -80,6 +82,11 @@ namespace DEHEASysML
         /// The name of the Impact Panel Menu
         /// </summary>
         private const string ImpactPanelMenu = "&Open Impact Panel";
+
+        /// <summary>
+        /// The name of the Mapping List Panel Menu
+        /// </summary>
+        private const string MappingListPanelMenu = "&Open Mapping List Panel";
 
         /// <summary>
         /// The name of the Map Selected Elements command
@@ -175,7 +182,7 @@ namespace DEHEASysML
                         case "":
                             return MenuHeader;
                         case MenuHeader:
-                            string[] subMenuItems = { HubPanelMenu, ImpactPanelMenu, MapSelectedElementsMenu,"-", TransferHistoryMenu };
+                            string[] subMenuItems = { HubPanelMenu, ImpactPanelMenu, MappingListPanelMenu, MapSelectedElementsMenu,"-", TransferHistoryMenu };
                             return subMenuItems;
                     }
 
@@ -230,6 +237,9 @@ namespace DEHEASysML
                     break;
                 case TransferHistoryMenu:
                     this.dispatcher.OpenTransferHistory();
+                    break;
+                case MappingListPanelMenu:
+                    this.dispatcher.ShowMappingListPanel();
                     break;
             }
         }
@@ -401,7 +411,7 @@ namespace DEHEASysML
             this.dispatcher.OnContextItemChanged(repository, guid, objectType);
         }
 
-            /// <summary>
+        /// <summary>
         /// Asserts that a project is opened
         /// </summary>
         /// <param name="repository">The <see cref="Repository" /></param>
@@ -480,6 +490,7 @@ namespace DEHEASysML
             containerBuilder.RegisterType<EnterpriseArchitectTransferControlViewModel>().As<ITransferControlViewModel>().SingleInstance();
             containerBuilder.RegisterType<MappingConfigurationServiceDialogViewModel>().As<IMappingConfigurationServiceDialogViewModel>();
             containerBuilder.RegisterType<HubMappingConfigurationDialogViewModel>().As<IHubMappingConfigurationDialogViewModel>();
+            containerBuilder.RegisterType<MappingListPanelViewModel>().As<IMappingListPanelViewModel>().SingleInstance();
         }
     }
 }

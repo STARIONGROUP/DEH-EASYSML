@@ -16,7 +16,7 @@
         </TextBlock>
     </StackPanel>
     <dx:DXDialogWindow.FooterButtons>
-        <dx:DialogButton ToolTip="Proceed with logout and cancel pending transfers" Content="Yes" MinWidth="65" DialogResult="OK"/>
-        <dx:DialogButton ToolTip="Cancel logout" IsDefault="True" Content="No" IsCancel="True" MinWidth="65" DialogResult="Cancel"/>
+        <dx:DialogButton ToolTip="Proceed with saving mapping" Content="Yes" MinWidth="65" DialogResult="OK"/>
+        <dx:DialogButton ToolTip="Proceed without saving mapping" IsDefault="True" Content="No" IsCancel="True" MinWidth="65" DialogResult="Cancel"/>
     </dx:DXDialogWindow.FooterButtons>
 </dx:DXDialogWindow>

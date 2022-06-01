@@ -141,5 +141,10 @@ namespace DEHEASysML.Services.Dispatcher
         /// <param name="guid">The guid of the Item</param>
         /// <param name="objectType">The <see cref="ObjectType" /> of the item</param>
         void OnContextItemChanged(Repository repository, string guid, ObjectType objectType);
+
+        /// <summary>
+        /// Show the Mapping List Panel to the user
+        /// </summary>
+        void ShowMappingListPanel();
     }
 }
