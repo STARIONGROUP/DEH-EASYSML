@@ -116,10 +116,10 @@ namespace DEHEASysML.ViewModel.NetChangePreview
             }
 
             this.ContextMenu.Add(
-                new ContextMenuItemViewModel("Select all for transfer", "", this.SelectAllCommand, MenuItemKind.Copy, ClassKind.NotThing));
+                new ContextMenuItemViewModel("Select all mapped element for transfer", "", this.SelectAllCommand, MenuItemKind.Copy, ClassKind.NotThing));
 
             this.ContextMenu.Add(
-                new ContextMenuItemViewModel("Deselect all for transfer", "", this.DeselectAllCommand, MenuItemKind.Delete, ClassKind.NotThing));
+                new ContextMenuItemViewModel("Deselect all for mapped element transfer", "", this.DeselectAllCommand, MenuItemKind.Delete, ClassKind.NotThing));
         }
 
         /// <summary>
