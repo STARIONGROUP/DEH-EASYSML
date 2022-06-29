@@ -26,13 +26,18 @@ namespace DEHEASysML.MappingRules
 {
     using System;
     using System.Collections.Generic;
-    using System.Threading.Tasks;
 
     using CDP4Common.CommonData;
     using CDP4Common.EngineeringModelData;
     using CDP4Common.SiteDirectoryData;
 
     using CDP4Dal.Operations;
+
+    using DEHEASysML.Extensions;
+
+    using EA;
+
+    using Task = System.Threading.Tasks.Task;
 
     /// <summary>
     /// The <see cref="DstToHubBaseMappingRule{TInput,TOuput}" /> provides some methods common for all
@@ -147,6 +152,26 @@ namespace DEHEASysML.MappingRules
             }
 
             return relationship;
+        }
+
+        /// <summary>
+        /// Maps all Stereotypes applied to the <see cref="Element"/> to <see cref="Category"/> and adds all <see cref="Category"/>
+        /// to the <see cref="ICategorizableThing"/>
+        /// </summary>
+        /// <param name="element">The <see cref="Element"/></param>
+        /// <param name="thing">The <see cref="ICategorizableThing"/></param>
+        protected void MapStereotypesToCategory(Element element, ICategorizableThing thing)
+        {
+            foreach (var stereotype in element.GetStereotypeList().Split(','))
+            {
+                if (this.HubController.TryGetThingBy(x => string.Equals(x.Name, stereotype, StringComparison.InvariantCultureIgnoreCase)
+                                                          && !x.IsDeprecated, ClassKind.Category, out Category category)
+                    || this.TryCreateCategory((stereotype.GetShortName(), stereotype), out category, ((Thing)thing).ClassKind))
+                {
+                    thing.Category.RemoveAll(x => x.Iid == category.Iid);
+                    thing.Category.Add(category);
+                }
+            }
         }
     }
 }

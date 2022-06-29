@@ -284,7 +284,7 @@ namespace DEHEASysML.Services.MappingConfiguration
                     continue;
                 }
 
-                if (element.Stereotype.AreEquals(StereotypeKind.Block))
+                if (element.HasStereotype(StereotypeKind.Block))
                 {
                     if (!this.hubController.GetThingById(idCorrespondences.First().InternalId, this.hubController.OpenIteration,
                             out ElementDefinition elementDefinition))
@@ -294,7 +294,7 @@ namespace DEHEASysML.Services.MappingConfiguration
 
                     mappedElements.Add(new EnterpriseArchitectBlockElement(elementDefinition.Clone(true), element, MappingDirection.FromDstToHub));
                 }
-                else if (element.Stereotype.AreEquals(StereotypeKind.Requirement))
+                else if (element.HasStereotype(StereotypeKind.Requirement))
                 {
                     if (!this.hubController.GetThingById(idCorrespondences.First().InternalId, this.hubController.OpenIteration,
                             out Requirement requirement))
@@ -330,7 +330,7 @@ namespace DEHEASysML.Services.MappingConfiguration
                     continue;
                 }
 
-                if (element.Stereotype.AreEquals(StereotypeKind.Block))
+                if (element.HasStereotype(StereotypeKind.Block))
                 {
                     if (!this.hubController.GetThingById(idCorrespondences.First().InternalId, this.hubController.OpenIteration,
                             out ElementDefinition elementDefinition))
@@ -357,7 +357,7 @@ namespace DEHEASysML.Services.MappingConfiguration
                         }
                     }
                 }
-                else if (element.Stereotype.AreEquals(StereotypeKind.Requirement))
+                else if (element.HasStereotype(StereotypeKind.Requirement))
                 {
                     if (!this.hubController.GetThingById(idCorrespondences.First().InternalId, this.hubController.OpenIteration,
                             out Requirement requirement))

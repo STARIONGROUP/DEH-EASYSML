@@ -128,16 +128,17 @@ namespace DEHEASysML.Tests.DstController
 
             var valueTypeElement = new Mock<Element>();
             valueTypeElement.Setup(x => x.Stereotype).Returns(StereotypeKind.ValueType.ToString());
+            valueTypeElement.Setup(x => x.HasStereotype(StereotypeKind.ValueType.ToString())).Returns(true);
             valueTypePackage.Setup(x => x.Elements).Returns(new EnterpriseArchitectCollection() {valueTypeElement.Object });
             valueTypePackage.Setup(x => x.Packages).Returns(new EnterpriseArchitectCollection());
 
             this.blockElement = new Mock<Element>();
-            this.blockElement.Setup(x => x.Stereotype).Returns(StereotypeKind.Block.ToString());
+            this.blockElement.Setup(x => x.HasStereotype(StereotypeKind.Block.ToString().ToLower())).Returns(true);
             this.blockElement.Setup(x => x.ElementGUID).Returns(Guid.NewGuid().ToString);
             blocPackage.Setup(x => x.Elements).Returns(new EnterpriseArchitectCollection() { this.blockElement.Object });
 
             var requirement = new Mock<Element>();
-            requirement.Setup(x => x.Stereotype).Returns(StereotypeKind.Requirement.ToString());
+            requirement.Setup(x => x.HasStereotype(StereotypeKind.Requirement.ToString().ToLower())).Returns(true);
             requirementPackage.Setup(x => x.Elements).Returns(new EnterpriseArchitectCollection() { requirement.Object });
             requirement.Setup(x => x.ElementGUID).Returns(Guid.NewGuid().ToString);
             this.package.Setup(x => x.Packages).Returns(new EnterpriseArchitectCollection() { requirementPackage.Object, blocPackage.Object });
@@ -186,6 +187,7 @@ namespace DEHEASysML.Tests.DstController
             Assert.IsEmpty(this.dstController.UpdatedRequirementValues);
             Assert.IsNull(this.dstController.IsBusy);
             Assert.IsFalse(this.dstController.IsFileOpen);
+            Assert.NotNull(this.dstController.UpdatePropertyTypes);
         }
 
         [Test]
@@ -299,12 +301,12 @@ namespace DEHEASysML.Tests.DstController
             Assert.IsEmpty(this.dstController.GetAllSelectedElements(this.repository.Object));
 
             var block = new Mock<Element>();
-            block.Setup(x => x.Stereotype).Returns(StereotypeKind.Block.ToString());
+            block.Setup(x => x.HasStereotype(StereotypeKind.Block.ToString().ToLower())).Returns(true);
             collection.Add(block.Object);
             Assert.AreEqual(1,this.dstController.GetAllSelectedElements(this.repository.Object).Count());
 
             var requirement = new Mock<Element>();
-            requirement.Setup(x => x.Stereotype).Returns(StereotypeKind.Block.ToString());
+            requirement.Setup(x => x.HasStereotype(StereotypeKind.Requirement.ToString().ToLower())).Returns(true);
             collection.Add(requirement.Object);
             Assert.AreEqual(2, this.dstController.GetAllSelectedElements(this.repository.Object).Count());
 
@@ -652,6 +654,7 @@ namespace DEHEASysML.Tests.DstController
             var element = new Mock<Element>();
             element.Setup(x => x.Name).Returns("element");
             element.Setup(x => x.Stereotype).Returns("block");
+            element.Setup(x => x.HasStereotype(StereotypeKind.Block.ToString().ToLower())).Returns(true);
 
             this.repository.Setup(x => x.GetElementsByQuery("Simple", "element")).Returns(new EnterpriseArchitectCollection()
             {
@@ -686,7 +689,7 @@ namespace DEHEASysML.Tests.DstController
             this.repository.Setup(x => x.RefreshModelView(0));
 
             var requirement = new Mock<Element>();
-            requirement.Setup(x => x.Stereotype).Returns(StereotypeKind.Requirement.ToString());
+            requirement.Setup(x => x.HasStereotype(StereotypeKind.Requirement.ToString().ToLower())).Returns(true);
             requirement.Setup(x => x.ElementGUID).Returns(Guid.NewGuid().ToString());
             requirement.Setup(x => x.PackageID).Returns(1);
 
@@ -708,8 +711,10 @@ namespace DEHEASysML.Tests.DstController
             this.dstController.CreatedElements.Add(requirement.Object);
 
             var block = new Mock<Element>();
-            block.Setup(x => x.Stereotype).Returns(StereotypeKind.Block.ToString());
+            block.Setup(x => x.HasStereotype(StereotypeKind.Block.ToString().ToLower())).Returns(true);
             block.Setup(x => x.ElementGUID).Returns(Guid.NewGuid().ToString());
+
+            this.dstController.UpdatedStereotypes[block.Object.ElementGUID] = "customBlock";
 
             var customProperty = new Mock<CustomProperty>();
             customProperty.Setup(x => x.Name).Returns("default");

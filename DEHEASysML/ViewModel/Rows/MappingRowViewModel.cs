@@ -181,7 +181,7 @@ namespace DEHEASysML.ViewModel.Rows
         /// <param name="dstElement">The <see cref="Element" /> to represents</param>
         private void InitializeDstThing(Element dstElement)
         {
-            if (dstElement.Stereotype.AreEquals(StereotypeKind.Block))
+            if (dstElement.HasStereotype(StereotypeKind.Block))
             {
                 foreach (var valueProperty in dstElement.GetAllValuePropertiesOfElement()
                              .Where(x => this.dstController.CreatedElements.All(created => created.ElementGUID != x.ElementGUID)))
@@ -209,7 +209,7 @@ namespace DEHEASysML.ViewModel.Rows
                     this.DstThing.First().ContainedRows.Add(new MappedThing(valueProperty.Name, value));
                 }
             }
-            else if (dstElement.Stereotype.AreEquals(StereotypeKind.Requirement))
+            else if (dstElement.HasStereotype(StereotypeKind.Requirement))
             {
                 this.DstThing.First().ContainedRows.Add(new MappedThing("Id", dstElement.GetRequirementId()));
                 this.DstThing.First().ContainedRows.Add(new MappedThing("Text", dstElement.GetRequirementText()));

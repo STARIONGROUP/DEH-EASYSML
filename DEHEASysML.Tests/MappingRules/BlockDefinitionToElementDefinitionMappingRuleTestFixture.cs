@@ -173,6 +173,7 @@ namespace DEHEASysML.Tests.MappingRules
 
             this.block = new Mock<Element>();
             this.block.Setup(x => x.Name).Returns("AName");
+            this.block.Setup(x => x.GetStereotypeList()).Returns("block,aStereotype");
 
             var embeddedElement = new EnterpriseArchitectCollection();
 
@@ -403,6 +404,7 @@ namespace DEHEASysML.Tests.MappingRules
             var partBlock = new Mock<Element>();
             partBlock.Setup(x => x.Name).Returns("anOtherBlock");
             partBlock.Setup(x => x.EmbeddedElements).Returns(new EnterpriseArchitectCollection());
+            partBlock.Setup(x => x.GetStereotypeList()).Returns("block");
 
             this.repository.Setup(x => x.GetElementByID(42)).Returns(partBlock.Object);
             this.block.Setup(x => x.EmbeddedElements).Returns(new EnterpriseArchitectCollection() { partProperty.Object });

@@ -69,7 +69,7 @@ namespace DEHEASysML.Tests.Services.MappingConfiguration
             var element = new Mock<Element>();
             var guid = Guid.NewGuid();
             element.Setup(x => x.ElementGUID).Returns(guid.ToString());
-            element.Setup(x => x.Stereotype).Returns(stereotype.ToString());
+            element.Setup(x => x.HasStereotype(stereotype.ToString().ToLower())).Returns(true);
             this.repository.Setup(x => x.GetElementByGuid(element.Object.ElementGUID)).Returns(element.Object);
             return element;
         }

@@ -366,14 +366,21 @@ namespace DEHEASysML.ViewModel.NetChangePreview
         /// <param name="isSelected">A value indicating wheter to select the element for transfer</param>
         private void AddOrRemoveToSelectedThingsToTransfer(ElementDefinition elementDefinition, bool isSelected)
         {
-            foreach (var parameter in elementDefinition.Parameter)
+            if (elementDefinition.ContainedElement.Count == 0 && elementDefinition.Parameter.Count == 0)
             {
-                this.AddOrRemoveToSelectedThingsToTransfer(parameter, isSelected);
+                this.AddOrRemoveToSelectedThingsToTransfer((Thing)elementDefinition, isSelected);
             }
-
-            foreach (var elementUsage in elementDefinition.ContainedElement)
+            else
             {
-                this.AddOrRemoveToSelectedThingsToTransfer(elementUsage, isSelected);
+                foreach (var parameter in elementDefinition.Parameter)
+                {
+                    this.AddOrRemoveToSelectedThingsToTransfer(parameter, isSelected);
+                }
+
+                foreach (var elementUsage in elementDefinition.ContainedElement)
+                {
+                    this.AddOrRemoveToSelectedThingsToTransfer(elementUsage, isSelected);
+                }
             }
         }
 

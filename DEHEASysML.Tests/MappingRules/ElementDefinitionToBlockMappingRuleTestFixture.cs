@@ -150,7 +150,14 @@ namespace DEHEASysML.Tests.MappingRules
             {
                 Iid = Guid.NewGuid(),
                 Name = "ElementDefinition",
-                Parameter = { parameter }
+                Parameter = { parameter },
+                Category =
+                {
+                    new Category()
+                    {
+                        Name = "block"
+                    }
+                }
             };
 
             var mappedElements = new List<ElementDefinitionMappedElement>()

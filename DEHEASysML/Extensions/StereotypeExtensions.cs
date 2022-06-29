@@ -33,6 +33,8 @@ namespace DEHEASysML.Extensions
 
     using EA;
 
+    using CustomProperty = EA.CustomProperty;
+
     /// <summary>
     /// The <see cref="StereotypeExtensions" /> provides useful methods to verify stereotypes used in EA
     /// </summary>
@@ -155,7 +157,7 @@ namespace DEHEASysML.Extensions
         /// <returns>A collection of <see cref="Element"/></returns>
         public static IEnumerable<Element> GetAllPortsDefinitionOfElement(this Element element)
         {
-            return element.Elements.OfType<Element>().Where(x => x.Stereotype.AreEquals(StereotypeKind.Block));
+            return element.Elements.OfType<Element>().Where(x => x.HasStereotype(StereotypeKind.Block));
         }
 
         /// <summary>
@@ -262,7 +264,7 @@ namespace DEHEASysML.Extensions
         /// <returns>A collection of <see cref="Element"/></returns>
         public static IEnumerable<Element> GetElementsOfStereotypeInPackage(this IDualPackage package, StereotypeKind stereotype)
         {
-            return package.Elements.OfType<Element>().Where(x => x.Stereotype.AreEquals(stereotype));
+            return package.Elements.OfType<Element>().Where(x => x.HasStereotype(stereotype));
         }
 
         /// <summary>
@@ -274,6 +276,17 @@ namespace DEHEASysML.Extensions
         public static IEnumerable<Element> GetElementsOfTypeInPackage(this IDualPackage package, StereotypeKind stereotype)
         {
             return package.Elements.OfType<Element>().Where(x => x.MetaType.AreEquals(stereotype));
+        }
+
+        /// <summary>
+        /// Asserts if the <see cref="Element"/> has the <see cref="StereotypeKind"/> applied
+        /// </summary>
+        /// <param name="element">The <see cref="Element"/></param>
+        /// <param name="stereotype">The <see cref="StereotypeKind"/></param>
+        /// <returns>A value indicating if the <see cref="StereotypeKind"/> is applied</returns>
+        public static bool HasStereotype(this Element element, StereotypeKind stereotype)
+        {
+            return element.HasStereotype(stereotype.GetStereotypeName());
         }
 
         /// <summary>
@@ -297,6 +310,23 @@ namespace DEHEASysML.Extensions
                 case StereotypeKind.ProvidedInterface:
                 case StereotypeKind.State:
                     return string.Empty;
+                default: return stereotype.ToString();
+            }
+        }
+
+        /// <summary>
+        /// Get the name of the provided <see cref="StereotypeKind"/>
+        /// </summary>
+        /// <param name="stereotype">The <see cref="StereotypeKind"/></param>
+        /// <returns>The stereotype name</returns>
+        public static string GetStereotypeName(this StereotypeKind stereotype)
+        {
+            switch (stereotype)
+            {
+                case StereotypeKind.Unit:
+                case StereotypeKind.Block:
+                case StereotypeKind.Requirement:
+                    return stereotype.ToString().ToLower();
                 default: return stereotype.ToString();
             }
         }

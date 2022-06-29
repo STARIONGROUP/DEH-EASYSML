@@ -125,6 +125,7 @@ namespace DEHEASysML.MappingRules
                     foreach (var mappedElement in this.Elements.ToList())
                     {
                         this.MapPorts(mappedElement);
+                        this.MapCategoriesToStereotype(mappedElement.DstElement, mappedElement.HubElement);
                     }
 
                     foreach (var portToLink in this.portsToLink)
@@ -681,7 +682,7 @@ namespace DEHEASysML.MappingRules
             if (!this.DstController.TryGetElement(elementBaseName, StereotypeKind.Block, out element))
             {
                 var package = this.DstController.GetDefaultPackage(StereotypeKind.Block);
-                element = this.DstController.AddNewElement(package.Elements, elementBaseName, StereotypeKind.Block.ToString().ToLower(), StereotypeKind.Block);
+                element = this.DstController.AddNewElement(package.Elements, elementBaseName, StereotypeKind.Block.GetStereotypeName(), StereotypeKind.Block);
                 return false;
             }
 

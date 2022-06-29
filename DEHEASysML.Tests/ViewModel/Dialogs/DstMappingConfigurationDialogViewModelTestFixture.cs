@@ -122,7 +122,8 @@ namespace DEHEASysML.Tests.ViewModel.Dialogs
             var element = new Mock<Element>();
             var guid = Guid.NewGuid();
             element.Setup(x => x.ElementGUID).Returns(guid.ToString());
-            element.Setup(x => x.Stereotype).Returns(stereotype.ToString());
+            element.Setup(x => x.HasStereotype(stereotype.ToString().ToLower())).Returns(true);
+            element.Setup(x => x.StereotypeEx).Returns(stereotype.ToString());
             return element;
         }
 
