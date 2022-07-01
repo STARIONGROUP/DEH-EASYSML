@@ -239,8 +239,8 @@ namespace DEHEASysML.ViewModel.Dialogs
                 return;
             }
 
-            this.CanExecuteMapToNewElement = this.SelectedElement.Stereotype.AreEquals(StereotypeKind.Requirement) && this.SelectedItem is RequirementMappedElement ||
-                                             this.SelectedElement.Stereotype.AreEquals(StereotypeKind.Block) && this.SelectedItem is ElementDefinitionMappedElement;
+            this.CanExecuteMapToNewElement = this.SelectedElement.HasStereotype(StereotypeKind.Requirement) && this.SelectedItem is RequirementMappedElement ||
+                                             this.SelectedElement.HasStereotype(StereotypeKind.Block) && this.SelectedItem is ElementDefinitionMappedElement;
         }
 
         /// <summary>

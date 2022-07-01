@@ -108,6 +108,7 @@ namespace DEHEASysML.MappingRules
                     foreach (var requirementMappedElement in this.Elements)
                     {
                         this.LinkRequirements(requirementMappedElement);
+                        this.MapCategoriesToStereotype(requirementMappedElement.DstElement, requirementMappedElement.HubElement);
                     }
 
                     this.SaveMappingConfiguration(new List<MappedElementRowViewModel<Requirement>>(this.Elements));

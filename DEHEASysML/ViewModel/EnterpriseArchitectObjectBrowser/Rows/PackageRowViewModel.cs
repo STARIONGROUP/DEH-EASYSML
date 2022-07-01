@@ -118,7 +118,7 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
 
             ElementRowViewModel row;
 
-            if (element.Stereotype.AreEquals(StereotypeKind.Requirement))
+            if (element.HasStereotype(StereotypeKind.Requirement))
             {
                 row = new ElementRequirementRowViewModel(this, element);
             }

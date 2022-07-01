@@ -31,6 +31,7 @@ namespace DEHEASysML.Tests.MappingRules
 
     using CDP4Common.CommonData;
     using CDP4Common.EngineeringModelData;
+    using CDP4Common.SiteDirectoryData;
 
     using DEHEASysML.DstController;
     using DEHEASysML.Enumerators;
@@ -59,17 +60,20 @@ namespace DEHEASysML.Tests.MappingRules
         private Mock<IDstController> dstController;
         private Mock<IMappingConfigurationService> mappingConfiguration;
         private Dictionary<string, (string, string)> requirementValues;
-        
+        private Dictionary<string, string> updatedStereotypes;
+
         [SetUp]
         public void Setup()
         {
             var defaultPackage = new Mock<Package>();
             defaultPackage.Setup(x => x.Elements);
 
+            this.updatedStereotypes = new Dictionary<string, string>();
             this.requirementValues = new Dictionary<string, (string, string)>();
             this.hubController = new Mock<IHubController>();
             this.dstController = new Mock<IDstController>();
             this.dstController.Setup(x => x.UpdatedRequirementValues).Returns(this.requirementValues);
+            this.dstController.Setup(x => x.UpdatedStereotypes).Returns(this.updatedStereotypes);
             this.dstController.Setup(x => x.GetDefaultPackage(It.IsAny<StereotypeKind>())).Returns(defaultPackage.Object);
             this.mappingConfiguration = new Mock<IMappingConfigurationService>();
 
@@ -109,6 +113,17 @@ namespace DEHEASysML.Tests.MappingRules
                     {
                         Content = "a definiton",
                         LanguageCode = "en"
+                    }
+                },
+                Category =
+                {
+                    new Category()
+                    {
+                        Name = "requirement"
+                    },
+                    new Category()
+                    {
+                        Name ="customRequirement"
                     }
                 }
             };

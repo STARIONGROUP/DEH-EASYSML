@@ -243,6 +243,11 @@ namespace DEHEASysML.ViewModel.NetChangePreview
 
                 var row = this.GetOrCreateRow(mappedElement);
 
+                if (this.dstController.UpdatedStereotypes.ContainsKey(mappedElement.ElementGUID))
+                {
+                    row.RowType = this.dstController.UpdatedStereotypes[mappedElement.ElementGUID];
+                }
+
                 this.HighlightRowAndParentRow(row);
 
                 foreach (var valuePropertyRow in row.ContainedRows.OfType<ValuePropertyRowViewModel>())
@@ -360,8 +365,8 @@ namespace DEHEASysML.ViewModel.NetChangePreview
 
             var element = this.dstController.CurrentRepository.GetElementByID(elementId);
 
-            if (element.Stereotype.AreEquals(StereotypeKind.Block) || element.Stereotype.AreEquals(StereotypeKind.Requirement)
-                                                                   || element.Stereotype.AreEquals(StereotypeKind.State))
+            if (element.HasStereotype(StereotypeKind.Block) || element.HasStereotype(StereotypeKind.Requirement)
+                                                            || element.Stereotype.AreEquals(StereotypeKind.State))
             {
                 var row = this.GetOrCreateRow(element);
 

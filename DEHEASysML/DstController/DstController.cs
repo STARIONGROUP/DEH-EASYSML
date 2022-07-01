@@ -256,12 +256,17 @@ namespace DEHEASysML.DstController
         public HashSet<Collection> UpdatedCollections { get; } = new();
 
         /// <summary>
-        /// Gets the correspondance to the new value of a ValueProperty
+        /// Gets the correspondence to the new value of a ValueProperty
         /// </summary>
         public Dictionary<string, string> UpdatedValuePropretyValues { get; } = new();
 
         /// <summary>
-        /// Gets the correspondance to the new value of a ValueProperty
+        /// Gets the correspondence between an <see cref="IDualElement.ElementGUID"/> and the mapped <see cref="IDualElement.StereotypeEx"/>
+        /// </summary>
+        public Dictionary<string, string> UpdatedStereotypes { get; } = new();
+
+        /// <summary>
+        /// Gets the correspondence to the new value of a ValueProperty
         /// </summary>
         public Dictionary<string, (string id, string text)> UpdatedRequirementValues { get; } = new();
 
@@ -370,7 +375,7 @@ namespace DEHEASysML.DstController
         {
             var queryResult = this.CurrentRepository.GetElementsByQuery("Simple", name);
 
-            element = queryResult.OfType<Element>().FirstOrDefault(x => x.Name == name && x.Stereotype.AreEquals(stereotype));
+            element = queryResult.OfType<Element>().FirstOrDefault(x => x.Name == name && x.HasStereotype(stereotype));
 
             return element != null;
         }
@@ -466,7 +471,7 @@ namespace DEHEASysML.DstController
             elementRequirement = null;
 
             var elements = this.CurrentRepository.GetElementsByQuery("Simple", name).OfType<Element>()
-                .Where(x => x.Stereotype.AreEquals(StereotypeKind.Requirement));
+                .Where(x => x.HasStereotype(StereotypeKind.Requirement));
 
             foreach (var element in elements)
             {
@@ -525,18 +530,15 @@ namespace DEHEASysML.DstController
                 }
             }
 
-            if (defaultPackage == null)
+            if (this.TryGetPackage(packageName, out defaultPackage))
             {
-                if (this.TryGetPackage(packageName, out defaultPackage))
-                {
-                    return defaultPackage;
-                }
-
-                var collection = this.CurrentRepository.Models.OfType<Package>().First().Packages;
-                defaultPackage = collection.AddNew(packageName, "Package") as Package;
-                defaultPackage.Update();
-                this.CurrentRepository.Models.OfType<Package>().First().Update();
+                return defaultPackage;
             }
+
+            var collection = this.CurrentRepository.Models.OfType<Package>().First().Packages;
+            defaultPackage = collection.AddNew(packageName, "Package") as Package;
+            defaultPackage.Update();
+            this.CurrentRepository.Models.OfType<Package>().First().Update();
 
             this.shouldIgnoreEvents = false;
             return defaultPackage;
@@ -549,10 +551,12 @@ namespace DEHEASysML.DstController
         public List<Element> GetAllBlocksAndRequirementsOfRepository()
         {
             var elements = this.CurrentRepository.GetElementsByQuery("Extended", "block").OfType<Element>()
-                .Where(x => x.StereotypeEx.AreEquals(StereotypeKind.Block) && x.ParentID == 0).ToList();
+                .Where(x => x.HasStereotype(StereotypeKind.Block) && x.ParentID == 0).GroupBy(x => x.ElementGUID)
+                .Select(x => x.First()).ToList();
 
             elements.AddRange(this.CurrentRepository.GetElementsByQuery("Extended", "requirement").OfType<Element>()
-                .Where(x => x.StereotypeEx.AreEquals(StereotypeKind.Requirement)));
+                .Where(x => x.HasStereotype(StereotypeKind.Requirement)).GroupBy(x => x.ElementGUID)
+                .Select(x => x.First()).ToList());
 
             foreach (var element in elements.ToList().Where(element => this.CreatedElements.Any(x => x.ElementGUID == element.ElementGUID)))
             {
@@ -684,7 +688,8 @@ namespace DEHEASysML.DstController
             for (short elementIndex = 0; elementIndex < collection.Count; elementIndex++)
             {
                 if (collection.GetAt(elementIndex) is Element element &&
-                    (element.Stereotype.AreEquals(StereotypeKind.Requirement) || element.Stereotype.AreEquals(StereotypeKind.Block))
+                    (element.HasStereotype(StereotypeKind.Requirement) 
+                     || element.HasStereotype(StereotypeKind.Block))
                     && !mappableElement.Contains(element))
                 {
                     mappableElement.Add(element);
@@ -854,14 +859,16 @@ namespace DEHEASysML.DstController
 
             foreach (var element in this.SelectedHubMapResultForTransfer)
             {
-                if (element.Stereotype.AreEquals(StereotypeKind.Requirement))
+                if (element.HasStereotype(StereotypeKind.Requirement))
                 {
                     this.ProcessTransferOfRequirement(element);
                 }
-                else if (element.Stereotype.AreEquals(StereotypeKind.Block))
+                else if (element.HasStereotype(StereotypeKind.Block))
                 {
                     this.ProcessTransferOfBlock(element);
                 }
+
+                this.UpdateStereotype(element);
             }
 
             foreach (var createdConnector in this.CreatedConnectors.ToList())
@@ -886,6 +893,33 @@ namespace DEHEASysML.DstController
 
             this.LoadMapping();
             this.IsBusy = false;
+        }
+
+        /// <summary>
+        /// Update the <see cref="IDualElement.StereotypeEx"/> if applicable
+        /// </summary>
+        /// <param name="element">The <see cref="Element"/></param>
+        private void UpdateStereotype(Element element)
+        {
+            if (this.UpdatedStereotypes.ContainsKey(element.ElementGUID))
+            {
+                var previousStereotype = element.StereotypeEx;
+                var stereotypeToUpdate = this.UpdatedStereotypes[element.ElementGUID];
+                element.StereotypeEx = stereotypeToUpdate;
+                element.Update();
+
+                if (!element.HasStereotype(StereotypeKind.Requirement) && !element.HasStereotype(StereotypeKind.Block))
+                {
+                    element.StereotypeEx = previousStereotype;
+                    element.Update();
+
+                    var logMessage = $"Element {element.Name} : the stereotype {stereotypeToUpdate} cannot be applied" +
+                                      $" because any is recognised as block/requirement. Settings it back to {previousStereotype}";
+
+                    this.statusBar.Append(logMessage);
+                    this.logger.Warn(logMessage);
+                }
+            }
         }
 
         /// <summary>
@@ -1319,6 +1353,7 @@ namespace DEHEASysML.DstController
             this.CreatedPackages.Clear();
             this.UpdatedCollections.Clear();
             this.CreatedElements.Clear();
+            this.UpdatedStereotypes.Clear();
         }
 
         /// <summary>
@@ -1449,15 +1484,15 @@ namespace DEHEASysML.DstController
                 {
                     Collection collection = null;
 
-                    if ((createdElement.Stereotype.AreEquals(StereotypeKind.Block) && createdElement.ParentID == 0)
-                        || createdElement.Stereotype.AreEquals(StereotypeKind.Requirement) || createdElement.MetaType.AreEquals(StereotypeKind.Interface)
+                    if ((createdElement.HasStereotype(StereotypeKind.Block) && createdElement.ParentID == 0)
+                        || createdElement.HasStereotype(StereotypeKind.Requirement) || createdElement.MetaType.AreEquals(StereotypeKind.Interface)
                         || createdElement.MetaType.AreEquals(StereotypeKind.State))
                     {
                         collection = this.CurrentRepository.GetPackageByID(createdElement.PackageID).Elements;
                     }
                     else if (createdElement.Stereotype.AreEquals(StereotypeKind.ValueProperty)
                              || createdElement.Stereotype.AreEquals(StereotypeKind.PartProperty) || createdElement.MetaType.AreEquals(StereotypeKind.Port)
-                             || (createdElement.Stereotype.AreEquals(StereotypeKind.Block) && createdElement.ParentID != 0))
+                             || (createdElement.HasStereotype(StereotypeKind.Block) && createdElement.ParentID != 0))
                     {
                         collection = this.CurrentRepository.GetElementByID(createdElement.ParentID).Elements;
                     }
@@ -1660,6 +1695,7 @@ namespace DEHEASysML.DstController
             var thingsToTransfer = new List<Thing>(this.SelectedDstMapResultForTransfer.OfType<Parameter>().Select(x => x.Container));
 
             thingsToTransfer.AddRange(this.SelectedDstMapResultForTransfer.OfType<ElementUsage>().Select(x => x.Container));
+            thingsToTransfer.AddRange(this.SelectedDstMapResultForTransfer.OfType<ElementDefinition>());
 
             thingsToTransfer = thingsToTransfer.Distinct().ToList();
 
@@ -1668,7 +1704,8 @@ namespace DEHEASysML.DstController
 
             var mappedElements = this.SelectedDstMapResultForTransfer
                 .Select(thing => this.DstMapResult.OfType<EnterpriseArchitectBlockElement>()
-                                     .FirstOrDefault(x => x.HubElement.Iid == thing.Container.Iid) ??
+                                     .FirstOrDefault(x => x.HubElement.Iid == thing.Container.Iid 
+                                                          || (thing is ElementDefinition && x.HubElement.Iid == thing.Iid)) ??
                                  (IMappedElementRowViewModel)this.DstMapResult.OfType<EnterpriseArchitectRequirementElement>()
                                      .FirstOrDefault(x => x.HubElement.Iid == thing.Iid))
                 .ToList();

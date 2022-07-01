@@ -136,6 +136,11 @@ namespace DEHEASysML.DstController
         List<BinaryRelationship> MappedConnectorsToBinaryRelationships { get; }
 
         /// <summary>
+        /// Gets the correspondence between an <see cref="IDualElement.ElementGUID"/> and the mapped <see cref="IDualElement.StereotypeEx"/>
+        /// </summary>
+        Dictionary<string, string> UpdatedStereotypes { get; }
+
+        /// <summary>
         /// Handle to clear everything when Enterprise Architect close
         /// </summary>
         void Disconnect();

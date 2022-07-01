@@ -24,11 +24,58 @@
 
 namespace DEHEASysML.MappingRules
 {
+    using System.Linq;
+
+    using CDP4Common.SiteDirectoryData;
+
+    using DEHEASysML.Enumerators;
+    using DEHEASysML.Extensions;
+
+    using EA;
+
     /// <summary>
     /// The <see cref="HubToDstBaseMappingRule{TInput,TOuput}" /> provides some methods common for all
     /// <see cref="MappingRules" /> from Hub to Dst
     /// </summary>
     public abstract class HubToDstBaseMappingRule<TInput, TOuput> : CommonBaseMappingRule<TInput, TOuput>
     {
+        /// <summary>
+        /// Maps all <see cref="Category"/> of the <see cref="ICategorizableThing"/> to stereotype for the <see cref="Element"/>
+        /// </summary>
+        /// <param name="element">The <see cref="Element"/></param>
+        /// <param name="thing">The <see cref="ICategorizableThing"/></param>
+        protected void MapCategoriesToStereotype(Element element, ICategorizableThing thing)
+        {
+            var categories = thing.Category.Where(x => !x.IsDeprecated).Select(x => x.Name).ToList();
+
+            var hasDefaultStereotype = false;
+
+            for (var categoryIndex = 0; categoryIndex < categories.Count; categoryIndex++)
+            {
+                if (categories[categoryIndex].AreEquals(StereotypeKind.Block))
+                {
+                    categories[categoryIndex] = StereotypeKind.Block.GetFQStereotype();
+                    hasDefaultStereotype = true;
+                }
+
+                if (categories[categoryIndex].AreEquals(StereotypeKind.Requirement))
+                {
+                    categories[categoryIndex] = StereotypeKind.Requirement.GetFQStereotype();
+                    hasDefaultStereotype = true;
+                }
+            }
+
+            if (categories.Count == 1 && hasDefaultStereotype)
+            {
+                return;
+            }
+
+            var stereotypesToApply = string.Join(",", categories);
+
+            if (!string.IsNullOrEmpty(stereotypesToApply) && element.StereotypeEx != stereotypesToApply)
+            {
+                this.DstController.UpdatedStereotypes[element.ElementGUID] = stereotypesToApply;
+            }
+        }
     }
 }
