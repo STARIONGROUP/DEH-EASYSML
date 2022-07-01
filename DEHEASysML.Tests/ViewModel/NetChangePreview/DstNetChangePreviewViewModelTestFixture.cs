@@ -65,12 +65,14 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
         private Mock<Element> valueType;
         private Mock<Repository> repository;
         private Dictionary<string, string> updatedValues;
+        private Dictionary<string, string> updatedStereotypes;
         private Dictionary<string, (string,string)> updatedRequirementValues;
-
+        
         [SetUp]
         public void Setup()
         {
             this.updatedValues = new Dictionary<string, string>();
+            this.updatedStereotypes = new Dictionary<string, string>();
             this.updatedRequirementValues = new Dictionary<string, (string, string)>();
             this.hubMapResult = new ReactiveList<IMappedElementRowViewModel>();
             this.selectedMapElements = new ReactiveList<Element>();
@@ -80,6 +82,7 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
             this.dstController.Setup(x => x.IsFileOpen).Returns(false);
             this.dstController.Setup(x => x.UpdatedValuePropretyValues).Returns(this.updatedValues);
             this.dstController.Setup(x => x.UpdatedRequirementValues).Returns(this.updatedRequirementValues);
+            this.dstController.Setup(x => x.UpdatedStereotypes).Returns(this.updatedStereotypes);
 
             this.viewModel = new DstNetChangePreviewViewModel(this.dstController.Object);
             this.models = new List<Package>();
@@ -89,16 +92,18 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
             this.requirement = new Mock<Element>();
             this.requirement.Setup(x => x.Name).Returns("A requirement");
             this.requirement.Setup(x => x.ElementGUID).Returns("0001");
-            this.requirement.Setup(x => x.Stereotype).Returns(StereotypeKind.Requirement.ToString());
+            this.requirement.Setup(x => x.StereotypeEx).Returns(StereotypeKind.Requirement.ToString());
             this.requirement.Setup(x => x.TaggedValuesEx).Returns(new EnterpriseArchitectCollection() { taggedValue.Object });
             this.requirement.Setup(x => x.ElementGUID).Returns(Guid.NewGuid().ToString());
+            this.requirement.Setup(x => x.HasStereotype(StereotypeKind.Requirement.ToString().ToLower())).Returns(true);
+            this.updatedStereotypes[this.requirement.Object.ElementGUID] = "aCustomStereotype";
 
             var valueProperty = new Mock<Element>();
-            valueProperty.Setup(x => x.Stereotype).Returns(StereotypeKind.ValueProperty.ToString());
+            valueProperty.Setup(x => x.StereotypeEx).Returns(StereotypeKind.ValueProperty.ToString());
             valueProperty.Setup(x => x.Name).Returns("mass");
             valueProperty.Setup(x => x.ElementGUID).Returns(Guid.NewGuid().ToString());
             var partProperty = new Mock<Element>();
-            partProperty.Setup(x => x.Stereotype).Returns(StereotypeKind.PartProperty.ToString());
+            partProperty.Setup(x => x.StereotypeEx).Returns(StereotypeKind.PartProperty.ToString());
             partProperty.Setup(x => x.Name).Returns("a contained element");
             var taggedValueProperty = new Mock<TaggedValue>();
             taggedValueProperty.Setup(x => x.Name).Returns("default");
@@ -107,7 +112,8 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
             this.block = new Mock<Element>();
             this.block.Setup(x => x.Name).Returns("a Block");
             this.block.Setup(x => x.ElementGUID).Returns("0002");
-            this.block.Setup(x => x.Stereotype).Returns(StereotypeKind.Block.ToString());
+            this.block.Setup(x => x.StereotypeEx).Returns(StereotypeKind.Block.ToString());
+            this.block.Setup(x => x.HasStereotype(StereotypeKind.Block.ToString().ToLower())).Returns(true);
             
             this.block.Setup(x => x.Elements).Returns(new EnterpriseArchitectCollection()
             {
@@ -117,7 +123,7 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
             this.valueType = new Mock<Element>();
             this.valueType.Setup(x => x.Name).Returns("a ValueType");
             this.valueType.Setup(x => x.ElementGUID).Returns("0003");
-            this.valueType.Setup(x => x.Stereotype).Returns(StereotypeKind.ValueType.ToString());
+            this.valueType.Setup(x => x.StereotypeEx).Returns(StereotypeKind.ValueType.ToString());
 
             var subPackage = new Mock<Package>();
             subPackage.Setup(x => x.PackageID).Returns(3);
@@ -232,7 +238,8 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
             element.Setup(x => x.ElementID).Returns(145);
             element.Setup(x => x.Elements).Returns(new EnterpriseArchitectCollection());
             element.Setup(x => x.PackageID).Returns(package.Object.PackageID);
-            element.Setup(x => x.Stereotype).Returns(StereotypeKind.Block.ToString());
+            element.Setup(x => x.StereotypeEx).Returns(StereotypeKind.Block.ToString());
+            element.Setup(x => x.HasStereotype(StereotypeKind.Block.ToString().ToLower())).Returns(true);
 
             this.dstController.Setup(x => x.GetPackageParentId(package.Object.PackageID, ref It.Ref<List<int>>.IsAny))
                 .Callback(new GetPackageParentIdDelegate(((int id, ref List<int> idsList) => idsList = idList)));

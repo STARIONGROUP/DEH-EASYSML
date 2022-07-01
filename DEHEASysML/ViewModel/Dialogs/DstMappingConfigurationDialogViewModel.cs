@@ -131,13 +131,13 @@ namespace DEHEASysML.ViewModel.Dialogs
             var newElementsToMap = this.elements.Where(x => this.MappedElements
                                                                 .OfType<EnterpriseArchitectRequirementElement>()
                                                                 .All(mapped => mapped.DstElement.ElementGUID != x.ElementGUID) &&
-                                                            x.Stereotype.AreEquals(StereotypeKind.Requirement))
+                                                            x.HasStereotype(StereotypeKind.Requirement))
                 .Select(requirement => new EnterpriseArchitectRequirementElement(null, requirement, MappingDirection.FromDstToHub))
                 .Cast<IMappedElementRowViewModel>().ToList();
 
             newElementsToMap.AddRange(this.elements.Where(x => this.MappedElements
                     .OfType<EnterpriseArchitectBlockElement>()
-                    .All(mapped => mapped.DstElement.ElementGUID != x.ElementGUID) && x.Stereotype.AreEquals(StereotypeKind.Block))
+                    .All(mapped => mapped.DstElement.ElementGUID != x.ElementGUID) && x.HasStereotype(StereotypeKind.Block))
                 .Select(block => new EnterpriseArchitectBlockElement(null, block, MappingDirection.FromDstToHub))
                 .Cast<IMappedElementRowViewModel>().ToList());
 
@@ -295,12 +295,12 @@ namespace DEHEASysML.ViewModel.Dialogs
         /// <param name="element">The <see cref="Element" /></param>
         private void SetDstSelectedThing(Element element)
         {
-            if (element.Stereotype.AreEquals(StereotypeKind.Requirement))
+            if (element.HasStereotype(StereotypeKind.Requirement))
             {
                 this.SelectedItem = this.MappedElements.OfType<EnterpriseArchitectRequirementElement>()
                     .FirstOrDefault(x => x.DstElement.ElementGUID == element.ElementGUID);
             }
-            else if (element.Stereotype.AreEquals(StereotypeKind.Block))
+            else if (element.HasStereotype(StereotypeKind.Block))
             {
                 this.SelectedItem = this.MappedElements.OfType<EnterpriseArchitectBlockElement>()
                     .FirstOrDefault(x => x.DstElement.ElementGUID == element.ElementGUID);

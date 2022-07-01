@@ -111,7 +111,7 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
                     break;
                 case Element element:
                     this.Name = element.Name;
-                    this.RowType = element.Stereotype;
+                    this.RowType = element.StereotypeEx;
                     break;
                 case Partition partition:
                     this.Name = partition.Name;

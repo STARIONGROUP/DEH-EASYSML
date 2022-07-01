@@ -346,6 +346,7 @@ namespace DEHEASysML.MappingRules
             this.MapCategory(elementDefinition, this.isAbstractCategoryNames, element.Abstract == "1", true);
             this.MapCategory(elementDefinition, this.isActiveCategoryNames, element.IsActive, false);
             this.MapCategory(elementDefinition, this.isEncapsulatedCategoryNames, isEncapsulated, true);
+            this.MapStereotypesToCategory(element, elementDefinition);
         }
 
         /// <summary>

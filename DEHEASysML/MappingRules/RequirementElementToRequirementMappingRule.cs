@@ -72,7 +72,7 @@ namespace DEHEASysML.MappingRules
         /// <summary>
         /// The category for BinaryRelation between requirements
         /// </summary>
-        private readonly (string shortname, string name) requirementCategoryNames = ("refineRelationship", "Requirement");
+        private readonly (string shortname, string name) requirementRelationshipCategoryNames = ("refineRelationship", "refine");
 
         /// <summary>
         /// Colletion of <see cref="EnterpriseArchitectRequirementElement" />
@@ -84,7 +84,7 @@ namespace DEHEASysML.MappingRules
         /// <see cref="RequirementsGroup" /> and
         /// <see cref="RequirementsSpecification" />
         /// </summary>
-        private Category requirementCategory;
+        private Category requirementRelationshipCategory;
 
         /// <summary>
         /// Transform a <see cref="List{T}" /> of <see cref="EnterpriseArchitectRequirementElement" /> into a
@@ -110,12 +110,12 @@ namespace DEHEASysML.MappingRules
                 this.DstController = AppContainer.Container.Resolve<IDstController>();
                 var (completeMapping, elements) = input;
 
-                this.HubController.TryGetThingBy(x => x.ShortName == this.requirementCategoryNames.shortname
-                                                      && !x.IsDeprecated, ClassKind.Category, out this.requirementCategory);
+                this.HubController.TryGetThingBy(x => x.ShortName == this.requirementRelationshipCategoryNames.shortname
+                                                      && !x.IsDeprecated, ClassKind.Category, out this.requirementRelationshipCategory);
 
-                if (this.requirementCategory == null)
+                if (this.requirementRelationshipCategory == null)
                 {
-                    this.TryCreateCategory(this.requirementCategoryNames, out this.requirementCategory, ClassKind.Requirement,
+                    this.TryCreateCategory(this.requirementRelationshipCategoryNames, out this.requirementRelationshipCategory, ClassKind.Requirement,
                         ClassKind.RequirementsGroup, ClassKind.RequirementsSpecification);
                 }
 
@@ -139,6 +139,7 @@ namespace DEHEASysML.MappingRules
 
                 if (completeMapping)
                 {
+                    this.MapCategories();
                     this.CreateRelationShips();
                     this.SaveMappingConfiguration(new List<MappedElementRowViewModel<Requirement>>(this.mappedElements));
                 }
@@ -150,6 +151,17 @@ namespace DEHEASysML.MappingRules
                 this.Logger.Error(exception);
                 ExceptionDispatchInfo.Capture(exception).Throw();
                 return default;
+            }
+        }
+
+        /// <summary>
+        /// Maps all stereotypes to <see cref="Category"/> for all <see cref="Requirement" />
+        /// </summary>
+        private void MapCategories()
+        {
+            foreach (var mappedElement in this.mappedElements)
+            {
+                this.MapStereotypesToCategory(mappedElement.DstElement, mappedElement.HubElement);
             }
         }
 
@@ -212,7 +224,7 @@ namespace DEHEASysML.MappingRules
                                            == targetRequirement.Iid && x.Source.Iid == sourceRequirement.Iid)?
                                        .Clone(false)
                     ?? this.CreateBinaryRelationShip(sourceRequirement, targetRequirement,
-                                       relationShipName, this.requirementCategoryNames, false);
+                                       relationShipName, this.requirementRelationshipCategoryNames, false);
 
                 mappedElement.RelationShips.Add(relationShip);
             }
@@ -414,8 +426,6 @@ namespace DEHEASysML.MappingRules
             this.requirementsSpecifications.RemoveAll(x => string.Equals(x.ShortName, shortName, StringComparison.InvariantCultureIgnoreCase));
             this.requirementsSpecifications.Add(alreadyCreated);
             this.requirementsGroups.AddRange(alreadyCreated.GetAllContainedGroups());
-            alreadyCreated.Category.RemoveAll(x => x.Iid == this.requirementCategory.Iid);
-            alreadyCreated.Category.Add(this.requirementCategory);
 
             requirementsSpecification = alreadyCreated;
 
@@ -449,9 +459,6 @@ namespace DEHEASysML.MappingRules
 
                 this.requirementsGroups.Add(requirementsGroup);
             }
-
-            requirementsGroup.Category.RemoveAll(x => x.Iid == this.requirementCategory.Iid);
-            requirementsGroup.Category.Add(this.requirementCategory);
 
             return requirementsGroup != null;
         }
@@ -497,9 +504,6 @@ namespace DEHEASysML.MappingRules
         /// <param name="requirement">The <see cref="Requirement" /></param>
         private void UpdateRequirementProperties(Element requirementElement, Requirement requirement)
         {
-            requirement.Category.RemoveAll(x => x.Iid == this.requirementCategory.Iid);
-            requirement.Category.Add(this.requirementCategory);
-
             this.UpdateOrCreateDefinition(requirementElement, requirement);
         }
 

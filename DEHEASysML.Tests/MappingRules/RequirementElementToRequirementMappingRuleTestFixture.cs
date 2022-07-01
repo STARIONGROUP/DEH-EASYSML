@@ -149,16 +149,20 @@ namespace DEHEASysML.Tests.MappingRules
 
             var firstRequirement = this.CreateRequirement(subModelPackage.Object.PackageID,"First requirement", "M001", "A simple text");
             firstRequirement.Setup(x => x.Connectors).Returns(new EnterpriseArchitectCollection());
+            firstRequirement.Setup(x => x.GetStereotypeList()).Returns("requirement,aStereotype");
 
             var secondRequirement = this.CreateRequirement(subSubModelPackage.Object.PackageID, "Second requirement", "M002", "A simple text v2");
             secondRequirement.Setup(x => x.Connectors).Returns(new EnterpriseArchitectCollection());
+            secondRequirement.Setup(x => x.GetStereotypeList()).Returns("requirement");
 
             var thirdRequirement = this.CreateRequirement(subSubSubModelPackage.Object.PackageID, "Third requirement", "M003", "A simple text v3");
             thirdRequirement.Setup(x => x.Connectors).Returns(new EnterpriseArchitectCollection());
+            thirdRequirement.Setup(x => x.GetStereotypeList()).Returns("requirement");
 
             var forthRequirement = this.CreateRequirement(subSubSubSubModelPackage.Object.PackageID, "Forth requirement", "M004", "A simple text v4");
             var connector = new Mock<Connector>();
             connector.Setup(x => x.Stereotype).Returns(StereotypeKind.DeriveReqt.ToString());
+            forthRequirement.Setup(x => x.GetStereotypeList()).Returns("requirement");
 
             forthRequirement.Setup(x => x.Connectors).Returns(new EnterpriseArchitectCollection()
             {
