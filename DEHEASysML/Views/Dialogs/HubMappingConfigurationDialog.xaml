@@ -176,7 +176,7 @@
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" Text="{Binding Row.SourceElementName}" VerticalAlignment="Center"
                                                FontSize="12" Margin="2 0 0 0"/>
-                                    <dxe:ComboBoxEdit Grid.Column="1" Width="150"  
+                                    <dxe:ComboBoxEdit Grid.Column="1" Width="150"  AllowUpdateTwoWayBoundPropertiesOnSynchronization="True"
                                                       ItemsSource="{Binding Row.AvailableActualFiniteStates}"
                                                       SelectedItem="{Binding Row.SelectedActualFiniteState, Mode=TwoWay}"
                                                       AllowNullInput="False" DisplayMember="Name"

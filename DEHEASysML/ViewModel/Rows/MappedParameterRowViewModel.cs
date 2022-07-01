@@ -70,7 +70,13 @@ namespace DEHEASysML.ViewModel.Rows
         public ActualFiniteState SelectedActualFiniteState
         {
             get => this.selectedActualFiniteState;
-            set => this.RaiseAndSetIfChanged(ref this.selectedActualFiniteState, value);
+            set
+            {
+                if (value != null)
+                {
+                    this.RaiseAndSetIfChanged(ref this.selectedActualFiniteState, value);
+                }
+            } 
         }
 
         /// <summary>

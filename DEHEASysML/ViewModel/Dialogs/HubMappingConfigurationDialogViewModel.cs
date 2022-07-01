@@ -128,6 +128,11 @@ namespace DEHEASysML.ViewModel.Dialogs
 
             this.EnterpriseArchitectObjectBrowser.BuildTree(this.DstController.CurrentRepository.Models.OfType<Package>(), allElements, packageIds);
 
+            foreach (var elementDefinition in this.things.OfType<ElementDefinition>().ToList())
+            {
+                this.AddElementUsageWithStateDependence(elementDefinition);
+            }
+
             this.PreMap();
         }
 
@@ -166,6 +171,23 @@ namespace DEHEASysML.ViewModel.Dialogs
 
             this.MappedElements.AddRange(newMappingCollection);
             this.IsBusy = false;
+        }
+
+        /// <summary>
+        /// Adds all <see cref="ElementDefinition"/> of <see cref="ElementUsage"/> that has a <see cref="ActualFiniteState"/> dependency
+        /// </summary>
+        /// <param name="elementDefinition">An <see cref="ElementDefinition"/> to look through</param>
+        private void AddElementUsageWithStateDependence(ElementDefinition elementDefinition)
+        {
+            if(this.things.All(x => x.Iid != elementDefinition.Iid) && elementDefinition.Parameter.Any(x => x.StateDependence != null))
+            {
+                this.things.Add(elementDefinition);
+            }
+
+            foreach (var elementUsage in elementDefinition.ContainedElement)
+            {
+                this.AddElementUsageWithStateDependence(elementUsage.ElementDefinition);
+            }
         }
 
         /// <summary>
