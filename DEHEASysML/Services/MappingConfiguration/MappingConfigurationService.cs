@@ -338,21 +338,30 @@ namespace DEHEASysML.Services.MappingConfiguration
                         continue;
                     }
 
-                    var elementDefinitionMappedElement = new ElementDefinitionMappedElement(elementDefinition.Clone(true), element, MappingDirection.FromHubToDst);
+                    var elementDefinitionMappedElement = new ElementDefinitionMappedElement(elementDefinition.Clone(true), element,
+                        MappingDirection.FromHubToDst);
+
                     mappedElements.Add(elementDefinitionMappedElement);
 
-                    foreach (var parameterIid in elementDefinition.Parameter.Select(x =>x.Iid))
+                    foreach (var parameter in elementDefinition.Parameter.Where(x => x.StateDependence != null))
                     {
-                        if (this.correspondences.FirstOrDefault(x => x.InternalId == parameterIid).ExternalIdentifier
+                        var parameterRow = elementDefinitionMappedElement.ContainedRows.OfType<MappedParameterRowViewModel>()
+                            .FirstOrDefault(x => x.HubElement.Iid == parameter.Iid);
+
+                        if (this.correspondences.FirstOrDefault(x => x.InternalId == parameter.Iid).ExternalIdentifier
                                 is { } external && this.hubController.GetThingById(new Guid(external.Identifier), 
                                 this.hubController.OpenIteration, out ActualFiniteState actualFiniteState))
                         {
-                            var parameterRow = elementDefinitionMappedElement.ContainedRows.OfType<MappedParameterRowViewModel>()
-                                .FirstOrDefault(x => x.HubElement.Iid == parameterIid);
-
                             if (parameterRow != null)
                             {
                                 parameterRow.SelectedActualFiniteState = actualFiniteState;
+                            }
+                        }
+                        else
+                        {
+                            if (parameterRow != null)
+                            {
+                                parameterRow.SelectedActualFiniteState = parameter.StateDependence.ActualState[0];
                             }
                         }
                     }

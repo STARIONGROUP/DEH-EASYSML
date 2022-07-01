@@ -80,13 +80,6 @@ namespace DEHEASysML.MappingRules
         private List<EnterpriseArchitectRequirementElement> mappedElements;
 
         /// <summary>
-        /// The <see cref="Category" /> to apply to each <see cref="CDP4Common.EngineeringModelData.Requirement" />,
-        /// <see cref="RequirementsGroup" /> and
-        /// <see cref="RequirementsSpecification" />
-        /// </summary>
-        private Category requirementRelationshipCategory;
-
-        /// <summary>
         /// Transform a <see cref="List{T}" /> of <see cref="EnterpriseArchitectRequirementElement" /> into a
         /// <see cref="List{T}" /> of
         /// <see cref="MappedRequirementRowViewModel" />
@@ -109,15 +102,6 @@ namespace DEHEASysML.MappingRules
                 this.MappingConfiguration = AppContainer.Container.Resolve<IMappingConfigurationService>();
                 this.DstController = AppContainer.Container.Resolve<IDstController>();
                 var (completeMapping, elements) = input;
-
-                this.HubController.TryGetThingBy(x => x.ShortName == this.requirementRelationshipCategoryNames.shortname
-                                                      && !x.IsDeprecated, ClassKind.Category, out this.requirementRelationshipCategory);
-
-                if (this.requirementRelationshipCategory == null)
-                {
-                    this.TryCreateCategory(this.requirementRelationshipCategoryNames, out this.requirementRelationshipCategory, ClassKind.Requirement,
-                        ClassKind.RequirementsGroup, ClassKind.RequirementsSpecification);
-                }
 
                 this.requirementsSpecifications.Clear();
                 this.requirementsGroups.Clear();

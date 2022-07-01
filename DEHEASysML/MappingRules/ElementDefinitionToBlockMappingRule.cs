@@ -485,7 +485,9 @@ namespace DEHEASysML.MappingRules
                 this.MappingConfiguration.AddToExternalIdentifierMap(parameter.Iid, parameterRow.SelectedActualFiniteState.Iid.ToString(), MappingDirection.FromHubToDst);
             }
 
-            var valueToAssign = parameter.QueryParameterBaseValueSet(null, parameterRow.SelectedActualFiniteState).ActualValue[0];
+            var option = parameter.IsOptionDependent ? parameter.GetContainerOfType<Iteration>().Option.First() : null;
+
+            var valueToAssign = parameter.QueryParameterBaseValueSet(option, parameterRow.SelectedActualFiniteState).ActualValue[0];
 
             if (valueToAssign == "-")
             {
