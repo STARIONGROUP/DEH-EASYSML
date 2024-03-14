@@ -12,7 +12,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		switcher.json = switcher.json
 	EndProjectSection
 EndProject
-Project("{930C7802-8A8C-48F9-8165-68863BCCD9DD}") = "DEHEASysMLInstaller", "DEHEASysMLInstaller\DEHEASysMLInstaller.wixproj", "{4A54E7F3-22F5-4C1A-A281-CC86362292EA}"
+Project("{930C7802-8A8C-48F9-8165-68863BCCD9DD}") = "DEHEASysMLInstaller32", "DEHEASysMLInstaller32\DEHEASysMLInstaller32.wixproj", "{4A54E7F3-22F5-4C1A-A281-CC86362292EA}"
+EndProject
+Project("{930C7802-8A8C-48F9-8165-68863BCCD9DD}") = "DEHEASysMLInstaller64", "DEHEASysMLInstaller64\DEHEASysMLInstaller64.wixproj", "{B83A7DCA-6775-4E7D-941A-AE3A6342A792}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -46,6 +48,14 @@ Global
 		{4A54E7F3-22F5-4C1A-A281-CC86362292EA}.Release|Any CPU.Build.0 = Release|x86
 		{4A54E7F3-22F5-4C1A-A281-CC86362292EA}.Release|x86.ActiveCfg = Release|x86
 		{4A54E7F3-22F5-4C1A-A281-CC86362292EA}.Release|x86.Build.0 = Release|x86
+		{B83A7DCA-6775-4E7D-941A-AE3A6342A792}.Debug|Any CPU.ActiveCfg = Debug|x86
+		{B83A7DCA-6775-4E7D-941A-AE3A6342A792}.Debug|Any CPU.Build.0 = Debug|x86
+		{B83A7DCA-6775-4E7D-941A-AE3A6342A792}.Debug|x86.ActiveCfg = Debug|x86
+		{B83A7DCA-6775-4E7D-941A-AE3A6342A792}.Debug|x86.Build.0 = Debug|x86
+		{B83A7DCA-6775-4E7D-941A-AE3A6342A792}.Release|Any CPU.ActiveCfg = Release|x86
+		{B83A7DCA-6775-4E7D-941A-AE3A6342A792}.Release|Any CPU.Build.0 = Release|x86
+		{B83A7DCA-6775-4E7D-941A-AE3A6342A792}.Release|x86.ActiveCfg = Release|x86
+		{B83A7DCA-6775-4E7D-941A-AE3A6342A792}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
