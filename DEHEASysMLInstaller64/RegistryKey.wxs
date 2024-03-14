@@ -2,13 +2,13 @@
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
 	<Fragment>
 		<ComponentGroup Id="RegistryKeyComponentGroup" Directory="INSTALLFOLDER">
-			<Component Id="EAAddinKey" Guid="{A2444CA1-95EA-437F-B43D-8188275BC8F7}">
-				<RegistryKey Root="HKLM" Key="SOFTWARE\WOW6432Node\Sparx Systems\EAAddins" Action="create">
+			<Component Id="EAAddinKeyV16" Guid="{F67F9760-7AE1-4650-B30C-D109957BDDA5}" Win64="yes" >
+				<RegistryKey Root="HKLM" Key="SOFTWARE\Sparx Systems\EAAddins64" Action="create">
 					<RegistryValue Type="string" Value=""/>
 				</RegistryKey>
 			</Component>
-			<Component Id="DEHEASysMLRegEntry"  Guid="{C4312FD1-1891-4CD6-8F31-3240CBA724DB}">
-				<RegistryKey Root="HKLM" Key="SOFTWARE\WOW6432Node\Sparx Systems\EAAddins\DEHEASysML">
+			<Component Id="DEHEASysMLRegEntry"  Guid="{FB9FD5E1-BF4A-4A33-BF15-32A2BF074D94}" Win64="yes" >
+				<RegistryKey Root="HKLM" Key="SOFTWARE\Sparx Systems\EAAddins64\DEHEASysML">
 					<RegistryValue Type="string" Value="DEHEASysML.App" />
 				</RegistryKey>
 			</Component>
