@@ -3,11 +3,13 @@
 The DEH-EASysML adapter is a .Net plugin Application for [Sparx Enterprise Architect](https://sparxsystems.com/products/ea/index.html) that make use of the [Digital Engineering Hub Pathfinder Common library](https://github.com/RHEAGROUP/DEHP-Common) which is available as Nuget package.
 It allows users to interactivly exchange data between models built with the Enterprise Architect software and an ECSS-E-TM-10-25A data source.
 
-The DEH-EASysML is compatible with version [15.2](https://sparxsystems.com/products/ea/15.2/index.html) of the Enterprise Architect software.
+The DEH-EASysML is compatible with version [15.2](https://sparxsystems.com/products/ea/15.2/index.html) and any newer version of the Enterprise Architect software.
 
 ## Installing the DEH-EASysML adapter
 
 - Download the [latest release](https://github.com/RHEAGROUP/DEH-EASYSML/releases/latest).
+  - If you are running EA 15.2, please uses the 32bits version of the installer
+  - If you are running any newer version, please uses the installer related to your installed architecture
 - Close any running instance of Enterprise Architect.
 - Run the downloaded installer.
 - Specify the location to install the Add-In.
