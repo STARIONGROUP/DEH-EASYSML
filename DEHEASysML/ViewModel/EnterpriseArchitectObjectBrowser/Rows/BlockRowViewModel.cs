@@ -56,11 +56,17 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
         /// </summary>
         public override void ComputeRow()
         {
-            if (this.ShouldShowEverything)
+            if (!this.ShouldShowEverything)
+            {
+                return;
+            }
+
+            using (this.ContainedRows.SuppressChangeNotifications())
             {
                 this.UpdateContainedRowsOfStereotype(StereotypeKind.ValueProperty, this.RepresentedObject.Elements.GetAllValuePropertiesOfElement().ToList());
                 this.UpdateContainedRowsOfStereotype(StereotypeKind.PartProperty, this.RepresentedObject.Elements.GetAllPartPropertiesOfElement().ToList());
                 this.UpdateContainedRowsOfStereotype(StereotypeKind.Port, this.RepresentedObject.Elements.GetAllPortsOfElement().ToList());
+                this.ContainedRows.Sort(ContainedRowsComparer);
             }
         }
 

@@ -151,10 +151,8 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
                 this.ContainedRows.Remove(elementRowViewModel);
             }
 
-            foreach (var elementToAdd in elementsToAdd)
-            {
-                this.ContainedRows.SortedInsert(this.CreateRow(elementToAdd, stereotypeKind), ContainedRowsComparer);
-            }
+            var rowsToCreate = elementsToAdd.Select(x => this.CreateRow(x, stereotypeKind));
+            this.ContainedRows.AddRange(rowsToCreate);
         }
 
         /// <summary>

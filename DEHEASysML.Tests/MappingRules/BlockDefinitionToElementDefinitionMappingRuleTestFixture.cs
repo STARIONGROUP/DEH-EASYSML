@@ -40,7 +40,9 @@ namespace DEHEASysML.Tests.MappingRules
 
     using DEHEASysML.DstController;
     using DEHEASysML.Enumerators;
+    using DEHEASysML.Extensions;
     using DEHEASysML.MappingRules;
+    using DEHEASysML.Services.Cache;
     using DEHEASysML.Services.MappingConfiguration;
     using DEHEASysML.Tests.Utils.Stereotypes;
     using DEHEASysML.Utils.Stereotypes;
@@ -74,10 +76,13 @@ namespace DEHEASysML.Tests.MappingRules
         private ModelReferenceDataLibrary referenceDataLibrary;
         private Mock<Element> block;
         private Mock<Repository> repository;
+        private Mock<ICacheService> cacheService;
+        private List<Element> allElements;
 
         [SetUp]
         public void Setup()
         {
+            this.allElements = new List<Element>();
             RxApp.MainThreadScheduler = Scheduler.CurrentThread;
 
             this.uri = new Uri("https://uri.test");
@@ -107,6 +112,7 @@ namespace DEHEASysML.Tests.MappingRules
                 }
             };
 
+            this.cacheService = new Mock<ICacheService>();
             this.hubController = new Mock<IHubController>();
             this.hubController.Setup(x => x.CurrentDomainOfExpertise).Returns(this.domain);
             this.hubController.Setup(x => x.Session).Returns(this.session.Object);
@@ -118,6 +124,7 @@ namespace DEHEASysML.Tests.MappingRules
             massValueProperty.Setup(x => x.Stereotype).Returns(StereotypeKind.ValueProperty.ToString());
             massValueProperty.Setup(x => x.Name).Returns("mass");
             massValueProperty.Setup(x => x.ElementID).Returns(11245);
+            this.allElements.Add(massValueProperty.Object);
 
             var dependencyConnector = new Mock<Connector>();
             dependencyConnector.Setup(x => x.Type).Returns(StereotypeKind.Dependency.ToString());
@@ -129,6 +136,8 @@ namespace DEHEASysML.Tests.MappingRules
             dependencyConnector.Setup(x => x.SupplierID).Returns(state.Object.ElementID);
             state.Setup(x => x.Name).Returns("State");
             state.Setup(x => x.Partitions).Returns(new EnterpriseArchitectCollection());
+            this.allElements.Add(state.Object);
+            this.cacheService.Setup(x => x.GetElementById(state.Object.ElementID)).Returns(state.Object);
 
             massValueProperty.Setup(x => x.Connectors).Returns(new EnterpriseArchitectCollection(){dependencyConnector.Object});
 
@@ -136,6 +145,7 @@ namespace DEHEASysML.Tests.MappingRules
             massCustomProperty.Setup(x => x.Name).Returns("default");
             massCustomProperty.Setup(x => x.Value).Returns("45");
             massValueProperty.Setup(x => x.CustomProperties).Returns(new EnterpriseArchitectCollection { massCustomProperty.Object });
+
             var unitProperty = new Mock<TaggedValue>();
             unitProperty.Setup(x => x.Name).Returns("unit");
             unitProperty.Setup(x => x.Value).Returns("unitValue");
@@ -144,6 +154,8 @@ namespace DEHEASysML.Tests.MappingRules
             var heightValueProperty = new Mock<Element>();
             heightValueProperty.Setup(x => x.Stereotype).Returns(StereotypeKind.ValueProperty.ToString());
             heightValueProperty.Setup(x => x.Name).Returns("height");
+            this.allElements.Add(heightValueProperty.Object);
+
             var heightCustomProperty = new Mock<CustomProperty>();
             heightCustomProperty.Setup(x => x.Name).Returns("default");
             heightCustomProperty.Setup(x => x.Value).Returns((string)null);
@@ -154,6 +166,8 @@ namespace DEHEASysML.Tests.MappingRules
             var boolValueProperty = new Mock<Element>();
             boolValueProperty.Setup(x => x.Stereotype).Returns(StereotypeKind.ValueProperty.ToString());
             boolValueProperty.Setup(x => x.Name).Returns("aBoolean");
+            this.allElements.Add(boolValueProperty.Object);
+
             var boolCustomProperty = new Mock<CustomProperty>();
             boolCustomProperty.Setup(x => x.Name).Returns("default");
             boolCustomProperty.Setup(x => x.Value).Returns("true");
@@ -164,6 +178,8 @@ namespace DEHEASysML.Tests.MappingRules
             var stringValueProperty = new Mock<Element>();
             stringValueProperty.Setup(x => x.Stereotype).Returns(StereotypeKind.ValueProperty.ToString());
             stringValueProperty.Setup(x => x.Name).Returns("aString");
+            this.allElements.Add(stringValueProperty.Object);
+
             var stringCustomProperty = new Mock<CustomProperty>();
             stringCustomProperty.Setup(x => x.Name).Returns("default");
             stringCustomProperty.Setup(x => x.Value).Returns("aValue");
@@ -174,17 +190,16 @@ namespace DEHEASysML.Tests.MappingRules
             this.block = new Mock<Element>();
             this.block.Setup(x => x.Name).Returns("AName");
             this.block.Setup(x => x.GetStereotypeList()).Returns("block,aStereotype");
+            this.block.Setup(x => x.ElementID).Returns(10);
+            this.block.Setup(x => x.Stereotype).Returns("block");
+            this.block.Setup(x => x.EmbeddedElements).Returns(new EnterpriseArchitectCollection());
 
-            var embeddedElement = new EnterpriseArchitectCollection();
-
-            embeddedElement.AddRange(new List<object>()
-            {
-                massValueProperty.Object, heightValueProperty.Object,
-                boolValueProperty.Object, stringValueProperty.Object
-            });
-
-            this.block.Setup(x => x.EmbeddedElements).Returns(embeddedElement);
-
+            this.allElements.Add(this.block.Object);
+            massValueProperty.Setup(x => x.ParentID).Returns(this.block.Object.ElementID);
+            heightValueProperty.Setup(x => x.ParentID).Returns(this.block.Object.ElementID);
+            stringValueProperty.Setup(x => x.ParentID).Returns(this.block.Object.ElementID);
+            boolValueProperty.Setup(x => x.ParentID).Returns(this.block.Object.ElementID);
+            
             var unitElement = new Mock<Element>();
             unitElement.Setup(x => x.Name).Returns("kg");
 
@@ -200,13 +215,21 @@ namespace DEHEASysML.Tests.MappingRules
             this.mappingConfiguration.Setup(x => 
                 x.AddToExternalIdentifierMap(It.IsAny<Guid>(), It.IsAny<string>(), MappingDirection.FromDstToHub));
 
+            this.cacheService.Setup(x => x.GetElementsOfStereotype(StereotypeKind.PartProperty))
+                .Returns(this.allElements.Where(x => x.Stereotype.AreEquals(StereotypeKind.PartProperty)).ToList());
+
+            this.cacheService.Setup(x => x.GetElementsOfStereotype(StereotypeKind.ValueProperty))
+                .Returns(this.allElements.Where(x => x.Stereotype.AreEquals(StereotypeKind.ValueProperty)).ToList());
+
             var containerBuilder = new ContainerBuilder();
             containerBuilder.RegisterInstance(this.hubController.Object).As<IHubController>();
             containerBuilder.RegisterInstance(this.dstController.Object).As<IDstController>();
             containerBuilder.RegisterInstance(this.mappingConfiguration.Object).As<IMappingConfigurationService>();
+            containerBuilder.RegisterInstance(this.cacheService.Object).As<ICacheService>();
             AppContainer.Container = containerBuilder.Build();
 
             this.rule = new BlockDefinitionToElementDefinitionMappingRule();
+            this.rule.InitializeCachingProperties();
         }
 
         [Test]
@@ -400,13 +423,21 @@ namespace DEHEASysML.Tests.MappingRules
             var partProperty = new Mock<Element>();
             partProperty.Setup(x => x.Stereotype).Returns(StereotypeKind.PartProperty.ToString());
             partProperty.Setup(x => x.PropertyType).Returns(42);
+            partProperty.Setup(x => x.ParentID).Returns(this.block.Object.ElementID);
+
+            this.allElements.Add(partProperty.Object);
+
+            this.cacheService.Setup(x => x.GetElementsOfStereotype(StereotypeKind.PartProperty))
+                .Returns(this.allElements.Where(x => x.Stereotype.AreEquals(StereotypeKind.PartProperty)).ToList());
+
+            this.rule.InitializeCachingProperties();
 
             var partBlock = new Mock<Element>();
             partBlock.Setup(x => x.Name).Returns("anOtherBlock");
             partBlock.Setup(x => x.EmbeddedElements).Returns(new EnterpriseArchitectCollection());
             partBlock.Setup(x => x.GetStereotypeList()).Returns("block");
 
-            this.repository.Setup(x => x.GetElementByID(42)).Returns(partBlock.Object);
+            this.cacheService.Setup(x => x.GetElementById(42)).Returns(partBlock.Object);
             this.block.Setup(x => x.EmbeddedElements).Returns(new EnterpriseArchitectCollection() { partProperty.Object });
             Assert.DoesNotThrow(() => this.rule.MapPartProperties(null, this.block.Object));
 
@@ -419,6 +450,7 @@ namespace DEHEASysML.Tests.MappingRules
         public void VerifyMapPorts()
         {
             this.rule.DstController = this.dstController.Object;
+
 
             var port = new Mock<Element>();
             port.Setup(x => x.MetaType).Returns(StereotypeKind.Port.ToString());
@@ -433,6 +465,8 @@ namespace DEHEASysML.Tests.MappingRules
 
             var elementDefinition = new ElementDefinition();
             this.rule.Elements.Add(new EnterpriseArchitectBlockElement(elementDefinition, this.block.Object, MappingDirection.FromDstToHub));
+            this.rule.InitializeCachingProperties();
+
             Assert.DoesNotThrow(() => this.rule.MapPorts());
             
             this.dstController.Setup(x => x.ResolvePort(It.IsAny<Element>())).Returns((null, interfaceBlock.Object));

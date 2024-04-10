@@ -25,7 +25,6 @@
 namespace DEHEASysML.Tests.ViewModel.EnterpriseArchitectObjectBrowser
 {
     using System.Collections.Generic;
-    using System.Linq;
 
     using DEHEASysML.Enumerators;
     using DEHEASysML.Tests.Utils.Stereotypes;
@@ -43,6 +42,7 @@ namespace DEHEASysML.Tests.ViewModel.EnterpriseArchitectObjectBrowser
     public class EnterpriseArchitectObjectBrowserViewModelTestFixture
     {
         private EnterpriseArchitectObjectBrowserViewModel viewModel;
+        private Mock<Repository> repository;
         private List<Package> models;
         private Mock<Element> requirement;
         private Mock<Element> block;
@@ -53,6 +53,7 @@ namespace DEHEASysML.Tests.ViewModel.EnterpriseArchitectObjectBrowser
         {
             this.viewModel = new EnterpriseArchitectObjectBrowserViewModel();
             this.models = new List<Package>();
+            this.repository = new Mock<Repository>();
 
             this.requirement = new Mock<Element>();
             this.requirement.Setup(x => x.Name).Returns("A requirement");
@@ -82,17 +83,28 @@ namespace DEHEASysML.Tests.ViewModel.EnterpriseArchitectObjectBrowser
                 this.requirement.Object, this.block.Object, this.valueType.Object
             });
 
+            this.repository.Setup(x => x.GetPackageByID(subPackage.Object.PackageID)).Returns(subPackage.Object);
+
             var firstModel = new Mock<Package>();
             firstModel.Setup(x => x.PackageID).Returns(1);
             firstModel.Setup(x => x.Name).Returns("Model");
             firstModel.Setup(x => x.Packages).Returns(new EnterpriseArchitectCollection(){subPackage.Object});
             firstModel.Setup(x => x.Elements).Returns(new EnterpriseArchitectCollection());
 
+            subPackage.Setup(x => x.ParentID).Returns(firstModel.Object.PackageID);
+
+            this.repository.Setup(x => x.GetPackageByID(firstModel.Object.PackageID)).Returns(firstModel.Object);
+
             var secondModel = new Mock<Package>();
             secondModel.Setup(x => x.PackageID).Returns(2);
 
+            this.repository.Setup(x => x.GetPackageByID(secondModel.Object.PackageID)).Returns(secondModel.Object);
+
             this.models.Add(firstModel.Object);
             this.models.Add(secondModel.Object);
+            var modelsCollection = new EnterpriseArchitectCollection();
+            modelsCollection.AddRange(this.models);
+            this.repository.Setup(x => x.Models).Returns(modelsCollection);
         }
 
         [Test]
@@ -117,20 +129,20 @@ namespace DEHEASysML.Tests.ViewModel.EnterpriseArchitectObjectBrowser
         [Test]
         public void VerifyBuildTree()
         {
-            Assert.DoesNotThrow(() => this.viewModel.BuildTree(this.models, new List<Element>(), new List<int>()));
+            Assert.DoesNotThrow(() => this.viewModel.BuildTree(this.repository.Object, new List<Element>(), new List<int>()));
             Assert.IsEmpty(this.viewModel.Things);
-            Assert.DoesNotThrow(() => this.viewModel.BuildTree(this.models, new List<Element>(), new List<int>(){1}));
+            Assert.DoesNotThrow(() => this.viewModel.BuildTree(this.repository.Object, new List<Element>(), new List<int>(){1}));
             Assert.AreEqual(1, this.viewModel.Things.Count);
-            var modelRow = this.viewModel.Things.First();
+            var modelRow = this.viewModel.Things[0];
             Assert.IsEmpty(modelRow.ContainedRows);
-            Assert.AreEqual(this.models.First().Name, modelRow.Name);
+            Assert.AreEqual(this.models[0].Name, modelRow.Name);
             Assert.IsNull(modelRow.Value);
             Assert.AreEqual("Package", modelRow.RowType);
-            Assert.DoesNotThrow(() => this.viewModel.BuildTree(this.models, new List<Element>(), new List<int>() { 1, 3 }));
-            Assert.DoesNotThrow(() => this.viewModel.BuildTree(this.models, new List<Element>(){this.requirement.Object}, new List<int>() { 1, 3 }));
-            Assert.DoesNotThrow(() => this.viewModel.BuildTree(this.models, new List<Element>(){this.requirement.Object, this.block.Object}, new List<int>() { 1, 3 }));
-            Assert.DoesNotThrow(() => this.viewModel.BuildTree(this.models, new List<Element>(){this.requirement.Object, this.block.Object, this.valueType.Object}, new List<int>() { 1, 3 }));
-            Assert.DoesNotThrow(() => this.viewModel.BuildTree(this.models, new List<Element>(){this.requirement.Object, this.block.Object, this.valueType.Object}, new List<int>() { 1}));
+            Assert.DoesNotThrow(() => this.viewModel.BuildTree(this.repository.Object, new List<Element>(), new List<int>() { 1, 3 }));
+            Assert.DoesNotThrow(() => this.viewModel.BuildTree(this.repository.Object, new List<Element>(){this.requirement.Object}, new List<int>() { 1, 3 }));
+            Assert.DoesNotThrow(() => this.viewModel.BuildTree(this.repository.Object, new List<Element>(){this.requirement.Object, this.block.Object}, new List<int>() { 1, 3 }));
+            Assert.DoesNotThrow(() => this.viewModel.BuildTree(this.repository.Object, new List<Element>(){this.requirement.Object, this.block.Object, this.valueType.Object}, new List<int>() { 1, 3 }));
+            Assert.DoesNotThrow(() => this.viewModel.BuildTree(this.repository.Object, new List<Element>(){this.requirement.Object, this.block.Object, this.valueType.Object}, new List<int>() { 1}));
         }
     }
 }

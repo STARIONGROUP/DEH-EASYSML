@@ -126,7 +126,7 @@ namespace DEHEASysML.ViewModel.Dialogs
             var allElements = this.DstController.GetAllBlocksAndRequirementsOfRepository();
             var packageIds = this.DstController.RetrieveAllParentsIdPackage(allElements);
 
-            this.EnterpriseArchitectObjectBrowser.BuildTree(this.DstController.CurrentRepository.Models.OfType<Package>(), allElements, packageIds);
+            this.EnterpriseArchitectObjectBrowser.BuildTree(this.DstController.CurrentRepository, allElements, packageIds);
 
             foreach (var elementDefinition in this.things.OfType<ElementDefinition>().ToList())
             {

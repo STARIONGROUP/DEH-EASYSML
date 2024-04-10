@@ -41,6 +41,7 @@ namespace DEHEASysML.DstController
     using DEHEASysML.Enumerators;
     using DEHEASysML.Events;
     using DEHEASysML.Extensions;
+    using DEHEASysML.Services.Cache;
     using DEHEASysML.Services.MappingConfiguration;
     using DEHEASysML.Utils.Stereotypes;
     using DEHEASysML.ViewModel.Rows;
@@ -109,6 +110,11 @@ namespace DEHEASysML.DstController
         /// The <see cref="IMappingConfigurationService" />
         /// </summary>
         private readonly IMappingConfigurationService mappingConfigurationService;
+        
+        /// <summary>
+        /// Gets the injected <see cref="ICacheService"/>
+        /// </summary>
+        private readonly ICacheService cacheService;
 
         /// <summary>
         /// Backing field for <see cref="CurrentRepository" />
@@ -154,8 +160,10 @@ namespace DEHEASysML.DstController
         /// <param name="exchangeHistory">The <see cref="IExchangeHistoryService" /></param>
         /// <param name="navigationService">The <see cref="INavigationService" /></param>
         /// <param name="mappingConfigurationService">The <see cref="IMappingConfigurationService" /></param>
+        /// <param name="cacheService">The <see cref="ICacheService"/></param>
         public DstController(IHubController hubController, IMappingEngine mappingEngine, IStatusBarControlViewModel statusBar,
-            IExchangeHistoryService exchangeHistory, INavigationService navigationService, IMappingConfigurationService mappingConfigurationService)
+            IExchangeHistoryService exchangeHistory, INavigationService navigationService, IMappingConfigurationService mappingConfigurationService,
+            ICacheService cacheService)
         {
             this.hubController = hubController;
             this.mappingEngine = mappingEngine;
@@ -163,6 +171,7 @@ namespace DEHEASysML.DstController
             this.exchangeHistory = exchangeHistory;
             this.navigationService = navigationService;
             this.mappingConfigurationService = mappingConfigurationService;
+            this.cacheService = cacheService;
 
             this.InitializesObservables();
         }
@@ -373,9 +382,8 @@ namespace DEHEASysML.DstController
         /// <returns>A value asserting if the Element has been found</returns>
         public bool TryGetElement(string name, StereotypeKind stereotype, out Element element)
         {
-            var queryResult = this.CurrentRepository.GetElementsByQuery("Simple", name);
-
-            element = queryResult.OfType<Element>().FirstOrDefault(x => x.Name == name && x.HasStereotype(stereotype));
+            var elements = this.cacheService.GetElementsOfStereotype(stereotype);
+            element = elements.FirstOrDefault(x => x.Name == name );
 
             return element != null;
         }
@@ -389,9 +397,8 @@ namespace DEHEASysML.DstController
         /// <returns>A value asserting if the Element has been found</returns>
         public bool TryGetElementByType(string name, StereotypeKind type, out Element element)
         {
-            var queryResult = this.CurrentRepository.GetElementsByQuery("Simple", name);
-
-            element = queryResult.OfType<Element>().FirstOrDefault(x => x.Name == name && x.MetaType.AreEquals(type));
+            var elements = this.cacheService.GetElementsOfMetaType(type);
+            element = elements.FirstOrDefault(x => x.Name == name);
 
             return element != null;
         }
@@ -406,8 +413,7 @@ namespace DEHEASysML.DstController
         {
             package = null;
 
-            var elementPackage = this.CurrentRepository.GetElementsByQuery("Simple", name)
-                .OfType<Element>().FirstOrDefault(x => x.Type.AreEquals(StereotypeKind.Package) && x.Name == name);
+            var elementPackage = this.cacheService.GetElementsOfMetaType(StereotypeKind.Package).FirstOrDefault(x => x.Name == name);
 
             if (elementPackage != null)
             {
@@ -433,8 +439,7 @@ namespace DEHEASysML.DstController
                 generalQuantityKind = specialized.General;
             }
 
-            var valueTypes = this.CurrentRepository.GetElementsByQuery("Extended", StereotypeKind.ValueType.ToString())
-                .OfType<Element>().Where(x => x.Stereotype.AreEquals(StereotypeKind.ValueType)).ToList();
+            var valueTypes = this.cacheService.GetElementsOfStereotype(StereotypeKind.ValueType);
 
             valueType = valueTypes.FirstOrDefault(x => this.VerifyNames(parameterType, scale, x) || this.VerifyNames(generalQuantityKind, scale, x));
             return valueType != null;
@@ -470,8 +475,7 @@ namespace DEHEASysML.DstController
         {
             elementRequirement = null;
 
-            var elements = this.CurrentRepository.GetElementsByQuery("Simple", name).OfType<Element>()
-                .Where(x => x.HasStereotype(StereotypeKind.Requirement));
+            var elements = this.cacheService.GetElementsOfStereotype(StereotypeKind.Requirement);
 
             foreach (var element in elements)
             {
@@ -550,12 +554,12 @@ namespace DEHEASysML.DstController
         /// <returns>A collection of <see cref="Element" /></returns>
         public List<Element> GetAllBlocksAndRequirementsOfRepository()
         {
-            var elements = this.CurrentRepository.GetElementsByQuery("Extended", "block").OfType<Element>()
-                .Where(x => x.HasStereotype(StereotypeKind.Block) && x.ParentID == 0).GroupBy(x => x.ElementGUID)
+            var elements = this.cacheService.GetElementsOfStereotype(StereotypeKind.Block).Where(x => x.ParentID == 0)
+                .GroupBy(x => x.ElementGUID)
                 .Select(x => x.First()).ToList();
 
-            elements.AddRange(this.CurrentRepository.GetElementsByQuery("Extended", "requirement").OfType<Element>()
-                .Where(x => x.HasStereotype(StereotypeKind.Requirement)).GroupBy(x => x.ElementGUID)
+            elements.AddRange( this.cacheService.GetElementsOfStereotype(StereotypeKind.Requirement)
+                .GroupBy(x => x.ElementGUID)
                 .Select(x => x.First()).ToList());
 
             foreach (var element in elements.ToList().Where(element => this.CreatedElements.Any(x => x.ElementGUID == element.ElementGUID)))
@@ -567,43 +571,13 @@ namespace DEHEASysML.DstController
         }
 
         /// <summary>
-        /// Gets all requirements present inside a model
-        /// </summary>
-        /// <param name="model">The model</param>
-        /// <returns>A collection of <see cref="Element" /> representing requirement</returns>
-        public List<Element> GetAllRequirements(IDualPackage model)
-        {
-            return this.GetElementsFromPackage(model, StereotypeKind.Requirement);
-        }
-
-        /// <summary>
-        /// Gets all blocks present inside a model
-        /// </summary>
-        /// <param name="model">The model</param>
-        /// <returns>A collection of <see cref="Element" /> representing block</returns>
-        public List<Element> GetAllBlocks(IDualPackage model)
-        {
-            return this.GetElementsFromPackage(model, StereotypeKind.Block);
-        }
-
-        /// <summary>
-        /// Gets all ValueTypes present inside a model
-        /// </summary>
-        /// <param name="model">The model</param>
-        /// <returns>A collection of <see cref="Element" /> representing ValueType</returns>
-        public List<Element> GetAllValueTypes(IDualPackage model)
-        {
-            return this.GetElementsFromPackage(model, StereotypeKind.ValueType);
-        }
-
-        /// <summary>
         /// Gets the port <see cref="Element" /> and the interface <see cref="Element" /> of a port
         /// </summary>
         /// <param name="port">The port</param>
         /// <returns>A <see cref="Tuple{T1}" /> to represents the connection of the port</returns>
         public (Element port, Element interfaceElement) ResolvePort(Element port)
         {
-            var propertyTypeElement = this.CurrentRepository.GetElementByID(port.PropertyType);
+            var propertyTypeElement = this.cacheService.GetElementById(port.PropertyType);
             var connector = propertyTypeElement.GetAllConnectorsOfElement().FirstOrDefault(x => x.Type.AreEquals(StereotypeKind.Usage));
 
             return connector == null ? (null, propertyTypeElement) : this.ResolveConnector(connector);
@@ -616,8 +590,8 @@ namespace DEHEASysML.DstController
         /// <returns>a <see cref="Tuple{T}" /> containing source and target</returns>
         public (Element source, Element target) ResolveConnector(Connector connector)
         {
-            var source = this.CurrentRepository.GetElementByID(connector.ClientID);
-            var target = this.CurrentRepository.GetElementByID(connector.SupplierID);
+            var source = this.cacheService.GetElementById(connector.ClientID);
+            var target = this.cacheService.GetElementById(connector.SupplierID);
 
             return (source, target);
         }
@@ -672,52 +646,6 @@ namespace DEHEASysML.DstController
             {
                 this.shouldRemap = true;
             }
-        }
-
-        /// <summary>
-        /// Retrieves all selected <see cref="Element" />
-        /// </summary>
-        /// <param name="repository">The <see cref="Repository" /></param>
-        /// <returns>A collection of selected Element</returns>
-        public IEnumerable<Element> GetAllSelectedElements(Repository repository)
-        {
-            this.CurrentRepository = repository;
-            var mappableElement = new List<Element>();
-            var collection = repository.GetTreeSelectedElements();
-
-            for (short elementIndex = 0; elementIndex < collection.Count; elementIndex++)
-            {
-                if (collection.GetAt(elementIndex) is Element element &&
-                    (element.HasStereotype(StereotypeKind.Requirement) 
-                     || element.HasStereotype(StereotypeKind.Block))
-                    && !mappableElement.Contains(element))
-                {
-                    mappableElement.Add(element);
-                }
-            }
-
-            return mappableElement;
-        }
-
-        /// <summary>
-        /// Retrieves all <see cref="Element" /> from the selected <see cref="Package" />
-        /// </summary>
-        /// <param name="repository">The <see cref="Repository" /></param>
-        /// <returns>A collection of <see cref="Element" /></returns>
-        public IEnumerable<Element> GetAllElementsInsidePackage(Repository repository)
-        {
-            this.CurrentRepository = repository;
-            var mappableElement = new List<Element>();
-            var selectedPackage = repository.GetTreeSelectedPackage();
-            mappableElement.AddRange(this.GetAllBlocks(selectedPackage));
-            mappableElement.AddRange(this.GetAllRequirements(selectedPackage));
-
-            foreach (var createdElement in mappableElement.Where(x => this.CreatedElements.Any(created => created.ElementGUID == x.ElementGUID)).ToList())
-            {
-                mappableElement.Remove(createdElement);
-            }
-
-            return mappableElement;
         }
 
         /// <summary>
@@ -931,6 +859,8 @@ namespace DEHEASysML.DstController
             this.IsBusy = true;
             var elementsLoaded = 0;
 
+            this.cacheService.InitializeCache(this.CurrentRepository);
+
             if (this.hubController.IsSessionOpen && this.hubController.OpenIteration != null)
             {
                 this.statusBar.Append("Loading previous mapping...");
@@ -1103,7 +1033,7 @@ namespace DEHEASysML.DstController
 
                     foreach (var actualState in actualFiniteStateList.ActualState)
                     {
-                        if (parameter.ValueSet.FirstOrDefault(x => x.ActualState != null && x.ActualState.Iid == actualState.Iid) == null)
+                        if (parameter.ValueSet.Find(x => x.ActualState != null && x.ActualState.Iid == actualState.Iid) == null)
                         {
                             var valueSet = new ParameterValueSet
                             {
@@ -1410,7 +1340,7 @@ namespace DEHEASysML.DstController
                         continue;
                     }
 
-                    var collection = this.CurrentRepository.GetElementByID(createdConnector.ClientID).Connectors;
+                    var collection = this.cacheService.GetElementById(createdConnector.ClientID).Connectors;
 
                     for (short collectionIndex = 0; collectionIndex < collection.Count; collectionIndex++)
                     {
@@ -1494,7 +1424,7 @@ namespace DEHEASysML.DstController
                              || createdElement.Stereotype.AreEquals(StereotypeKind.PartProperty) || createdElement.MetaType.AreEquals(StereotypeKind.Port)
                              || (createdElement.HasStereotype(StereotypeKind.Block) && createdElement.ParentID != 0))
                     {
-                        collection = this.CurrentRepository.GetElementByID(createdElement.ParentID).Elements;
+                        collection = this.cacheService.GetElementById(createdElement.ParentID).Elements;
                     }
 
                     if (collection == null)
@@ -2059,25 +1989,6 @@ namespace DEHEASysML.DstController
             this.SelectedDstMapResultForTransfer.Clear();
             this.CleanProject();
             this.CanMap = this.hubController.IsSessionOpen;
-        }
-
-        /// <summary>
-        /// Gets all element of a given stereo presents inside a package, including sub packages
-        /// </summary>
-        /// <param name="package">The <see cref="IDualPackage" /></param>
-        /// <param name="stereotype">The stereotype of the <see cref="Element" /></param>
-        /// <returns>A collection of <see cref="Element" /></returns>
-        private List<Element> GetElementsFromPackage(IDualPackage package, StereotypeKind stereotype)
-        {
-            var elements = new List<Element>();
-            elements.AddRange(package.GetElementsOfStereotypeInPackage(stereotype));
-
-            foreach (var subPackage in package.Packages.OfType<Package>())
-            {
-                elements.AddRange(this.GetElementsFromPackage(subPackage, stereotype));
-            }
-
-            return elements;
         }
     }
 }

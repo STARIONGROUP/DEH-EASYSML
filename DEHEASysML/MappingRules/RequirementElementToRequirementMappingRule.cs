@@ -62,12 +62,12 @@ namespace DEHEASysML.MappingRules
         /// <summary>
         /// A collection of <see cref="RequirementsSpecification" />
         /// </summary>
-        private readonly List<RequirementsSpecification> requirementsSpecifications = new();
+        private readonly List<RequirementsSpecification> requirementsSpecifications = [];
 
         /// <summary>
         /// A collection of <see cref="RequirementsGroup" />
         /// </summary>
-        private readonly List<RequirementsGroup> requirementsGroups = new();
+        private readonly List<RequirementsGroup> requirementsGroups = [];
 
         /// <summary>
         /// The category for BinaryRelation between requirements
@@ -78,6 +78,11 @@ namespace DEHEASysML.MappingRules
         /// Colletion of <see cref="EnterpriseArchitectRequirementElement" />
         /// </summary>
         private List<EnterpriseArchitectRequirementElement> mappedElements;
+
+        /// <summary>
+        /// Stores the mapping between the id of a <see cref="Package"/> to a <see cref="RequirementsContainer"/>
+        /// </summary>
+        private Dictionary<int, RequirementsContainer> packageMapping = [];
 
         /// <summary>
         /// Transform a <see cref="List{T}" /> of <see cref="EnterpriseArchitectRequirementElement" /> into a
@@ -103,6 +108,7 @@ namespace DEHEASysML.MappingRules
                 this.DstController = AppContainer.Container.Resolve<IDstController>();
                 var (completeMapping, elements) = input;
 
+                this.packageMapping.Clear();
                 this.requirementsSpecifications.Clear();
                 this.requirementsGroups.Clear();
 
@@ -114,7 +120,12 @@ namespace DEHEASysML.MappingRules
                     this.PopulateRequirementsGroupCollection(requirementsSpecificationsClone);
                 }
 
-                this.mappedElements = new List<EnterpriseArchitectRequirementElement>(elements);
+                this.mappedElements = [..elements];
+
+                if (!this.ComputeMappingToRequirementsContainer(this.mappedElements))
+                {
+                    return default;
+                }
 
                 foreach (var mappedElement in this.mappedElements)
                 {
@@ -125,10 +136,10 @@ namespace DEHEASysML.MappingRules
                 {
                     this.MapCategories();
                     this.CreateRelationShips();
-                    this.SaveMappingConfiguration(new List<MappedElementRowViewModel<Requirement>>(this.mappedElements));
+                    this.SaveMappingConfiguration([..this.mappedElements]);
                 }
 
-                return new List<MappedRequirementRowViewModel>(this.mappedElements);
+                return [..this.mappedElements];
             }
             catch (Exception exception)
             {
@@ -136,6 +147,97 @@ namespace DEHEASysML.MappingRules
                 ExceptionDispatchInfo.Capture(exception).Throw();
                 return default;
             }
+        }
+
+        /// <summary>
+        /// Compute the complete mapping from <see cref="Package"/> to <see cref="RequirementsContainer"/>
+        /// </summary>
+        /// <param name="enterpriseArchitectRequirementElements">The collection of <see cref="EnterpriseArchitectRequirementElement"/></param>
+        /// <returns>Asserts that the mapping has been successful</returns>
+        private bool ComputeMappingToRequirementsContainer(IEnumerable<EnterpriseArchitectRequirementElement> enterpriseArchitectRequirementElements)
+        {
+            var usedPackages = enterpriseArchitectRequirementElements.Select(x => x.DstElement.PackageID).Distinct();
+
+            foreach (var usedPackage in usedPackages)
+            {
+                if (this.packageMapping.ContainsKey(usedPackage))
+                {
+                    continue;
+                }
+
+                var currentPackage = this.DstController.CurrentRepository.GetPackageByID(usedPackage);
+                var parentPackage = this.DstController.CurrentRepository.GetPackageByID(currentPackage.ParentID);
+
+                if (parentPackage.ParentID == 0)
+                {
+                    if (!this.TryGetOrCreateRequirementsSpecification(currentPackage, out var requirementsSpecification))
+                    {
+                        this.Logger.Error($"Error during creation of the RequirementsSpecification for {currentPackage.Name} package");
+                        return false;
+                    }
+
+                    this.packageMapping[usedPackage] = requirementsSpecification;
+                }
+                else
+                {
+                    var grandParentPackage = this.DstController.CurrentRepository.GetPackageByID(parentPackage.ParentID);
+                   
+                    if (!this.TryGetOrCreateRequirementsGroup(currentPackage, out var requirementsGroup))
+                    {
+                        this.Logger.Error($"Error during creation of the RequirementsGroup for {currentPackage.Name} package");
+                        return false;
+                    }
+
+                    this.packageMapping[currentPackage.PackageID] = requirementsGroup;
+
+                    if (grandParentPackage.ParentID != 0)
+                    {
+                        var greatGrandParentPackage = this.DstController.CurrentRepository.GetPackageByID(grandParentPackage.ParentID);
+
+                        while (greatGrandParentPackage.ParentID != 0 && !this.packageMapping.ContainsKey(parentPackage.PackageID))
+                        {
+                            currentPackage = parentPackage;
+                            parentPackage = grandParentPackage;
+                            grandParentPackage = greatGrandParentPackage;
+                            greatGrandParentPackage = this.DstController.CurrentRepository.GetPackageByID(grandParentPackage.ParentID);
+
+                            if (!this.TryGetOrCreateRequirementsGroup(currentPackage, out var parentRequirementsGroup))
+                            {
+                                this.Logger.Error($"Error during creation of the RequirementsGroup for {currentPackage.Name} package");
+                                return false;
+                            }
+
+                            this.packageMapping[currentPackage.PackageID] = parentRequirementsGroup;
+
+                            if (!parentRequirementsGroup.Group.Exists(x => x.Iid == requirementsGroup.Iid))
+                            {
+                                parentRequirementsGroup.Group.Add(requirementsGroup);
+                            }
+
+                            requirementsGroup = parentRequirementsGroup;
+                        }
+                    }
+
+                    if (!this.packageMapping.TryGetValue(parentPackage.PackageID, out var requirementsContainer))
+                    {
+                        if (!this.TryGetOrCreateRequirementsSpecification(parentPackage, out var requirementsSpecification))
+                        {
+                            this.Logger.Error($"Error during creation of the RequirementsSpecification for {parentPackage.Name} package");
+                            return false;
+                        }
+
+                        requirementsContainer = requirementsSpecification;
+                        this.packageMapping[parentPackage.PackageID] = requirementsSpecification;
+                    }
+
+                    if (!requirementsContainer.Group.Exists(x => x.Iid == requirementsGroup.Iid))
+                    {
+                        requirementsContainer.Group.Add(requirementsGroup);
+                    }
+                }
+            }
+
+            return true;
         }
 
         /// <summary>
@@ -245,107 +347,36 @@ namespace DEHEASysML.MappingRules
                 return;
             }
 
-            Requirement requirement;
-            var packageParent = this.DstController.CurrentRepository.GetPackageByID(mappedElement.DstElement.PackageID);
-            var packageGrandParent = this.DstController.CurrentRepository.GetPackageByID(packageParent.ParentID);
-
-            if (packageGrandParent.ParentID == 0)
+            if (!this.TryGetOrCreateRequirement(mappedElement.DstElement, out var requirement))
             {
-                if (!this.TryGetOrCreateRequirementsSpecificationAndRequirement(mappedElement.DstElement, out requirement))
-                {
-                    this.Logger.Error($"Error during creation of the RequirementsSpecification for {mappedElement.DstElement.Name} requirement");
-                }
+                this.Logger.Error($"Error during creation of the Requirement for {mappedElement.DstElement.Name} package");
+                return;
             }
-            else
+
+            var container = this.packageMapping[mappedElement.DstElement.PackageID];
+
+            RequirementsSpecification requirementsSpecification;
+
+            switch (container)
             {
-                if (!this.TryGetOrCreateRequirement(mappedElement.DstElement, out requirement))
-                {
-                    this.Logger.Error($"Error during creation of the Requirement for {mappedElement.DstElement.Name} package");
-                    return;
-                }
+                case RequirementsSpecification specification:
+                    requirementsSpecification = specification;
+                    break;
+                case RequirementsGroup requirementsGroup:
+                    requirement.Group = requirementsGroup;
+                    requirementsSpecification = requirementsGroup.GetContainerOfType<RequirementsSpecification>();
+                    break;
+                default:
+                    throw new InvalidOperationException("Container is neither a RequirementsSpecification or a RequirementsGroup");
+            }
 
-                var packageGreatGrandParent = this.DstController.CurrentRepository.GetPackageByID(packageGrandParent.ParentID);
-
-                RequirementsSpecification requirementsSpecification;
-
-                if (packageGreatGrandParent.ParentID == 0)
-                {
-                    if (!this.TryGetOrCreateRequirementsSpecification(packageParent, out requirementsSpecification))
-                    {
-                        this.Logger.Error($"Error during creation of the RequirementsSpecification for {packageParent.Name} package");
-                        return;
-                    }
-                }
-                else
-                {
-                    if (!this.ProcessPackageHierarchy(packageParent, requirement, out requirementsSpecification))
-                    {
-                        this.Logger.Error($"Error during creation of the RequirementsSpecification for {requirement.Name} requirement during the Process hierarchy");
-                        return;
-                    }
-                }
-
+            if (!requirementsSpecification.Requirement.Exists(x => x.Iid == requirement.Iid))
+            {
                 requirementsSpecification.Requirement.Add(requirement);
             }
 
             mappedElement.HubElement = requirement;
             mappedElement.ShouldCreateNewTargetElement = mappedElement.HubElement.Original == null;
-        }
-
-        /// <summary>
-        /// Process the whole hierachy from the <see cref="Package" /> containing the Requirement to the root of the project to
-        /// create
-        /// <see cref="RequirementsGroup" /> and <see cref="RequirementsSpecification" />
-        /// </summary>
-        /// <param name="packageParent">The <see cref="Package" /></param>
-        /// <param name="requirement">The <see cref="Requirement" /></param>
-        /// <param name="requirementsSpecification">The <see cref="RequirementsSpecification" /></param>
-        /// <returns>Value representing if the whole hierarchy has been processed</returns>
-        private bool ProcessPackageHierarchy(Package packageParent, Requirement requirement, out RequirementsSpecification requirementsSpecification)
-        {
-            requirementsSpecification = null;
-            var packageGrandParent = this.DstController.CurrentRepository.GetPackageByID(packageParent.ParentID);
-            var packageGreatGrandParent = this.DstController.CurrentRepository.GetPackageByID(packageGrandParent.ParentID);
-
-            if (!this.TryGetOrCreateRequirementsGroup(packageParent, out var parentRequirementsGroup))
-            {
-                this.Logger.Error($"Error during creation of the RequirementsGroup for {packageParent.Name} package");
-                return false;
-            }
-
-            requirement.Group = parentRequirementsGroup;
-
-            while (packageGreatGrandParent.ParentID != 0)
-            {
-                packageParent = packageGrandParent;
-                packageGrandParent = this.DstController.CurrentRepository.GetPackageByID(packageParent.ParentID);
-                packageGreatGrandParent = this.DstController.CurrentRepository.GetPackageByID(packageGrandParent.ParentID);
-
-                if (packageGreatGrandParent.ParentID == 0)
-                {
-                    continue;
-                }
-
-                if (!this.TryGetOrCreateRequirementsGroup(packageParent, out var newestRequirementsGroup))
-                {
-                    this.Logger.Error($"Error during creation of the RequirementsGroup for {packageParent.Name} package");
-                    return false;
-                }
-
-                newestRequirementsGroup.Group.RemoveAll(x => x.Iid == parentRequirementsGroup.Iid);
-                newestRequirementsGroup.Group.Add(parentRequirementsGroup);
-                parentRequirementsGroup = newestRequirementsGroup;
-            }
-
-            if (!this.TryGetOrCreateRequirementsSpecification(packageParent, out requirementsSpecification))
-            {
-                this.Logger.Error($"Error during creation of the RequirementsSpecification for {packageGrandParent.Name} package");
-                return false;
-            }
-
-            requirementsSpecification.Group.RemoveAll(x => x.Iid == parentRequirementsGroup.Iid);
-            requirementsSpecification.Group.Add(parentRequirementsGroup);
-            return true;
         }
 
         /// <summary>

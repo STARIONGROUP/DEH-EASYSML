@@ -25,8 +25,6 @@
 namespace DEHEASysML.Services.Dispatcher
 {
     using System;
-    using System.Collections.Generic;
-    using System.Linq;
 
     using Autofac;
 
@@ -34,6 +32,7 @@ namespace DEHEASysML.Services.Dispatcher
 
     using DEHEASysML.DstController;
     using DEHEASysML.Forms;
+    using DEHEASysML.Services.Selection;
     using DEHEASysML.ViewModel;
     using DEHEASysML.ViewModel.Dialogs.Interfaces;
     using DEHEASysML.Views.Dialogs;
@@ -88,17 +87,24 @@ namespace DEHEASysML.Services.Dispatcher
         private bool canMap;
 
         /// <summary>
+        /// Gets the injected <see cref="ISelectionService"/>
+        /// </summary>
+        private readonly ISelectionService selectionService;
+
+        /// <summary>
         /// Initializes a new <see cref="Dispatcher" />
         /// </summary>
         /// <param name="dstController">The <see cref="IDstController" /></param>
         /// <param name="statusBar">The <see cref="IStatusBarControlViewModel" /></param>
         /// <param name="navigationService">The <see cref="INavigationService" /></param>
-        public Dispatcher(IDstController dstController, IStatusBarControlViewModel statusBar, INavigationService navigationService)
+        /// <param name="selectionService">The <see cref="ISelectionService"/></param>
+        public Dispatcher(IDstController dstController, IStatusBarControlViewModel statusBar, INavigationService navigationService, 
+            ISelectionService selectionService)
         {
             this.dstController = dstController;
             this.StatusBar = statusBar;
             this.navigationService = navigationService;
-
+            this.selectionService = selectionService;
             this.dstController.WhenAnyValue(x => x.CanMap).Subscribe(this.UpdateCanMap);
         }
 
@@ -270,8 +276,7 @@ namespace DEHEASysML.Services.Dispatcher
         /// <param name="repository">The working <see cref="Repository" /></param>
         public void MapSelectedElementsCommand(Repository repository)
         {
-            var elements = this.dstController.GetAllSelectedElements(repository);
-            this.OpenMappingDialog(elements);
+            this.OpenMappingDialog(repository);
         }
 
         /// <summary>
@@ -280,8 +285,7 @@ namespace DEHEASysML.Services.Dispatcher
         /// <param name="repository">The working <see cref="Repository" /></param>
         public void MapSelectedPackageCommand(Repository repository)
         {
-            var elements = this.dstController.GetAllElementsInsidePackage(repository);
-            this.OpenMappingDialog(elements);
+            this.OpenMappingDialog(repository);
         }
 
         /// <summary>
@@ -318,12 +322,13 @@ namespace DEHEASysML.Services.Dispatcher
         /// <summary>
         /// Opens the <see cref="DstMappingConfigurationDialog" /> and initializes it
         /// </summary>
-        /// <param name="elements">The <see cref="Element" /> to display</param>
-        private void OpenMappingDialog(IEnumerable<Element> elements)
+        /// <param name="repository">The <see cref="Repository" /></param>
+        private void OpenMappingDialog(Repository repository)
         {
-            var elementsList = elements.ToList();
+            var elementsList = this.selectionService.GetSelectedElements(repository);
+            var packagesId = this.dstController.RetrieveAllParentsIdPackage(elementsList);
             var viewModel = AppContainer.Container.Resolve<IDstMappingConfigurationDialogViewModel>();
-            viewModel.Initialize(elementsList, this.dstController.RetrieveAllParentsIdPackage(elementsList));
+            viewModel.Initialize(elementsList, packagesId);
             this.navigationService.ShowDialog<DstMappingConfigurationDialog, IDstMappingConfigurationDialogViewModel>(viewModel);
         }
 

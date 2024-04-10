@@ -85,9 +85,9 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Interfaces
         /// <summary>
         /// Build the tree to display the given <see cref="Element" />
         /// </summary>
-        /// <param name="models">The collection of <see cref="Package" /> that represents Model</param>
+        /// <param name="repository"></param>
         /// <param name="elements">The collection of <see cref="Element" /> to display</param>
         /// <param name="packagesId">The Id of <see cref="Package" /> to display</param>
-        void BuildTree(IEnumerable<Package> models, IEnumerable<Element> elements, IEnumerable<int> packagesId);
+        void BuildTree(Repository repository, IEnumerable<Element> elements, IEnumerable<int> packagesId);
     }
 }

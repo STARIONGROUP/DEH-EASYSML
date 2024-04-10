@@ -26,6 +26,7 @@ namespace DEHEASysML.MappingRules
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Linq;
     using System.Runtime.ExceptionServices;
 
@@ -39,6 +40,7 @@ namespace DEHEASysML.MappingRules
     using DEHEASysML.DstController;
     using DEHEASysML.Enumerators;
     using DEHEASysML.Extensions;
+    using DEHEASysML.Services.Cache;
     using DEHEASysML.Services.MappingConfiguration;
     using DEHEASysML.Utils.Stereotypes;
     using DEHEASysML.ViewModel.Rows;
@@ -113,6 +115,26 @@ namespace DEHEASysML.MappingRules
         private ElementDefinition portElementDefinition;
 
         /// <summary>
+        /// Gets the <see cref="ICacheService"/>
+        /// </summary>
+        private ICacheService cacheService;
+
+        /// <summary>
+        /// The <see cref="Dictionary{TKey,TValue}"/> that stores all <see cref="EnterpriseArchitectBlockElement"/> by ElementID
+        /// </summary>
+        private Dictionary<int, EnterpriseArchitectBlockElement> elementsById;
+
+        /// <summary>
+        /// Gets the collection of part properties
+        /// </summary>
+        private Dictionary<int, List<Element>> allPartPropertiesPerElement;
+
+        /// <summary>
+        /// Gets the collection of value properties
+        /// </summary>
+        private Dictionary<int, List<Element>> allValuePropertiesPerElement;
+
+        /// <summary>
         /// The collection of <see cref="EnterpriseArchitectBlockElement" />
         /// </summary>
         public List<EnterpriseArchitectBlockElement> Elements { get; private set; } = new();
@@ -140,10 +162,14 @@ namespace DEHEASysML.MappingRules
                 this.Owner = this.HubController.CurrentDomainOfExpertise;
 
                 this.DstController = AppContainer.Container.Resolve<IDstController>();
-
+                this.cacheService = AppContainer.Container.Resolve<ICacheService>();
                 this.MappingConfiguration = AppContainer.Container.Resolve<IMappingConfigurationService>();
-
                 this.Elements = new List<EnterpriseArchitectBlockElement>(elements);
+
+                if (completeMapping)
+                {
+                    this.InitializeCachingProperties();
+                }
 
                 this.portsToConnect.Clear();
 
@@ -153,6 +179,8 @@ namespace DEHEASysML.MappingRules
                 this.createdActualFiniteStateLists.RemoveAll(x => this.HubController.OpenIteration
                     .ActualFiniteStateList.Any(actualFiniteStateList => x.Iid == actualFiniteStateList.Iid || x.Container?.Iid != this.HubController.OpenIteration.Iid));
 
+                var mappingStopWatch = Stopwatch.StartNew();
+
                 foreach (var mappedElement in this.Elements.ToList())
                 {
                     mappedElement.HubElement ??= this.GetOrCreateElementDefinition(mappedElement.DstElement);
@@ -160,7 +188,12 @@ namespace DEHEASysML.MappingRules
 
                     if (completeMapping)
                     {
+                        var mapStopWatch = Stopwatch.StartNew();
+
                         this.MapElement(mappedElement);
+                        mapStopWatch.Stop();
+
+                        this.Logger.Debug("Mapping done for block {0} in {1}[ms]", mappedElement.DstElement.Name, mapStopWatch.ElapsedMilliseconds);
                     }
                 }
 
@@ -171,6 +204,9 @@ namespace DEHEASysML.MappingRules
                     this.SaveMappingConfiguration(new List<MappedElementRowViewModel<ElementDefinition>>(this.Elements));
                 }
 
+                mappingStopWatch.Stop();
+                this.Logger.Info("{0} for blocks done in {1}[ms]", completeMapping? "Mapping" : "Premapping", mappingStopWatch.ElapsedMilliseconds);
+
                 return new List<MappedElementDefinitionRowViewModel>(this.Elements);
             }
             catch (Exception exception)
@@ -179,6 +215,18 @@ namespace DEHEASysML.MappingRules
                 ExceptionDispatchInfo.Capture(exception).Throw();
                 return default;
             }
+        }
+
+        /// <summary>
+        /// Initialize all caching dictionaries based on the content of the <see cref="ICacheService"/>
+        /// </summary>
+        public void InitializeCachingProperties()
+        {
+            this.elementsById = this.Elements.ToDictionary(x => x.DstElement.ElementID, x => x);
+
+            this.cacheService ??= AppContainer.Container.Resolve<ICacheService>();
+            this.allPartPropertiesPerElement = this.cacheService.GetElementsOfStereotype(StereotypeKind.PartProperty).GroupBy(x => x.ParentID).ToDictionary(x => x.Key, x => x.ToList());
+            this.allValuePropertiesPerElement = this.cacheService.GetElementsOfStereotype(StereotypeKind.ValueProperty).GroupBy(x => x.ParentID).ToDictionary(x => x.Key, x => x.ToList());
         }
 
         /// <summary>
@@ -232,8 +280,7 @@ namespace DEHEASysML.MappingRules
                     .Clone(false) ?? this.CreateBinaryRelationShip(elementUsage, interfaceElementUsage,
                     interfaceBlock.Name, this.interfaceCategoryNames);
 
-                this.Elements.First(x => x.DstElement.ElementGUID == element.DstElement.ElementGUID)
-                    .RelationShips.Add(relationShip);
+                this.elementsById[element.DstElement.ElementID].RelationShips.Add(relationShip);
             }
         }
 
@@ -255,10 +302,18 @@ namespace DEHEASysML.MappingRules
         /// <param name="element">The block element</param>
         public void MapPartProperties(ElementDefinition elementDefinition, Element element)
         {
-            foreach (var partProperty in element.GetAllPartPropertiesOfElement())
+            var stopWatch = Stopwatch.StartNew();
+
+            if(this.allPartPropertiesPerElement.TryGetValue(element.ElementID, out var partProperties))
             {
-                this.MapPartProperty(elementDefinition, partProperty);
+                foreach (var partProperty in partProperties)
+                {
+                    this.MapPartProperty(elementDefinition, partProperty);
+                }
             }
+
+            stopWatch.Stop();
+            this.Logger.Debug("Mapping of {0} Part to ElementUsage for element {1} took {2}[ms]", partProperties?.Count ?? 0, element.Name, stopWatch.ElapsedMilliseconds);
         }
 
         /// <summary>
@@ -273,51 +328,61 @@ namespace DEHEASysML.MappingRules
                 return;
             }
 
-            foreach (var property in element.GetAllValuePropertiesOfElement())
+            var stopwatch = Stopwatch.StartNew();
+
+            if (this.allValuePropertiesPerElement.TryGetValue(element.ElementID, out var valueProperties))
             {
-                var existingParameter = elementDefinition.Parameter.FirstOrDefault(x =>
-                    string.Equals(x.ParameterType.ShortName, property.GetShortName(), StringComparison.InvariantCultureIgnoreCase) ||
-                    string.Equals(x.ParameterType.Name, property.Name, StringComparison.InvariantCultureIgnoreCase));
-
-                var valueOfProperty = property.GetValueOfPropertyValue();
-
-                Parameter parameter;
-
-                if (existingParameter == null)
+                foreach (var property in valueProperties)
                 {
-                    if (this.TryCreateParameterType(property, valueOfProperty, out var parameterType))
+                    var existingParameter = elementDefinition.Parameter.FirstOrDefault(x =>
+                        string.Equals(x.ParameterType.ShortName, property.GetShortName(), StringComparison.InvariantCultureIgnoreCase) ||
+                        string.Equals(x.ParameterType.Name, property.Name, StringComparison.InvariantCultureIgnoreCase));
+
+                    var valueOfProperty = property.GetValueOfPropertyValue();
+
+                    Parameter parameter;
+
+                    if (existingParameter == null)
                     {
-                        parameter = new Parameter
+                        if (this.TryCreateParameterType(property, valueOfProperty, out var parameterType))
                         {
-                            Iid = Guid.NewGuid(),
-                            Owner = this.Owner,
-                            ParameterType = parameterType
-                        };
+                            parameter = new Parameter
+                            {
+                                Iid = Guid.NewGuid(),
+                                Owner = this.Owner,
+                                ParameterType = parameterType
+                            };
 
-                        elementDefinition.Parameter.Add(parameter);
+                            elementDefinition.Parameter.Add(parameter);
 
-                        if (parameterType is QuantityKind quantityKind)
+                            if (parameterType is QuantityKind quantityKind)
+                            {
+                                parameter.Scale = quantityKind.DefaultScale;
+                            }
+                        }
+                        else
                         {
-                            parameter.Scale = quantityKind.DefaultScale;
+                            this.Logger.Error($"Could not create the ParameterType {property.Name}");
+                            continue;
                         }
                     }
                     else
                     {
-                        this.Logger.Error($"Could not create the ParameterType {property.Name}");
-                        continue;
+                        parameter = existingParameter.Clone(true);
+                    }
+
+                    this.VerifyStateDependency(parameter, property);
+                    this.UpdateValueSet(parameter, valueOfProperty);
+
+                    if (!elementDefinition.Parameter.Exists(x => x.Iid == parameter.Iid))
+                    {
+                        elementDefinition.Parameter.Add(parameter);
                     }
                 }
-                else
-                {
-                    parameter = existingParameter.Clone(true);
-                }
-
-                this.VerifyStateDependency(parameter, property);
-                this.UpdateValueSet(parameter, valueOfProperty);
-
-                elementDefinition.Parameter.RemoveAll(x => x.Iid == parameter.Iid);
-                elementDefinition.Parameter.Add(parameter);
             }
+
+            stopwatch.Stop();
+            this.Logger.Debug("Mapping of {0} Part to ParameterType for Element {1} took {2}[ms]", valueProperties?.Count ?? 0, element.Name, stopwatch.ElapsedMilliseconds);
         }
 
         /// <summary>
@@ -328,6 +393,8 @@ namespace DEHEASysML.MappingRules
         /// <param name="element">The <see cref="Element" /></param>
         public void MapCategories(ElementDefinition elementDefinition, Element element)
         {
+            var stopWatch = Stopwatch.StartNew();
+
             if (elementDefinition == null)
             {
                 return;
@@ -335,10 +402,9 @@ namespace DEHEASysML.MappingRules
 
             var isEncapsulated = false;
 
-            var isEncapsulatedValue = element.GetValueOfPropertyValueOfElement(this.isEncapsulatedCategoryNames.Item2);
-
-            if (!string.IsNullOrEmpty(isEncapsulatedValue))
+            if (this.allValuePropertiesPerElement.TryGetValue(element.ElementID, out var valueProperties) && valueProperties.Find(x => x.Name == this.isEncapsulatedCategoryNames.Item2) is { } isEncapsulatedValueProperty)
             {
+                var isEncapsulatedValue = isEncapsulatedValueProperty.GetValueOfPropertyValue();
                 isEncapsulated = isEncapsulatedValue == "1" || string.Equals(bool.TrueString, isEncapsulatedValue, StringComparison.InvariantCultureIgnoreCase);
             }
 
@@ -347,6 +413,9 @@ namespace DEHEASysML.MappingRules
             this.MapCategory(elementDefinition, this.isActiveCategoryNames, element.IsActive, false);
             this.MapCategory(elementDefinition, this.isEncapsulatedCategoryNames, isEncapsulated, true);
             this.MapStereotypesToCategory(element, elementDefinition);
+            stopWatch.Stop();
+
+            this.Logger.Debug("Complete mapping of categories for Element {0} took {1}[ms]", element.Name, stopWatch.ElapsedMilliseconds);
         }
 
         /// <summary>
@@ -369,7 +438,7 @@ namespace DEHEASysML.MappingRules
 
             foreach (var dependency in dependencies)
             {
-                var state = this.DstController.CurrentRepository.GetElementByID(dependency.SupplierID);
+                var state = this.cacheService.GetElementById(dependency.SupplierID);
 
                 if (state.Type.AreEquals(StereotypeKind.State))
                 {
@@ -694,17 +763,17 @@ namespace DEHEASysML.MappingRules
                 return;
             }
 
-            var partPropertyBlock = this.DstController.CurrentRepository.GetElementByID(partProperty.PropertyType);
-            var mappedElement = this.Elements.FirstOrDefault(x => x.DstElement.ElementGUID == partPropertyBlock.ElementGUID);
+            var partPropertyBlock = this.cacheService.GetElementById(partProperty.PropertyType);
 
-            if (mappedElement == null)
+            if (!this.elementsById.TryGetValue(partPropertyBlock.ElementID, out var mappedElement))
             {
                 mappedElement = new EnterpriseArchitectBlockElement(this.GetOrCreateElementDefinition(partPropertyBlock), partPropertyBlock, MappingDirection.FromDstToHub);
+                this.elementsById[partPropertyBlock.ElementID] = mappedElement;
                 this.Elements.Add(mappedElement);
                 this.MapElement(mappedElement);
             }
 
-            if (container.ContainedElement.Any(x => x.ElementDefinition.Iid == mappedElement.HubElement.Iid))
+            if (container.ContainedElement.Exists(x => x.ElementDefinition.Iid == mappedElement.HubElement.Iid))
             {
                 return;
             }
@@ -767,7 +836,6 @@ namespace DEHEASysML.MappingRules
         /// </summary>
         /// <param name="parameter">The <see cref="Parameter" /></param>
         /// <param name="actualFiniteState">The <see cref="ActualFiniteState" /></param>
-        /// <param name="valueOfProperty">The value to assign to the <see cref="ParameterValueSetBase" /></param>
         /// <returns>The <see cref="ParameterValueSetBase" /></returns>
         private void CreateOrUpdateParameterValueSet(Parameter parameter, ActualFiniteState actualFiniteState)
         {
@@ -865,11 +933,11 @@ namespace DEHEASysML.MappingRules
             string unitName;
             string scaleShortName;
 
-            ElementClass unit = null;
+            Element unit = null;
 
             if (taggedValue != null)
             {
-                unit = this.DstController.CurrentRepository.GetElementByGuid(taggedValue.Value) as ElementClass;
+                unit = this.DstController.CurrentRepository.GetElementByGuid(taggedValue.Value) as Element;
             }
 
             if (unit == null || string.IsNullOrEmpty(unit.Name))
@@ -967,7 +1035,10 @@ namespace DEHEASysML.MappingRules
                 }
                 else
                 {
-                    this.Logger.Error($"The Category {categoryNames.Item1} could not be found or created for the element {elementDefinition.Name}");
+                    if (shouldCreateCategory)
+                    {
+                        this.Logger.Error($"The Category {categoryNames.Item1} could not be found or created for the element {elementDefinition.Name}");
+                    }
                 }
             }
             catch (Exception exception)
@@ -985,10 +1056,10 @@ namespace DEHEASysML.MappingRules
         {
             var shortName = dstElementName.GetShortName();
 
-            var elementDefinition = this.Elements.FirstOrDefault(x =>
+            var elementDefinition = this.Elements.Find(x =>
                                         x.HubElement != null && string.Equals(x.HubElement.ShortName, shortName, StringComparison.CurrentCultureIgnoreCase))?.HubElement
                                     ?? this.HubController.OpenIteration.Element
-                                        .FirstOrDefault(x => string.Equals(x.ShortName, shortName, StringComparison.CurrentCultureIgnoreCase))
+                                        .Find(x => string.Equals(x.ShortName, shortName, StringComparison.CurrentCultureIgnoreCase))
                                         ?.Clone(true);
 
             if (elementDefinition is null)

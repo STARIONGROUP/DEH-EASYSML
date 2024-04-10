@@ -93,7 +93,7 @@ namespace DEHEASysML.ViewModel.Dialogs
         public void Initialize(IEnumerable<Element> selectedElements, IEnumerable<int> packageIds)
         {
             this.elements = selectedElements.ToList();
-            this.EnterpriseArchitectObjectBrowser.BuildTree(this.DstController.CurrentRepository.Models.OfType<Package>(), this.elements, packageIds);
+            this.EnterpriseArchitectObjectBrowser.BuildTree(this.DstController.CurrentRepository, this.elements, packageIds);
 
             this.PreMap();
         }

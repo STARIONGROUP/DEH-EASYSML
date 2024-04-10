@@ -147,19 +147,19 @@ namespace DEHEASysML.Tests.MappingRules
             var subSubSubModelPackage = this.CreatePackage(4, subSubModelPackage.Object.PackageID, "SubSubSubModel Package");
             var subSubSubSubModelPackage = this.CreatePackage(5, subSubSubModelPackage.Object.PackageID, "SubSubSubSubModel Package");
 
-            var firstRequirement = this.CreateRequirement(subModelPackage.Object.PackageID,"First requirement", "M001", "A simple text");
+            var firstRequirement = this.CreateRequirement(subModelPackage.Object.PackageID,"First requirement", "M001", "A simple text",6);
             firstRequirement.Setup(x => x.Connectors).Returns(new EnterpriseArchitectCollection());
             firstRequirement.Setup(x => x.GetStereotypeList()).Returns("requirement,aStereotype");
 
-            var secondRequirement = this.CreateRequirement(subSubModelPackage.Object.PackageID, "Second requirement", "M002", "A simple text v2");
+            var secondRequirement = this.CreateRequirement(subSubModelPackage.Object.PackageID, "Second requirement", "M002", "A simple text v2",7);
             secondRequirement.Setup(x => x.Connectors).Returns(new EnterpriseArchitectCollection());
             secondRequirement.Setup(x => x.GetStereotypeList()).Returns("requirement");
 
-            var thirdRequirement = this.CreateRequirement(subSubSubModelPackage.Object.PackageID, "Third requirement", "M003", "A simple text v3");
+            var thirdRequirement = this.CreateRequirement(subSubSubModelPackage.Object.PackageID, "Third requirement", "M003", "A simple text v3",8);
             thirdRequirement.Setup(x => x.Connectors).Returns(new EnterpriseArchitectCollection());
             thirdRequirement.Setup(x => x.GetStereotypeList()).Returns("requirement");
 
-            var forthRequirement = this.CreateRequirement(subSubSubSubModelPackage.Object.PackageID, "Forth requirement", "M004", "A simple text v4");
+            var forthRequirement = this.CreateRequirement(subSubSubSubModelPackage.Object.PackageID, "Forth requirement", "M004", "A simple text v4",9);
             var connector = new Mock<Connector>();
             connector.Setup(x => x.Stereotype).Returns(StereotypeKind.DeriveReqt.ToString());
             forthRequirement.Setup(x => x.GetStereotypeList()).Returns("requirement");
@@ -187,11 +187,12 @@ namespace DEHEASysML.Tests.MappingRules
             return package;
         }
 
-        public Mock<Element> CreateRequirement(int packageId, string name, string id, string description)
+        public Mock<Element> CreateRequirement(int packageId, string name, string id, string description, int elementId)
         {
             var requirement = new Mock<Element>();
             requirement.Setup(x => x.PackageID).Returns(packageId);
             requirement.Setup(x => x.Name).Returns(name);
+            requirement.Setup(x => x.ElementID).Returns(elementId);
 
             var idValue = new Mock<TaggedValue>();
             idValue.Setup(x => x.Name).Returns("Id");
@@ -232,7 +233,7 @@ namespace DEHEASysML.Tests.MappingRules
             var specifications = mappedElements.Select(x => x.HubElement.Container)
                 .OfType<RequirementsSpecification>().Distinct().ToList();
 
-            Assert.AreEqual(2, specifications.Count);
+            Assert.AreEqual(1, specifications.Count);
             var requirements = specifications.SelectMany(x => x.Requirement).ToList();
             Assert.AreEqual(4,requirements.Count);
         }
