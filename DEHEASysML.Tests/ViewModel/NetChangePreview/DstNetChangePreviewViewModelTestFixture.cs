@@ -36,6 +36,7 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
     using DEHEASysML.DstController;
     using DEHEASysML.Enumerators;
     using DEHEASysML.Events;
+    using DEHEASysML.Services.Cache;
     using DEHEASysML.Tests.Utils.Stereotypes;
     using DEHEASysML.Utils.Stereotypes;
     using DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows;
@@ -67,10 +68,13 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
         private Dictionary<string, string> updatedValues;
         private Dictionary<string, string> updatedStereotypes;
         private Dictionary<string, (string,string)> updatedRequirementValues;
+        private Mock<ICacheService> cacheService;
         
         [SetUp]
         public void Setup()
         {
+            var allElements = new List<Element>();
+
             this.updatedValues = new Dictionary<string, string>();
             this.updatedStereotypes = new Dictionary<string, string>();
             this.updatedRequirementValues = new Dictionary<string, (string, string)>();
@@ -83,8 +87,9 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
             this.dstController.Setup(x => x.UpdatedValuePropretyValues).Returns(this.updatedValues);
             this.dstController.Setup(x => x.UpdatedRequirementValues).Returns(this.updatedRequirementValues);
             this.dstController.Setup(x => x.UpdatedStereotypes).Returns(this.updatedStereotypes);
+            this.cacheService = new Mock<ICacheService>();
 
-            this.viewModel = new DstNetChangePreviewViewModel(this.dstController.Object);
+            this.viewModel = new DstNetChangePreviewViewModel(this.dstController.Object, this.cacheService.Object);
             this.models = new List<Package>();
             var taggedValue = new Mock<TaggedValue>();
             taggedValue.Setup(x => x.Name).Returns("Text");
@@ -97,14 +102,19 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
             this.requirement.Setup(x => x.ElementGUID).Returns(Guid.NewGuid().ToString());
             this.requirement.Setup(x => x.HasStereotype(StereotypeKind.Requirement.ToString().ToLower())).Returns(true);
             this.updatedStereotypes[this.requirement.Object.ElementGUID] = "aCustomStereotype";
+            allElements.Add(this.requirement.Object);
 
             var valueProperty = new Mock<Element>();
             valueProperty.Setup(x => x.StereotypeEx).Returns(StereotypeKind.ValueProperty.ToString());
             valueProperty.Setup(x => x.Name).Returns("mass");
             valueProperty.Setup(x => x.ElementGUID).Returns(Guid.NewGuid().ToString());
+            allElements.Add(valueProperty.Object);
+
             var partProperty = new Mock<Element>();
             partProperty.Setup(x => x.StereotypeEx).Returns(StereotypeKind.PartProperty.ToString());
             partProperty.Setup(x => x.Name).Returns("a contained element");
+            allElements.Add(partProperty.Object);
+
             var taggedValueProperty = new Mock<TaggedValue>();
             taggedValueProperty.Setup(x => x.Name).Returns("default");
             taggedValueProperty.Setup(x => x.Value).Returns("42");
@@ -120,10 +130,13 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
                 valueProperty.Object, partProperty.Object
             });
 
+            allElements.Add(this.block.Object);
+
             this.valueType = new Mock<Element>();
             this.valueType.Setup(x => x.Name).Returns("a ValueType");
             this.valueType.Setup(x => x.ElementGUID).Returns("0003");
             this.valueType.Setup(x => x.StereotypeEx).Returns(StereotypeKind.ValueType.ToString());
+            allElements.Add(this.valueType.Object);
 
             var subPackage = new Mock<Package>();
             subPackage.Setup(x => x.PackageID).Returns(3);
@@ -136,6 +149,10 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
                 this.requirement.Object, this.block.Object, this.valueType.Object
             });
 
+            this.requirement.Setup(x => x.PackageID).Returns(subPackage.Object.PackageID);
+            this.block.Setup(x => x.PackageID).Returns(subPackage.Object.PackageID);
+            this.valueType.Setup(x => x.PackageID).Returns(subPackage.Object.PackageID);
+
             var firstModel = new Mock<Package>();
             firstModel.Setup(x => x.PackageID).Returns(1);
             firstModel.Setup(x => x.Name).Returns("Model");
@@ -147,6 +164,7 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
             secondModel.Setup(x => x.PackageID).Returns(2);
             secondModel.Setup(x => x.Packages).Returns(new EnterpriseArchitectCollection());
             secondModel.Setup(x => x.Elements).Returns(new EnterpriseArchitectCollection());
+            subPackage.Setup(x => x.ParentID).Returns(firstModel.Object.PackageID);
 
             this.models.Add(firstModel.Object);
             this.models.Add(secondModel.Object);
@@ -158,9 +176,14 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
             this.repository.Setup(x => x.Models).Returns(collection);
             this.repository.Setup(x => x.GetPackageByGuid(firstModel.Object.PackageGUID)).Returns(firstModel.Object);
             this.repository.Setup(x => x.GetPackageByGuid(subPackage.Object.PackageGUID)).Returns(subPackage.Object);
-
+            this.repository.Setup(x => x.GetPackageByID(firstModel.Object.PackageID)).Returns(firstModel.Object);
+            this.repository.Setup(x => x.GetPackageByID(subPackage.Object.PackageID)).Returns(subPackage.Object);
+            this.repository.Setup(x => x.GetPackageByID(secondModel.Object.PackageID)).Returns(secondModel.Object);
             this.dstController.Setup(x => x.CurrentRepository).Returns(this.repository.Object);
             this.dstController.Setup(x => x.RetrieveAllParentsIdPackage(It.IsAny<IEnumerable<Element>>())).Returns(new List<int>() { 1, 3 });
+
+            this.cacheService.Setup(x => x.GetAllElements()).Returns(allElements);
+            this.cacheService.Setup(x => x.PackageIds).Returns([1, 2,3]);
         }
 
         [TearDown]

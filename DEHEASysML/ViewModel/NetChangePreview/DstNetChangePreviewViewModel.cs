@@ -38,6 +38,7 @@ namespace DEHEASysML.ViewModel.NetChangePreview
     using DEHEASysML.Enumerators;
     using DEHEASysML.Events;
     using DEHEASysML.Extensions;
+    using DEHEASysML.Services.Cache;
     using DEHEASysML.Utils.Stereotypes;
     using DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser;
     using DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows;
@@ -66,13 +67,19 @@ namespace DEHEASysML.ViewModel.NetChangePreview
         private readonly List<EnterpriseArchitectObjectBaseRowViewModel> highlightedRows = new();
 
         /// <summary>
+        /// Gets the injected <see cref="ICacheService"/>
+        /// </summary>
+        private readonly ICacheService cacheService;
+
+        /// <summary>
         /// Initializes a new <see cref="DstNetChangePreviewViewModel" />
         /// </summary>
         /// <param name="dstController">The <see cref="IDstController" /></param>
-        public DstNetChangePreviewViewModel(IDstController dstController)
+        /// <param name="cacheService">The <see cref="ICacheService"/></param>
+        public DstNetChangePreviewViewModel(IDstController dstController, ICacheService cacheService)
         {
             this.dstController = dstController;
-
+            this.cacheService = cacheService;
             this.InitializeCommandsAndObservables();
             this.ComputeValues(true);
         }
@@ -318,14 +325,7 @@ namespace DEHEASysML.ViewModel.NetChangePreview
         {
             this.Things.Clear();
 
-            var packages = new List<Package>();
-
-            for (short modelCount = 0; modelCount < this.dstController.CurrentRepository.Models.Count; modelCount++)
-            {
-                packages.Add((Package)this.dstController.CurrentRepository.Models.GetAt(modelCount));
-            }
-
-            this.BuildTree(packages);
+            this.BuildTree(this.dstController.CurrentRepository, this.cacheService.GetAllElements(), this.cacheService.PackageIds);
         }
 
         /// <summary>

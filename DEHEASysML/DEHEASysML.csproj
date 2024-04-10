@@ -49,12 +49,4 @@
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </Resource>
   </ItemGroup>
-  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
-  <Target Name="AfterBuild">
-      <Exec Command="C:\Windows\Microsoft.NET\Framework\v4.0.30319\RegAsm.exe DEHEASysML.dll /codebase" ConsoleToMSBuild="true" WorkingDirectory="$(OutputPath)" />
-  </Target>
-  <Target Name="BeforeBuild">
-      <Exec Command="C:\Windows\Microsoft.NET\Framework\v4.0.30319\RegAsm.exe ReactiveUI.dll /tlb" ConsoleToMSBuild="true" WorkingDirectory="$(OutputPath)" />
-      <Exec Command="C:\Windows\Microsoft.NET\Framework\v4.0.30319\RegAsm.exe CDP4Dal.dll /tlb" ConsoleToMSBuild="true" WorkingDirectory="$(OutputPath)" />
-  </Target>
 </Project>

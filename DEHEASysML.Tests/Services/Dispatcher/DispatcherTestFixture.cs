@@ -33,6 +33,7 @@ namespace DEHEASysML.Tests.Services.Dispatcher
 
     using DEHEASysML.DstController;
     using DEHEASysML.Services.Dispatcher;
+    using DEHEASysML.Services.Selection;
     using DEHEASysML.ViewModel;
     using DEHEASysML.ViewModel.Dialogs.Interfaces;
     using DEHEASysML.Views.Dialogs;
@@ -57,6 +58,7 @@ namespace DEHEASysML.Tests.Services.Dispatcher
         private Mock<IStatusBarControlViewModel> statusBar;
         private Mock<INavigationService> navigationService;
         private Mock<IDstMappingConfigurationDialogViewModel> dstMappingDialog;
+        private Mock<ISelectionService> selectionService;
 
         [SetUp]
         public void Setup()
@@ -95,7 +97,9 @@ namespace DEHEASysML.Tests.Services.Dispatcher
             containerBuilder.RegisterInstance(this.dstMappingDialog.Object).As<IDstMappingConfigurationDialogViewModel>();
             AppContainer.Container = containerBuilder.Build();
 
-            this.dispatcher = new Dispatcher(this.dstController.Object, this.statusBar.Object, this.navigationService.Object);
+            this.selectionService = new Mock<ISelectionService>();
+
+            this.dispatcher = new Dispatcher(this.dstController.Object, this.statusBar.Object, this.navigationService.Object, this.selectionService.Object);
         }
 
         [Test]
@@ -177,14 +181,12 @@ namespace DEHEASysML.Tests.Services.Dispatcher
         [Test]
         public void VerifyMapCommands()
         {
-            this.dstController.Setup(x => x.GetAllElementsInsidePackage(this.repository.Object)).Returns(new List<Element>());
-            this.dstController.Setup(x => x.GetAllSelectedElements(this.repository.Object)).Returns(new List<Element>());
+            this.selectionService.Setup(x => x.GetSelectedElements(this.repository.Object)).Returns(new List<Element>());
             Assert.DoesNotThrow(() => this.dispatcher.MapSelectedElementsCommand(this.repository.Object));
             Assert.DoesNotThrow(() => this.dispatcher.MapSelectedPackageCommand(this.repository.Object));
 
             var element = new Mock<Element>();
-            this.dstController.Setup(x => x.GetAllElementsInsidePackage(this.repository.Object)).Returns(new List<Element>(){element.Object});
-            this.dstController.Setup(x => x.GetAllSelectedElements(this.repository.Object)).Returns(new List<Element>() { element.Object });
+            this.selectionService.Setup(x => x.GetSelectedElements(this.repository.Object)).Returns(new List<Element>(){element.Object});
 
             Assert.DoesNotThrow(() => this.dispatcher.MapSelectedElementsCommand(this.repository.Object));
             Assert.DoesNotThrow(() => this.dispatcher.MapSelectedPackageCommand(this.repository.Object));

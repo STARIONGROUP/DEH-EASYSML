@@ -1,6 +1,6 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
-// <copyright file="ModelRowViewModel.cs" company="RHEA System S.A.">
-// Copyright (c) 2020-2022 RHEA System S.A.
+// <copyright file="ISelectionService.cs" company="RHEA System S.A.">
+// Copyright (c) 2020-2024 RHEA System S.A.
 // 
 // Author: Sam Gerené, Alex Vorobiev, Alexander van Delft, Nathanael Smiechowski, Antoine Théate.
 // 
@@ -22,21 +22,22 @@
 // </copyright>
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
+namespace DEHEASysML.Services.Selection
 {
+    using System.Collections.Generic;
+
     using EA;
 
     /// <summary>
-    /// The <see cref="ModelRowViewModel" /> represents the root element of a Model
+    /// The <see cref="ISelectionService" /> provides selection of any EA element based on filtering
     /// </summary>
-    public class ModelRowViewModel : PackageRowViewModel
+    public interface ISelectionService
     {
         /// <summary>
-        /// Initialize a new <see cref="ModelRowViewModel"/>
+        /// Gets all <see cref="Element" /> that have been selected or that is contained in selected <see cref="Package" />
         /// </summary>
-        /// <param name="eaObject">A <see cref="Package"/></param>
-        public ModelRowViewModel(Package eaObject): base(null, eaObject)
-        {
-        }
+        /// <param name="repository">The <see cref="Repository" /></param>
+        /// <returns>A collection of retrieved <see cref="Element" /> with the hierarchy of package id</returns>
+        IReadOnlyCollection<Element> GetSelectedElements(Repository repository);
     }
 }

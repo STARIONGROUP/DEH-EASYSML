@@ -39,6 +39,7 @@ namespace DEHEASysML.Tests.DstController
 
     using DEHEASysML.DstController;
     using DEHEASysML.Enumerators;
+    using DEHEASysML.Services.Cache;
     using DEHEASysML.Services.MappingConfiguration;
     using DEHEASysML.Tests.Utils.Stereotypes;
     using DEHEASysML.Utils.Stereotypes;
@@ -79,6 +80,7 @@ namespace DEHEASysML.Tests.DstController
         private Mock<IMappingConfigurationService> mappingConfiguration;
         private Iteration iteration;
         private Mock<Element> blockElement;
+        private Mock<ICacheService> cacheService;
 
         [SetUp]
         public void Setup()
@@ -153,9 +155,10 @@ namespace DEHEASysML.Tests.DstController
                 x.Append(It.IsAny<string>(), It.IsAny<StatusBarMessageSeverity>()));
 
             this.mappingConfiguration = new Mock<IMappingConfigurationService>();
+            this.cacheService = new Mock<ICacheService>();
 
             this.dstController = new DstController(this.hubController.Object, this.mappingEngine.Object, this.statusBarControlViewModel.Object,
-                this.exchangeService.Object, this.navigationService.Object, this.mappingConfiguration.Object);
+                this.exchangeService.Object, this.navigationService.Object, this.mappingConfiguration.Object, this.cacheService.Object);
         }
 
         public Mock<Package> CreatePackage(int id, int parentId)
@@ -220,19 +223,6 @@ namespace DEHEASysML.Tests.DstController
         }
 
         [Test]
-        public void VerifyGetElementsFromModel()
-        {
-            var model = this.package.Object;
-            var requirements = this.dstController.GetAllRequirements(model);
-            var valueTypes = this.dstController.GetAllValueTypes(model);
-            var blocks = this.dstController.GetAllBlocks(model);
-
-            Assert.AreEqual(1, requirements.Count);
-            Assert.AreEqual(1, valueTypes.Count);
-            Assert.AreEqual(1, blocks.Count);
-        }
-
-        [Test]
         public void VerifyRetrievePort()
         {
             this.dstController.CurrentRepository = this.repository.Object;
@@ -243,7 +233,7 @@ namespace DEHEASysML.Tests.DstController
             var propertyType = new Mock<Element>();
             propertyType.Setup(x => x.Connectors).Returns(new EnterpriseArchitectCollection());
 
-            this.repository.Setup(x => x.GetElementByID(port.Object.PropertyType)).Returns(propertyType.Object);
+            this.cacheService.Setup(x => x.GetElementById(port.Object.PropertyType)).Returns(propertyType.Object);
             var (elementPort, interfacePort) = this.dstController.ResolvePort(port.Object);
             Assert.IsNull(elementPort);
             Assert.AreEqual(propertyType.Object, interfacePort);
@@ -256,8 +246,8 @@ namespace DEHEASysML.Tests.DstController
             var interfaceBlock = new Mock<Element>();
             var portblock = new Mock<Element>();
 
-            this.repository.Setup(x => x.GetElementByID(connector.Object.ClientID)).Returns(portblock.Object);
-            this.repository.Setup(x => x.GetElementByID(connector.Object.SupplierID)).Returns(interfaceBlock.Object);
+            this.cacheService.Setup(x => x.GetElementById(connector.Object.ClientID)).Returns(portblock.Object);
+            this.cacheService.Setup(x => x.GetElementById(connector.Object.SupplierID)).Returns(interfaceBlock.Object);
             propertyType.Setup(x => x.Connectors).Returns(new EnterpriseArchitectCollection(){connector.Object});
 
             (elementPort, interfacePort) = this.dstController.ResolvePort(port.Object);
@@ -285,47 +275,6 @@ namespace DEHEASysML.Tests.DstController
             Assert.AreEqual(4, packagesId.Count);
             Assert.IsFalse(packagesId.Contains(0));
             Assert.IsFalse(packagesId.Contains(6));
-        }
-
-        [Test]
-        public void VerifyGetAllSelectedElements()
-        {
-            var collection = new EnterpriseArchitectCollection();
-            this.repository.Setup(x => x.GetTreeSelectedElements()).Returns(collection);
-            this.dstController.CurrentRepository = this.repository.Object;
-
-            Assert.IsEmpty(this.dstController.GetAllSelectedElements(this.repository.Object));
-            var valueProperty = new Mock<Element>();
-            valueProperty.Setup(x => x.Stereotype).Returns(StereotypeKind.ValueProperty.ToString());
-            collection.Add(valueProperty.Object);
-            Assert.IsEmpty(this.dstController.GetAllSelectedElements(this.repository.Object));
-
-            var block = new Mock<Element>();
-            block.Setup(x => x.HasStereotype(StereotypeKind.Block.ToString().ToLower())).Returns(true);
-            collection.Add(block.Object);
-            Assert.AreEqual(1,this.dstController.GetAllSelectedElements(this.repository.Object).Count());
-
-            var requirement = new Mock<Element>();
-            requirement.Setup(x => x.HasStereotype(StereotypeKind.Requirement.ToString().ToLower())).Returns(true);
-            collection.Add(requirement.Object);
-            Assert.AreEqual(2, this.dstController.GetAllSelectedElements(this.repository.Object).Count());
-
-            collection.Add(block.Object);
-            Assert.AreEqual(2, this.dstController.GetAllSelectedElements(this.repository.Object).Count());
-
-            collection.Add(5);
-            Assert.AreEqual(2, this.dstController.GetAllSelectedElements(this.repository.Object).Count());
-        }
-
-        [Test]
-        public void VerifyGetAllElementsInsidePackage()
-        {
-            this.repository.Setup(x => x.GetTreeSelectedPackage()).Returns(this.package.Object);
-            Assert.AreEqual(2, this.dstController.GetAllElementsInsidePackage(this.repository.Object).Count());
-
-            this.dstController.CreatedElements.Add(this.blockElement.Object);
-
-            Assert.AreEqual(1, this.dstController.GetAllElementsInsidePackage(this.repository.Object).Count());
         }
 
         [Test]
@@ -656,12 +605,8 @@ namespace DEHEASysML.Tests.DstController
             element.Setup(x => x.Stereotype).Returns("block");
             element.Setup(x => x.HasStereotype(StereotypeKind.Block.ToString().ToLower())).Returns(true);
 
-            this.repository.Setup(x => x.GetElementsByQuery("Simple", "element")).Returns(new EnterpriseArchitectCollection()
-            {
-                element.Object
-            });
-
-            this.repository.Setup(x => x.GetElementsByQuery("Simple", "req")).Returns(new EnterpriseArchitectCollection());
+            this.cacheService.Setup(x => x.GetElementsOfStereotype(StereotypeKind.Requirement)).Returns([]);
+            this.cacheService.Setup(x => x.GetElementsOfStereotype(StereotypeKind.Block)).Returns([element.Object]);
 
             Assert.IsFalse(this.dstController.TryGetElement("element", StereotypeKind.Requirement, out var retrievedElement));
             Assert.IsFalse(this.dstController.TryGetElement("req", StereotypeKind.Requirement, out  retrievedElement));
@@ -673,10 +618,7 @@ namespace DEHEASysML.Tests.DstController
             packageElement.Setup(x => x.Type).Returns("Package");
             this.repository.Setup(x => x.GetPackageByGuid(packageElement.Object.ElementGUID)).Returns(this.package.Object);
 
-            this.repository.Setup(x => x.GetElementsByQuery("Simple", "pack")).Returns(new EnterpriseArchitectCollection()
-            {
-                packageElement.Object
-            });
+            this.cacheService.Setup(x => x.GetElementsOfMetaType(StereotypeKind.Package)).Returns([packageElement.Object]);
 
             Assert.IsFalse(this.dstController.TryGetPackage("req", out var retrievedPackage));
             Assert.IsTrue(this.dstController.TryGetPackage("pack", out  retrievedPackage));
@@ -748,8 +690,7 @@ namespace DEHEASysML.Tests.DstController
         {
             this.dstController.CurrentRepository = this.repository.Object;
 
-            this.repository.Setup(x => x.GetElementsByQuery("Extended", StereotypeKind.ValueType.ToString()))
-                .Returns(new EnterpriseArchitectCollection());
+            this.cacheService.Setup(x => x.GetElementsOfStereotype(StereotypeKind.ValueType)).Returns([]);
 
             var parameterType = new SimpleQuantityKind()
             {
@@ -770,8 +711,7 @@ namespace DEHEASysML.Tests.DstController
             existingValueType.Setup(x => x.Name).Returns("mass");
             existingValueType.Setup(x => x.TaggedValuesEx).Returns(new EnterpriseArchitectCollection());
 
-            this.repository.Setup(x => x.GetElementsByQuery("Extended", StereotypeKind.ValueType.ToString()))
-                .Returns(new EnterpriseArchitectCollection(){existingValueType.Object});
+            this.cacheService.Setup(x => x.GetElementsOfStereotype(StereotypeKind.ValueType)).Returns([existingValueType.Object]);
 
             Assert.IsFalse(this.dstController.TryGetValueType(parameterType, scale, out valueType));
             existingValueType.Setup(x => x.Name).Returns("mass[kg]");
@@ -803,14 +743,9 @@ namespace DEHEASysML.Tests.DstController
             existingPackageElement.Setup(x => x.Name).Returns($"COMET_{StereotypeKind.ValueType}s");
             var existingPackage = new Mock<Package>();
 
-            this.repository.Setup(x => x.GetElementsByQuery("Simple", existingPackageElement.Object.Name))
-                .Returns(new EnterpriseArchitectCollection() { existingPackageElement.Object });
-
-            this.repository.Setup(x => x.GetElementsByQuery("Simple", $"COMET_{StereotypeKind.Block}s"))
-                .Returns(new EnterpriseArchitectCollection());
+            this.cacheService.Setup(x => x.GetElementsOfMetaType(StereotypeKind.Package)).Returns([existingPackageElement.Object]);
 
             this.repository.Setup(x => x.GetPackageByGuid(existingPackageElement.Object.ElementGUID)).Returns(existingPackage.Object);
-
             var defaultBlockPackage = this.dstController.GetDefaultPackage(StereotypeKind.Block);
 
             Assert.IsNotNull(defaultBlockPackage);

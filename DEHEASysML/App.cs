@@ -36,8 +36,10 @@ namespace DEHEASysML
     using CDP4Common.EngineeringModelData;
 
     using DEHEASysML.DstController;
+    using DEHEASysML.Services.Cache;
     using DEHEASysML.Services.Dispatcher;
     using DEHEASysML.Services.MappingConfiguration;
+    using DEHEASysML.Services.Selection;
     using DEHEASysML.ViewModel;
     using DEHEASysML.ViewModel.Dialogs;
     using DEHEASysML.ViewModel.Dialogs.Interfaces;
@@ -53,8 +55,6 @@ namespace DEHEASysML
     using DEHPCommon.Services.AdapterVersionService;
     using DEHPCommon.Services.ObjectBrowserTreeSelectorService;
     using DEHPCommon.UserInterfaces.ViewModels.Interfaces;
-
-    using DevExpress.Xpf.Core;
 
     using EA;
 
@@ -469,6 +469,8 @@ namespace DEHEASysML
             containerBuilder.RegisterType<DstController.DstController>().As<IDstController>().SingleInstance();
             containerBuilder.RegisterType<MappingEngine>().As<IMappingEngine>().WithParameter(MappingEngine.ParameterName, Assembly.GetExecutingAssembly());
             containerBuilder.RegisterType<MappingConfigurationService>().As<IMappingConfigurationService>().SingleInstance();
+            containerBuilder.RegisterType<SelectionService>().As<ISelectionService>().SingleInstance();
+            containerBuilder.RegisterType<CacheService>().As<ICacheService>().SingleInstance();
         }
 
         /// <summary>

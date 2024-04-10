@@ -39,6 +39,7 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
         protected ElementRowViewModel(EnterpriseArchitectObjectBaseRowViewModel parent, Element eaObject)
             : base(parent, eaObject)
         {
+            this.PackageId = eaObject.PackageID;
         }
 
         /// <summary>

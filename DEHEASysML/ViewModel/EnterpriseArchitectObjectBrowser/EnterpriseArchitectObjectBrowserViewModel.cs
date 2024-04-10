@@ -26,13 +26,15 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Linq;
 
+    using DEHEASysML.Extensions;
+    using DEHEASysML.Enumerators;
     using DEHEASysML.ViewModel.Comparers;
     using DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Interfaces;
     using DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows;
 
-    using DEHPCommon.Extensions;
     using DEHPCommon.UserInterfaces.ViewModels;
     using DEHPCommon.UserInterfaces.ViewModels.Interfaces;
 
@@ -96,7 +98,7 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser
         /// <summary>
         /// Gets the collection of <see cref="EnterpriseArchitectObjectBaseRowViewModel" /> to be displayed in the tree
         /// </summary>
-        public ReactiveList<EnterpriseArchitectObjectBaseRowViewModel> Things { get; } = new() { ChangeTrackingEnabled = true};
+        public ReactiveList<EnterpriseArchitectObjectBaseRowViewModel> Things { get; } = new() {ChangeTrackingEnabled = true};
 
         /// <summary>
         /// Gets the Context Menu for the implementing view model
@@ -128,30 +130,33 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser
         /// <summary>
         /// Build the tree to display the given <see cref="Element"/>
         /// </summary>
-        /// <param name="models">The collection of <see cref="Package" /> that represents Model</param>
+        /// <param name="repository"></param>
         /// <param name="elements">The collection of <see cref="Element"/> to display</param>
         /// <param name="packagesId">The Id of <see cref="Package" /> to display</param>
-        public void BuildTree(IEnumerable<Package> models, IEnumerable<Element> elements, IEnumerable<int> packagesId)
+        public void BuildTree(Repository repository, IEnumerable<Element> elements, IEnumerable<int> packagesId)
         {
             var visibleElements = elements.ToList();
             var packagesIdList = packagesId.ToList();
 
-            foreach (var repositoryModel in models.Where(x => packagesIdList.Contains(x.PackageID)))
-            {
-                this.Things.SortedInsert(new ModelRowViewModel(repositoryModel, visibleElements, packagesIdList), ContainedRowsComparer);
-            }
-        }
+            var packagesRow = new List<PackageRowViewModel>();
+            packagesRow.AddRange(repository.Models.OfType<Package>().Where(x => packagesIdList.Contains(x.PackageID)).Select(x => new ModelRowViewModel(x)));
+            packagesRow.AddRange(packagesIdList.Select(packageId => new PackageRowViewModel(null, repository.GetPackageByID(packageId))));
 
-        /// <summary>
-        /// Build the tree to display all <see cref="Element"/>
-        /// </summary>
-        /// <param name="models">The collection of <see cref="Package"/></param>
-        public void BuildTree(IEnumerable<Package> models)
-        {
-            foreach (var model in models)
+            var elementsRows = visibleElements.Where(x => x.HasStereotype(StereotypeKind.Requirement))
+                .Select(x => new ElementRequirementRowViewModel(null, x))
+                .ToList<ElementRowViewModel>();
+            
+            elementsRows.AddRange( visibleElements.Where(x => x.HasStereotype(StereotypeKind.Block)).Select(x => new BlockRowViewModel(null, x, false)));
+
+            var allRows = new List<EnterpriseArchitectObjectBaseRowViewModel>(packagesRow);
+            allRows.AddRange(elementsRows);
+
+            foreach (var packageRow in packagesRow)
             {
-                this.Things.Add(new ModelRowViewModel(model));
+                packageRow.SetCurrentPackageAsPackage(allRows.Where(x => x.PackageId == packageRow.RepresentedObject.PackageID));
             }
+
+            this.Things.AddRange(packagesRow.OfType<ModelRowViewModel>());
         }
 
         /// <summary>

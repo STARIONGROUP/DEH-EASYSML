@@ -185,27 +185,6 @@ namespace DEHEASysML.DstController
         void Map(List<IMappedElementRowViewModel> elements, MappingDirection mappingDirectionToMap);
 
         /// <summary>
-        /// Gets all requirements present inside a model
-        /// </summary>
-        /// <param name="model">The model</param>
-        /// <returns>A collection of <see cref="Element" /> representing requirement</returns>
-        List<Element> GetAllRequirements(IDualPackage model);
-
-        /// <summary>
-        /// Gets all blocks present inside a model
-        /// </summary>
-        /// <param name="model">The model</param>
-        /// <returns>A collection of <see cref="Element" /> representing block</returns>
-        List<Element> GetAllBlocks(IDualPackage model);
-
-        /// <summary>
-        /// Gets all ValueTypes present inside a model
-        /// </summary>
-        /// <param name="model">The model</param>
-        /// <returns>A collection of <see cref="Element" /> representing ValueType</returns>
-        List<Element> GetAllValueTypes(IDualPackage model);
-
-        /// <summary>
         /// Gets the port <see cref="Element" /> and the interface <see cref="Element" /> of a port
         /// </summary>
         /// <param name="port">The port</param>
@@ -218,20 +197,6 @@ namespace DEHEASysML.DstController
         /// <param name="connector">The <see cref="Connector" /></param>
         /// <returns>a <see cref="Tuple{T}" /> containing source and target</returns>
         (Element source, Element target) ResolveConnector(Connector connector);
-
-        /// <summary>
-        /// Retrieves all selected <see cref="Element" />
-        /// </summary>
-        /// <param name="repository">The <see cref="Repository" /></param>
-        /// <returns>A collection of selected  <see cref="Element" /></returns>
-        IEnumerable<Element> GetAllSelectedElements(Repository repository);
-
-        /// <summary>
-        /// Retrieves all <see cref="Element" /> from the selected <see cref="Package" />
-        /// </summary>
-        /// <param name="repository">The <see cref="Repository" /></param>
-        /// <returns>A collection of <see cref="Element" /></returns>
-        IEnumerable<Element> GetAllElementsInsidePackage(Repository repository);
 
         /// <summary>
         /// Retrieve all Id of <see cref="Package" /> and its parent hierarchy that contains  <see cref="Element" /> inside the

@@ -132,6 +132,11 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
         }
 
         /// <summary>
+        /// Gets or sets the id of the containing Package
+        /// </summary>
+        public int PackageId { get; protected set; }
+
+        /// <summary>
         /// Compute the current row to initializes properties
         /// </summary>
         public abstract void ComputeRow();

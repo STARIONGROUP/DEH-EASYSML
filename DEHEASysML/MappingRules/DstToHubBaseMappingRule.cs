@@ -26,6 +26,7 @@ namespace DEHEASysML.MappingRules
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
 
     using CDP4Common.CommonData;
     using CDP4Common.EngineeringModelData;
@@ -162,16 +163,24 @@ namespace DEHEASysML.MappingRules
         /// <param name="thing">The <see cref="ICategorizableThing"/></param>
         protected void MapStereotypesToCategory(Element element, ICategorizableThing thing)
         {
-            foreach (var stereotype in element.GetStereotypeList().Split(','))
+            var stopwatch = Stopwatch.StartNew();
+            var stereotypes = element.GetStereotypeList().Split(',');
+
+            foreach (var stereotype in stereotypes)
             {
                 if (this.HubController.TryGetThingBy(x => string.Equals(x.Name, stereotype, StringComparison.InvariantCultureIgnoreCase)
                                                           && !x.IsDeprecated, ClassKind.Category, out Category category)
                     || this.TryCreateCategory((stereotype.GetShortName(), stereotype), out category, ((Thing)thing).ClassKind))
                 {
-                    thing.Category.RemoveAll(x => x.Iid == category.Iid);
-                    thing.Category.Add(category);
+                    if (!thing.Category.Exists(x => x.Iid == category.Iid))
+                    {
+                        thing.Category.Add(category);
+                    }
                 }
             }
+
+            stopwatch.Stop();
+            this.Logger.Debug("Mapping of {0} stereotype to Category for Element {1} took {2}[ms]", stereotypes.Length, element.Name, stopwatch.ElapsedMilliseconds);
         }
     }
 }

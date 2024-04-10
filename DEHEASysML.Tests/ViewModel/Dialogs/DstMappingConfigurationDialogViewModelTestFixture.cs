@@ -102,7 +102,7 @@ namespace DEHEASysML.Tests.ViewModel.Dialogs
             this.eaObjectBrowser.Setup(x => x.SelectedThings).Returns(this.eaObjectBrowserSelectedThings);
             
             this.eaObjectBrowser.Setup(x =>
-                x.BuildTree(It.IsAny<IEnumerable<Package>>(), It.IsAny<IEnumerable<Element>>(), It.IsAny<IEnumerable<int>>()));
+                x.BuildTree(It.IsAny<Repository>(), It.IsAny<IEnumerable<Element>>(), It.IsAny<IEnumerable<int>>()));
 
             this.objectBrowser = new Mock<IObjectBrowserViewModel>();
             this.objectBrowser.Setup(x => x.SelectedThings).Returns(this.objectBrowserSelectedThings);
