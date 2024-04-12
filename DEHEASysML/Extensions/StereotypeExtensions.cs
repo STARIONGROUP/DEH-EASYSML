@@ -225,8 +225,10 @@ namespace DEHEASysML.Extensions
         /// <returns>The Id of the Requirement</returns>
         public static string GetRequirementId(this Element requirement)
         {
-            return requirement.TaggedValuesEx.OfType<TaggedValue>()
+            var requirementId = requirement.TaggedValuesEx.OfType<TaggedValue>()
                 .FirstOrDefault(x => x.Name.Equals("id", StringComparison.InvariantCultureIgnoreCase))?.Value;
+
+            return string.IsNullOrEmpty(requirementId) ? "ID NOT SET" : requirementId;
         }
 
         /// <summary>

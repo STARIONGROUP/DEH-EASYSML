@@ -35,7 +35,6 @@ namespace DEHEASysML.MappingRules
     using DEHEASysML.ViewModel.Rows;
 
     using DEHPCommon;
-    using DEHPCommon.Enumerators;
     using DEHPCommon.HubController.Interfaces;
     using DEHPCommon.MappingRules.Core;
 

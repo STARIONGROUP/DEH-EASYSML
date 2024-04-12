@@ -37,7 +37,8 @@ namespace DEHEASysML.Services.Selection
         /// Gets all <see cref="Element" /> that have been selected or that is contained in selected <see cref="Package" />
         /// </summary>
         /// <param name="repository">The <see cref="Repository" /></param>
+        /// <param name="isPackageSelection">Value asserting that we should select <see cref="Element"/> based on the package</param>
         /// <returns>A collection of retrieved <see cref="Element" /> with the hierarchy of package id</returns>
-        IReadOnlyCollection<Element> GetSelectedElements(Repository repository);
+        IReadOnlyCollection<Element> GetSelectedElements(Repository repository, bool isPackageSelection);
     }
 }

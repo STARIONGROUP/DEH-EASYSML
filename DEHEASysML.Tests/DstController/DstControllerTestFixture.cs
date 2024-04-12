@@ -231,8 +231,9 @@ namespace DEHEASysML.Tests.DstController
             port.Setup(x => x.PropertyType).Returns(322);
 
             var propertyType = new Mock<Element>();
-            propertyType.Setup(x => x.Connectors).Returns(new EnterpriseArchitectCollection());
+            propertyType.Setup(x => x.ElementID).Returns(322);
 
+            this.cacheService.Setup(x => x.GetConnectorsOfElement(propertyType.Object.ElementID)).Returns([]);
             this.cacheService.Setup(x => x.GetElementById(port.Object.PropertyType)).Returns(propertyType.Object);
             var (elementPort, interfacePort) = this.dstController.ResolvePort(port.Object);
             Assert.IsNull(elementPort);
@@ -248,7 +249,7 @@ namespace DEHEASysML.Tests.DstController
 
             this.cacheService.Setup(x => x.GetElementById(connector.Object.ClientID)).Returns(portblock.Object);
             this.cacheService.Setup(x => x.GetElementById(connector.Object.SupplierID)).Returns(interfaceBlock.Object);
-            propertyType.Setup(x => x.Connectors).Returns(new EnterpriseArchitectCollection(){connector.Object});
+            this.cacheService.Setup(x => x.GetConnectorsOfElement(propertyType.Object.ElementID)).Returns([connector.Object]);
 
             (elementPort, interfacePort) = this.dstController.ResolvePort(port.Object);
             Assert.AreEqual(elementPort, portblock.Object);
@@ -331,7 +332,7 @@ namespace DEHEASysML.Tests.DstController
             Assert.AreEqual(2,this.dstController.DstMapResult.Count);
 
             this.statusBarControlViewModel.Verify(x => 
-                    x.Append(It.IsAny<string>(), It.IsAny<StatusBarMessageSeverity>()), Times.Exactly(5));
+                    x.Append(It.IsAny<string>(), It.IsAny<StatusBarMessageSeverity>()), Times.Exactly(8));
 
             this.mappingEngine.Setup(x => x.Map(It.IsAny<(bool, List<ElementDefinitionMappedElement>)>()))
                 .Returns(new List<MappedElementDefinitionRowViewModel>()

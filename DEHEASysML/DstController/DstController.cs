@@ -26,6 +26,7 @@ namespace DEHEASysML.DstController
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Linq;
     using System.Reactive.Linq;
 
@@ -55,6 +56,8 @@ namespace DEHEASysML.DstController
     using DEHPCommon.UserInterfaces.ViewModels;
     using DEHPCommon.UserInterfaces.ViewModels.Interfaces;
     using DEHPCommon.UserInterfaces.Views;
+
+    using DevExpress.Mvvm.Native;
 
     using EA;
 
@@ -578,7 +581,7 @@ namespace DEHEASysML.DstController
         public (Element port, Element interfaceElement) ResolvePort(Element port)
         {
             var propertyTypeElement = this.cacheService.GetElementById(port.PropertyType);
-            var connector = propertyTypeElement.GetAllConnectorsOfElement().FirstOrDefault(x => x.Type.AreEquals(StereotypeKind.Usage));
+            var connector = this.cacheService.GetConnectorsOfElement(propertyTypeElement.ElementID).FirstOrDefault(x => x.Type.AreEquals(StereotypeKind.Usage));
 
             return connector == null ? (null, propertyTypeElement) : this.ResolveConnector(connector);
         }
@@ -606,7 +609,7 @@ namespace DEHEASysML.DstController
         {
             blockDefinition = null;
 
-            var connector = interfaceElement.GetAllConnectorsOfElement().FirstOrDefault(x => x.Type.AreEquals(StereotypeKind.Realisation));
+            var connector = this.cacheService.GetConnectorsOfElement(interfaceElement.ElementID).FirstOrDefault(x => x.Type.AreEquals(StereotypeKind.Realisation));
 
             if (connector != null)
             {
@@ -673,13 +676,15 @@ namespace DEHEASysML.DstController
         /// <param name="mappingDirectionToMap">The <see cref="MappingDirection" /></param>
         public void Map(List<IMappedElementRowViewModel> elements, MappingDirection mappingDirectionToMap)
         {
+            var stopwatch = Stopwatch.StartNew();
+
             if (mappingDirectionToMap == MappingDirection.FromDstToHub)
             {
                 this.DstMapResult.Clear();
                 var mappedElement = this.Map(elements.OfType<EnterpriseArchitectBlockElement>().ToList(), true);
                 mappedElement.AddRange(this.Map(elements.OfType<EnterpriseArchitectRequirementElement>().ToList(), true));
                 var mappedRelationships = this.MapToBinaryRelationships(mappedElement);
-                this.MappedConnectorsToBinaryRelationships.RemoveAll(x => mappedRelationships.Any(mapped => x.Iid == mapped.Iid));
+                this.MappedConnectorsToBinaryRelationships.RemoveAll(x => mappedRelationships.Exists(mapped => x.Iid == mapped.Iid));
                 this.MappedConnectorsToBinaryRelationships.AddRange(mappedRelationships);
                 this.DstMapResult.AddRange(mappedElement);
             }
@@ -691,7 +696,7 @@ namespace DEHEASysML.DstController
                 hubMappedElement.AddRange(this.Map(elements.OfType<RequirementMappedElement>().ToList(), true));
                 var mappedConnector = this.MapToConnectors(hubMappedElement);
 
-                this.CreatedConnectors.RemoveAll(x => mappedConnector.Any(mapped => mapped.Stereotype == x.Stereotype &&
+                this.CreatedConnectors.RemoveAll(x => mappedConnector.Exists(mapped => mapped.Stereotype == x.Stereotype &&
                                                                                     mapped.ClientID == x.ClientID
                                                                                     && mapped.SupplierID == x.SupplierID));
 
@@ -699,6 +704,9 @@ namespace DEHEASysML.DstController
                 this.HubMapResult.AddRange(hubMappedElement);
                 this.shouldIgnoreEvents = false;
             }
+
+            stopwatch.Stop();
+            this.statusBar.Append($"Mapping done in {stopwatch.ElapsedMilliseconds}[ms]");
         }
 
         /// <summary>
@@ -749,9 +757,9 @@ namespace DEHEASysML.DstController
                 var stateDependsParameters = this.SelectedDstMapResultForTransfer.OfType<Parameter>()
                     .Where(x => x.StateDependence != null);
 
-                this.UpdateParametersAndValueSets(stateDependsParameters, iterationClone, transaction);
-
                 this.PrepareThingsForTransfer(iterationClone, transaction);
+
+                this.UpdateParametersAndValueSets(stateDependsParameters, iterationClone, transaction);
 
                 this.mappingConfigurationService.PersistExternalIdentifierMap(transaction, iterationClone);
                 transaction.CreateOrUpdate(iterationClone);
@@ -762,17 +770,18 @@ namespace DEHEASysML.DstController
                 await this.hubController.Refresh();
                 await this.UpdateParametersValueSets();
                 await this.hubController.Refresh();
+                this.SelectedGroupsForTransfer.Clear();
+                this.SelectedDstMapResultForTransfer.Clear();
+                this.LoadMapping();
             }
             catch (Exception e)
             {
+                this.statusBar.Append($"Error occured during transfer to COMET: {e.Message}");
                 this.logger.Error(e);
                 throw;
             }
             finally
             {
-                this.SelectedGroupsForTransfer.Clear();
-                this.SelectedDstMapResultForTransfer.Clear();
-                this.LoadMapping();
                 this.IsBusy = false;
             }
         }
@@ -1114,7 +1123,9 @@ namespace DEHEASysML.DstController
         /// <returns>A value indicating if the <see cref="PossibleFiniteStateList" /> has changed</returns>
         private bool HasPossibleFiniteStateListChanged(PossibleFiniteStateList possibleFiniteStateList)
         {
-            var originalPossibleStates = ((PossibleFiniteStateList)possibleFiniteStateList.Original).PossibleState;
+            var originalPossibleStates = (PossibleFiniteStateList)possibleFiniteStateList.Original == null 
+                ? possibleFiniteStateList.PossibleState
+                : ((PossibleFiniteStateList)possibleFiniteStateList.Original).PossibleState; 
 
             if (originalPossibleStates.Count != possibleFiniteStateList.PossibleState.Count)
             {
@@ -1250,11 +1261,13 @@ namespace DEHEASysML.DstController
         /// <returns>The number of mapped things loaded</returns>
         private int LoadMappingFromHubToDst()
         {
+            this.HubMapResult.ForEach(x => x.Dispose());
+            this.HubMapResult.Clear();
+
             if (this.mappingConfigurationService.LoadMappingFromHubToDst(this.CurrentRepository)
                     is not { } mappedElements || !mappedElements.Any())
             {
                 this.SelectedHubMapResultForTransfer.Clear();
-                this.HubMapResult.Clear();
                 return 0;
             }
 
@@ -1556,12 +1569,14 @@ namespace DEHEASysML.DstController
         /// <returns>The number of mapped things loaded</returns>
         private int LoadMappingFromDstToHub()
         {
+            this.DstMapResult.ForEach(x => x.Dispose());
+            this.DstMapResult.Clear();
+
             if (this.mappingConfigurationService.LoadMappingFromDstToHub(this.CurrentRepository)
                     is not { } mappedElements || !mappedElements.Any())
             {
                 this.SelectedDstMapResultForTransfer.Clear();
                 this.SelectedGroupsForTransfer.Clear();
-                this.DstMapResult.Clear();
                 return 0;
             }
 

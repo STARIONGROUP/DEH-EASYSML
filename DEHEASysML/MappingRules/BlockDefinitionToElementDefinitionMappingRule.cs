@@ -110,14 +110,14 @@ namespace DEHEASysML.MappingRules
         private readonly List<(Element, EnterpriseArchitectBlockElement, ElementUsage)> portsToConnect = new();
 
         /// <summary>
+        /// Gets the default <see cref="ValueArray{T}"/>
+        /// </summary>
+        private readonly ValueArray<string> defaultValueArray = new ([ "-" ]);
+
+        /// <summary>
         /// The <see cref="ElementDefinition" /> the represents the ports
         /// </summary>
         private ElementDefinition portElementDefinition;
-
-        /// <summary>
-        /// Gets the <see cref="ICacheService"/>
-        /// </summary>
-        private ICacheService cacheService;
 
         /// <summary>
         /// The <see cref="Dictionary{TKey,TValue}"/> that stores all <see cref="EnterpriseArchitectBlockElement"/> by ElementID
@@ -161,10 +161,10 @@ namespace DEHEASysML.MappingRules
 
                 this.Owner = this.HubController.CurrentDomainOfExpertise;
 
-                this.DstController = AppContainer.Container.Resolve<IDstController>();
-                this.cacheService = AppContainer.Container.Resolve<ICacheService>();
-                this.MappingConfiguration = AppContainer.Container.Resolve<IMappingConfigurationService>();
-                this.Elements = new List<EnterpriseArchitectBlockElement>(elements);
+                this.DstController ??= AppContainer.Container.Resolve<IDstController>();
+                this.CacheService ??= AppContainer.Container.Resolve<ICacheService>();
+                this.MappingConfiguration ??= AppContainer.Container.Resolve<IMappingConfigurationService>();
+                this.Elements = [..elements];
 
                 if (completeMapping)
                 {
@@ -174,10 +174,10 @@ namespace DEHEASysML.MappingRules
                 this.portsToConnect.Clear();
 
                 this.createdPossibleFiniteStateLists.RemoveAll(x => this.HubController.OpenIteration
-                    .PossibleFiniteStateList.Any(possibleFiniteState => x.Iid == possibleFiniteState.Iid) || x.Container?.Iid != this.HubController.OpenIteration.Iid);
+                    .PossibleFiniteStateList.Exists(possibleFiniteState => x.Iid == possibleFiniteState.Iid) || x.Container?.Iid != this.HubController.OpenIteration.Iid);
 
                 this.createdActualFiniteStateLists.RemoveAll(x => this.HubController.OpenIteration
-                    .ActualFiniteStateList.Any(actualFiniteStateList => x.Iid == actualFiniteStateList.Iid || x.Container?.Iid != this.HubController.OpenIteration.Iid));
+                    .ActualFiniteStateList.Exists(actualFiniteStateList => x.Iid == actualFiniteStateList.Iid || x.Container?.Iid != this.HubController.OpenIteration.Iid));
 
                 var mappingStopWatch = Stopwatch.StartNew();
 
@@ -188,12 +188,7 @@ namespace DEHEASysML.MappingRules
 
                     if (completeMapping)
                     {
-                        var mapStopWatch = Stopwatch.StartNew();
-
                         this.MapElement(mappedElement);
-                        mapStopWatch.Stop();
-
-                        this.Logger.Debug("Mapping done for block {0} in {1}[ms]", mappedElement.DstElement.Name, mapStopWatch.ElapsedMilliseconds);
                     }
                 }
 
@@ -201,13 +196,13 @@ namespace DEHEASysML.MappingRules
                 {
                     this.MapPorts();
                     this.ProcessInterfaces();
-                    this.SaveMappingConfiguration(new List<MappedElementRowViewModel<ElementDefinition>>(this.Elements));
+                    this.SaveMappingConfiguration([..this.Elements]);
                 }
 
                 mappingStopWatch.Stop();
                 this.Logger.Info("{0} for blocks done in {1}[ms]", completeMapping? "Mapping" : "Premapping", mappingStopWatch.ElapsedMilliseconds);
 
-                return new List<MappedElementDefinitionRowViewModel>(this.Elements);
+                return [..this.Elements];
             }
             catch (Exception exception)
             {
@@ -224,9 +219,9 @@ namespace DEHEASysML.MappingRules
         {
             this.elementsById = this.Elements.ToDictionary(x => x.DstElement.ElementID, x => x);
 
-            this.cacheService ??= AppContainer.Container.Resolve<ICacheService>();
-            this.allPartPropertiesPerElement = this.cacheService.GetElementsOfStereotype(StereotypeKind.PartProperty).GroupBy(x => x.ParentID).ToDictionary(x => x.Key, x => x.ToList());
-            this.allValuePropertiesPerElement = this.cacheService.GetElementsOfStereotype(StereotypeKind.ValueProperty).GroupBy(x => x.ParentID).ToDictionary(x => x.Key, x => x.ToList());
+            this.CacheService ??= AppContainer.Container.Resolve<ICacheService>();
+            this.allPartPropertiesPerElement = this.CacheService.GetElementsOfStereotype(StereotypeKind.PartProperty).GroupBy(x => x.ParentID).ToDictionary(x => x.Key, x => x.ToList());
+            this.allValuePropertiesPerElement = this.CacheService.GetElementsOfStereotype(StereotypeKind.ValueProperty).GroupBy(x => x.ParentID).ToDictionary(x => x.Key, x => x.ToList());
         }
 
         /// <summary>
@@ -261,7 +256,7 @@ namespace DEHEASysML.MappingRules
                 }
 
                 var interfaceElementUsage = this.portsToConnect
-                    .FirstOrDefault(x => x.Item1.PropertyTypeName as string == elementUsageName).Item3;
+                    .Find(x => x.Item1.PropertyTypeName as string == elementUsageName).Item3;
 
                 if (interfaceElementUsage == null)
                 {
@@ -302,8 +297,6 @@ namespace DEHEASysML.MappingRules
         /// <param name="element">The block element</param>
         public void MapPartProperties(ElementDefinition elementDefinition, Element element)
         {
-            var stopWatch = Stopwatch.StartNew();
-
             if(this.allPartPropertiesPerElement.TryGetValue(element.ElementID, out var partProperties))
             {
                 foreach (var partProperty in partProperties)
@@ -311,9 +304,6 @@ namespace DEHEASysML.MappingRules
                     this.MapPartProperty(elementDefinition, partProperty);
                 }
             }
-
-            stopWatch.Stop();
-            this.Logger.Debug("Mapping of {0} Part to ElementUsage for element {1} took {2}[ms]", partProperties?.Count ?? 0, element.Name, stopWatch.ElapsedMilliseconds);
         }
 
         /// <summary>
@@ -328,13 +318,11 @@ namespace DEHEASysML.MappingRules
                 return;
             }
 
-            var stopwatch = Stopwatch.StartNew();
-
             if (this.allValuePropertiesPerElement.TryGetValue(element.ElementID, out var valueProperties))
             {
                 foreach (var property in valueProperties)
                 {
-                    var existingParameter = elementDefinition.Parameter.FirstOrDefault(x =>
+                    var existingParameter = elementDefinition.Parameter.Find(x =>
                         string.Equals(x.ParameterType.ShortName, property.GetShortName(), StringComparison.InvariantCultureIgnoreCase) ||
                         string.Equals(x.ParameterType.Name, property.Name, StringComparison.InvariantCultureIgnoreCase));
 
@@ -374,15 +362,10 @@ namespace DEHEASysML.MappingRules
                     this.VerifyStateDependency(parameter, property);
                     this.UpdateValueSet(parameter, valueOfProperty);
 
-                    if (!elementDefinition.Parameter.Exists(x => x.Iid == parameter.Iid))
-                    {
-                        elementDefinition.Parameter.Add(parameter);
-                    }
+                    elementDefinition.Parameter.RemoveAll(x => x.Iid == parameter.Iid);
+                    elementDefinition.Parameter.Add(parameter);
                 }
             }
-
-            stopwatch.Stop();
-            this.Logger.Debug("Mapping of {0} Part to ParameterType for Element {1} took {2}[ms]", valueProperties?.Count ?? 0, element.Name, stopwatch.ElapsedMilliseconds);
         }
 
         /// <summary>
@@ -393,8 +376,6 @@ namespace DEHEASysML.MappingRules
         /// <param name="element">The <see cref="Element" /></param>
         public void MapCategories(ElementDefinition elementDefinition, Element element)
         {
-            var stopWatch = Stopwatch.StartNew();
-
             if (elementDefinition == null)
             {
                 return;
@@ -413,9 +394,6 @@ namespace DEHEASysML.MappingRules
             this.MapCategory(elementDefinition, this.isActiveCategoryNames, element.IsActive, false);
             this.MapCategory(elementDefinition, this.isEncapsulatedCategoryNames, isEncapsulated, true);
             this.MapStereotypesToCategory(element, elementDefinition);
-            stopWatch.Stop();
-
-            this.Logger.Debug("Complete mapping of categories for Element {0} took {1}[ms]", element.Name, stopWatch.ElapsedMilliseconds);
         }
 
         /// <summary>
@@ -438,7 +416,7 @@ namespace DEHEASysML.MappingRules
 
             foreach (var dependency in dependencies)
             {
-                var state = this.cacheService.GetElementById(dependency.SupplierID);
+                var state = this.CacheService.GetElementById(dependency.SupplierID);
 
                 if (state.Type.AreEquals(StereotypeKind.State))
                 {
@@ -573,9 +551,9 @@ namespace DEHEASysML.MappingRules
                 .Where(x => x.PossibleFiniteStateList.Count == possibleFiniteStateListCollection.Count)
                 .ToList();
 
-            return matchOnNumberOfPossibleFinitieState.FirstOrDefault(finiteStateList =>
+            return matchOnNumberOfPossibleFinitieState.Find(finiteStateList =>
                 finiteStateList.PossibleFiniteStateList.All(possibleState =>
-                    possibleFiniteStateListCollection.Any(x => x.Iid == possibleState.Iid)));
+                    possibleFiniteStateListCollection.Exists(x => x.Iid == possibleState.Iid)));
         }
 
         /// <summary>
@@ -583,7 +561,7 @@ namespace DEHEASysML.MappingRules
         /// </summary>
         /// <param name="state">The state <see cref="Element" /></param>
         /// <returns>The retrieved or created <see cref="PossibleFiniteStateList" />></returns>
-        private PossibleFiniteStateList GetOrCreatePossibleFiniteState(Element state)
+        private PossibleFiniteStateList GetOrCreatePossibleFiniteState(IDualElement state)
         {
             var partitions = state.Partitions.OfType<Partition>().Select(x => x.Name).ToList();
 
@@ -593,9 +571,9 @@ namespace DEHEASysML.MappingRules
             }
 
             var possibleFiniteStateList = this.HubController.OpenIteration.PossibleFiniteStateList
-                                              .FirstOrDefault(x => x.Name == state.Name || x.ShortName == state.Name.GetShortName())?.Clone(true)
+                                              .Find(x => x.Name == state.Name || x.ShortName == state.Name.GetShortName())?.Clone(true)
                                           ?? this.createdPossibleFiniteStateLists
-                                              .FirstOrDefault(x => x.Name == state.Name || x.ShortName == state.Name.GetShortName())
+                                              .Find(x => x.Name == state.Name || x.ShortName == state.Name.GetShortName())
                                           ?? this.CreatePossibleFiniteStateList(state.Name);
 
             this.UpdatePossibleFiniteStateList(possibleFiniteStateList, partitions);
@@ -687,7 +665,9 @@ namespace DEHEASysML.MappingRules
         /// <param name="element">The <see cref="EnterpriseArchitectBlockElement" /></param>
         private void MapPorts(EnterpriseArchitectBlockElement element)
         {
-            foreach (var port in element.DstElement.GetAllPortsOfElement())
+            var ports = this.CacheService.GetElementsOfMetaType(StereotypeKind.Port).Where(x => x.ParentID == element.DstElement.ElementID).ToList();
+                
+            foreach (var port in ports)
             {
                 var (portBlock, interfaceElement) = this.DstController.ResolvePort(port);
 
@@ -704,7 +684,7 @@ namespace DEHEASysML.MappingRules
                     continue;
                 }
 
-                var elementUsage = element.HubElement.ContainedElement.FirstOrDefault(x => x.Name == portBlock.Name);
+                var elementUsage = element.HubElement.ContainedElement.Find(x => x.Name == portBlock.Name);
 
                 if (elementUsage == null)
                 {
@@ -731,7 +711,7 @@ namespace DEHEASysML.MappingRules
         /// <returns>The <see cref="ElementDefinition" /></returns>
         private ElementDefinition GetPortElementDefinition()
         {
-            if (this.portElementDefinition != null)
+            if (this.portElementDefinition != null && this.portElementDefinition.Container.Iid == this.HubController.OpenIteration.Iid) 
             {
                 return this.portElementDefinition;
             }
@@ -763,7 +743,7 @@ namespace DEHEASysML.MappingRules
                 return;
             }
 
-            var partPropertyBlock = this.cacheService.GetElementById(partProperty.PropertyType);
+            var partPropertyBlock = this.CacheService.GetElementById(partProperty.PropertyType);
 
             if (!this.elementsById.TryGetValue(partPropertyBlock.ElementID, out var mappedElement))
             {
@@ -808,15 +788,15 @@ namespace DEHEASysML.MappingRules
                     this.CreateOrUpdateParameterValueSet(parameter, actualFiniteState);
                 }
 
-                if (parameter.ValueSet.FirstOrDefault(x => x.ActualState == null) == null)
+                if (parameter.ValueSet.Find(x => x.ActualState == null) == null)
                 {
                     parameter.ValueSet.Add(new ParameterValueSet
                     {
                         Iid = Guid.NewGuid(),
-                        Reference = new ValueArray<string>(),
-                        Formula = new ValueArray<string>(),
-                        Published = new ValueArray<string>(),
-                        Computed = new ValueArray<string>(),
+                        Reference = this.defaultValueArray,
+                        Formula = this.defaultValueArray,
+                        Published = this.defaultValueArray,
+                        Computed = this.defaultValueArray,
                         ActualState = null
                     });
                 }
@@ -826,7 +806,7 @@ namespace DEHEASysML.MappingRules
             {
                 valueSet.ValueSwitch = ParameterSwitchKind.MANUAL;
                 var valueToSet = string.IsNullOrEmpty(valueOfProperty) ? "-" : valueOfProperty;
-                valueSet.Manual = new ValueArray<string>(new[] { FormattableString.Invariant($"{valueToSet}") });
+                valueSet.Manual = new ValueArray<string>([FormattableString.Invariant($"{valueToSet}")]);
             }
         }
 
@@ -844,10 +824,10 @@ namespace DEHEASysML.MappingRules
                 var valueSet = new ParameterValueSet
                 {
                     Iid = Guid.NewGuid(),
-                    Reference = new ValueArray<string>(),
-                    Formula = new ValueArray<string>(),
-                    Published = new ValueArray<string>(),
-                    Computed = new ValueArray<string>(),
+                    Reference =this.defaultValueArray,
+                    Formula = this.defaultValueArray,
+                    Published = this.defaultValueArray,
+                    Computed =this.defaultValueArray,
                     ActualState = actualFiniteState
                 };
 
@@ -914,7 +894,7 @@ namespace DEHEASysML.MappingRules
             }
             catch (Exception exception)
             {
-                this.Logger.Error($"Could not create the parameter type of the property {property.Name} : {exception}");
+                this.Logger.Error(exception, "Coult not create the ParameterType of the Property {0}", property.Name);
                 parameterType = default;
                 return false;
             }
@@ -937,7 +917,7 @@ namespace DEHEASysML.MappingRules
 
             if (taggedValue != null)
             {
-                unit = this.DstController.CurrentRepository.GetElementByGuid(taggedValue.Value) as Element;
+                unit = this.DstController.CurrentRepository.GetElementByGuid(taggedValue.Value);
             }
 
             if (unit == null || string.IsNullOrEmpty(unit.Name))
@@ -1056,23 +1036,18 @@ namespace DEHEASysML.MappingRules
         {
             var shortName = dstElementName.GetShortName();
 
-            var elementDefinition = this.Elements.Find(x =>
-                                        x.HubElement != null && string.Equals(x.HubElement.ShortName, shortName, StringComparison.CurrentCultureIgnoreCase))?.HubElement
-                                    ?? this.HubController.OpenIteration.Element
-                                        .Find(x => string.Equals(x.ShortName, shortName, StringComparison.CurrentCultureIgnoreCase))
-                                        ?.Clone(true);
-
-            if (elementDefinition is null)
+            var elementDefinition = (this.Elements.Find(x =>
+                                         x.HubElement != null && string.Equals(x.HubElement.ShortName, shortName, StringComparison.CurrentCultureIgnoreCase))?.HubElement
+                                     ?? this.HubController.OpenIteration.Element
+                                         .Find(x => string.Equals(x.ShortName, shortName, StringComparison.CurrentCultureIgnoreCase))
+                                         ?.Clone(true)) ?? new ElementDefinition
             {
-                elementDefinition = new ElementDefinition
-                {
-                    Iid = Guid.NewGuid(),
-                    Owner = this.Owner,
-                    Name = dstElementName,
-                    ShortName = shortName,
-                    Container = this.HubController.OpenIteration
-                };
-            }
+                Iid = Guid.NewGuid(),
+                Owner = this.Owner,
+                Name = dstElementName,
+                ShortName = shortName,
+                Container = this.HubController.OpenIteration
+            };
 
             return elementDefinition;
         }

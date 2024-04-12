@@ -38,6 +38,7 @@ namespace DEHEASysML.Tests.MappingRules
     using DEHEASysML.DstController;
     using DEHEASysML.Enumerators;
     using DEHEASysML.MappingRules;
+    using DEHEASysML.Services.Cache;
     using DEHEASysML.Tests.Utils.Stereotypes;
     using DEHEASysML.Utils.Stereotypes;
 
@@ -65,6 +66,7 @@ namespace DEHEASysML.Tests.MappingRules
         private Mock<ISession> session;
         private Iteration iteration;
         private ModelReferenceDataLibrary referenceDataLibrary;
+        private Mock<ICacheService> cacheService;
 
         [SetUp]
         public void Setup()
@@ -103,10 +105,12 @@ namespace DEHEASysML.Tests.MappingRules
 
             this.dstController = new Mock<IDstController>();
             this.dstController.Setup(x => x.MappedConnectorsToBinaryRelationships).Returns(new List<BinaryRelationship>());
+            this.cacheService = new Mock<ICacheService>();
 
             var containerBuilder = new ContainerBuilder();
             containerBuilder.RegisterInstance(this.hubController.Object).As<IHubController>();
             containerBuilder.RegisterInstance(this.dstController.Object).As<IDstController>();
+            containerBuilder.RegisterInstance(this.cacheService.Object).As<ICacheService>();
             AppContainer.Container = containerBuilder.Build();
 
             this.rule = new EnterpriseArchitectConnectorToBinaryRelationshipMappingRule();
@@ -156,9 +160,9 @@ namespace DEHEASysML.Tests.MappingRules
             statisfyConnector.Setup(x => x.SupplierID).Returns(requirement2Element.Object.ElementID);
             statisfyConnector.Setup(x => x.ClientID).Returns(blockElement.Object.ElementID);
 
-            blockElement.Setup(x => x.Connectors).Returns(new EnterpriseArchitectCollection() { statisfyConnector.Object });
-            requirementElement.Setup(x => x.Connectors).Returns(new EnterpriseArchitectCollection() { traceConnector.Object });
-            requirement2Element.Setup(x => x.Connectors).Returns(new EnterpriseArchitectCollection() { traceConnector.Object });
+            this.cacheService.Setup(x => x.GetConnectorsOfElement(blockElement.Object.ElementID)).Returns([statisfyConnector.Object]);
+            this.cacheService.Setup(x => x.GetConnectorsOfElement(requirementElement.Object.ElementID)).Returns([traceConnector.Object]);
+            this.cacheService.Setup(x => x.GetConnectorsOfElement(requirement2Element.Object.ElementID)).Returns([traceConnector.Object]);
 
             tracableElements.Add(new EnterpriseArchitectTracableMappedElement(new EnterpriseArchitectBlockElement(elementDefinition, blockElement.Object, MappingDirection.FromDstToHub)));
             tracableElements.Add(new EnterpriseArchitectTracableMappedElement(new EnterpriseArchitectRequirementElement(requirement1, requirementElement.Object, MappingDirection.FromDstToHub)));

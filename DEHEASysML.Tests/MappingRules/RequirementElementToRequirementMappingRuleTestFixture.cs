@@ -39,6 +39,7 @@ namespace DEHEASysML.Tests.MappingRules
     using DEHEASysML.DstController;
     using DEHEASysML.Enumerators;
     using DEHEASysML.MappingRules;
+    using DEHEASysML.Services.Cache;
     using DEHEASysML.Services.MappingConfiguration;
     using DEHEASysML.Tests.Utils.Stereotypes;
     using DEHEASysML.Utils.Stereotypes;
@@ -68,6 +69,7 @@ namespace DEHEASysML.Tests.MappingRules
         private Mock<Repository> repository;
         private List<EnterpriseArchitectRequirementElement> elements;
         private Mock<IMappingConfigurationService> mappingConfiguration;
+        private Mock<ICacheService> cacheService;
 
         [SetUp]
         public void Setup()
@@ -121,6 +123,7 @@ namespace DEHEASysML.Tests.MappingRules
 
             this.dstController = new Mock<IDstController>();
             this.dstController.Setup(x => x.CurrentRepository).Returns(this.repository.Object);
+            this.cacheService = new Mock<ICacheService>();
 
             this.SetupElements();
 
@@ -133,6 +136,7 @@ namespace DEHEASysML.Tests.MappingRules
             containerBuilder.RegisterInstance(this.hubController.Object).As<IHubController>();
             containerBuilder.RegisterInstance(this.dstController.Object).As<IDstController>();
             containerBuilder.RegisterInstance(this.mappingConfiguration.Object).As<IMappingConfigurationService>();
+            containerBuilder.RegisterInstance(this.cacheService.Object).As<ICacheService>();
             AppContainer.Container = containerBuilder.Build();
 
             this.rule = new RequirementElementToRequirementMappingRule();
@@ -164,16 +168,14 @@ namespace DEHEASysML.Tests.MappingRules
             connector.Setup(x => x.Stereotype).Returns(StereotypeKind.DeriveReqt.ToString());
             forthRequirement.Setup(x => x.GetStereotypeList()).Returns("requirement");
 
-            forthRequirement.Setup(x => x.Connectors).Returns(new EnterpriseArchitectCollection()
-            {
-                connector.Object
-            });
-
             this.elements.Add(new EnterpriseArchitectRequirementElement(null, firstRequirement.Object, MappingDirection.FromDstToHub));
             this.elements.Add(new EnterpriseArchitectRequirementElement(null, secondRequirement.Object, MappingDirection.FromDstToHub));
             this.elements.Add(new EnterpriseArchitectRequirementElement(null, thirdRequirement.Object, MappingDirection.FromDstToHub));
             this.elements.Add(new EnterpriseArchitectRequirementElement(null, forthRequirement.Object, MappingDirection.FromDstToHub));
-
+            this.cacheService.Setup(x => x.GetConnectorsOfElement(firstRequirement.Object.ElementID)).Returns([]);
+            this.cacheService.Setup(x => x.GetConnectorsOfElement(secondRequirement.Object.ElementID)).Returns([]);
+            this.cacheService.Setup(x => x.GetConnectorsOfElement(thirdRequirement.Object.ElementID)).Returns([]);
+            this.cacheService.Setup(x => x.GetConnectorsOfElement(forthRequirement.Object.ElementID)).Returns([connector.Object]);
             this.dstController.Setup(x => x.ResolveConnector(It.IsAny<Connector>())).Returns((thirdRequirement.Object, forthRequirement.Object));
         }
 

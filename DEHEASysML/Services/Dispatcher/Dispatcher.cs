@@ -276,7 +276,7 @@ namespace DEHEASysML.Services.Dispatcher
         /// <param name="repository">The working <see cref="Repository" /></param>
         public void MapSelectedElementsCommand(Repository repository)
         {
-            this.OpenMappingDialog(repository);
+            this.OpenMappingDialog(repository, false);
         }
 
         /// <summary>
@@ -285,7 +285,7 @@ namespace DEHEASysML.Services.Dispatcher
         /// <param name="repository">The working <see cref="Repository" /></param>
         public void MapSelectedPackageCommand(Repository repository)
         {
-            this.OpenMappingDialog(repository);
+            this.OpenMappingDialog(repository, true);
         }
 
         /// <summary>
@@ -323,9 +323,10 @@ namespace DEHEASysML.Services.Dispatcher
         /// Opens the <see cref="DstMappingConfigurationDialog" /> and initializes it
         /// </summary>
         /// <param name="repository">The <see cref="Repository" /></param>
-        private void OpenMappingDialog(Repository repository)
+        /// <param name="isPackageSelection">Value asserting that we should select <see cref="Element"/> based on the package</param>
+        private void OpenMappingDialog(Repository repository, bool isPackageSelection)
         {
-            var elementsList = this.selectionService.GetSelectedElements(repository);
+            var elementsList = this.selectionService.GetSelectedElements(repository, isPackageSelection);
             var packagesId = this.dstController.RetrieveAllParentsIdPackage(elementsList);
             var viewModel = AppContainer.Container.Resolve<IDstMappingConfigurationDialogViewModel>();
             viewModel.Initialize(elementsList, packagesId);

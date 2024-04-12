@@ -26,7 +26,6 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser
 {
     using System;
     using System.Collections.Generic;
-    using System.Diagnostics;
     using System.Linq;
 
     using DEHEASysML.Extensions;
@@ -62,6 +61,16 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser
         /// Backing field for the <see cref="SelectedThing" />
         /// </summary>
         private object selectedThing;
+
+        /// <summary>
+        /// Gets the collection of all previous <see cref="Element"/> id that have been displayed
+        /// </summary>
+        private List<int> previousElementIds = [];
+
+        /// <summary>
+        /// Gets the collection of all previous <see cref="Package"/> id that have been displayed
+        /// </summary>
+        private List<int> previousPackageIds = [];
 
         /// <summary>
         /// Initializes a new <see cref="EnterpriseArchitectObjectBrowserViewModel" />
@@ -135,8 +144,18 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser
         /// <param name="packagesId">The Id of <see cref="Package" /> to display</param>
         public void BuildTree(Repository repository, IEnumerable<Element> elements, IEnumerable<int> packagesId)
         {
+            this.SelectedThing = null;
+            
             var visibleElements = elements.ToList();
             var packagesIdList = packagesId.ToList();
+
+            if (visibleElements.Count == this.previousElementIds.Count && visibleElements.TrueForAll(x => this.previousElementIds.Contains(x.ElementID))
+                                                                         && packagesIdList.Count == this.previousPackageIds.Count && packagesIdList.TrueForAll(x => this.previousPackageIds.Contains(x)))
+            {
+                return;
+            }
+
+            this.Things.Clear();
 
             var packagesRow = new List<PackageRowViewModel>();
             packagesRow.AddRange(repository.Models.OfType<Package>().Where(x => packagesIdList.Contains(x.PackageID)).Select(x => new ModelRowViewModel(x)));
@@ -155,6 +174,9 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser
             {
                 packageRow.SetCurrentPackageAsPackage(allRows.Where(x => x.PackageId == packageRow.RepresentedObject.PackageID));
             }
+
+            this.previousElementIds = visibleElements.Select(x => x.ElementID).ToList();
+            this.previousPackageIds = packagesIdList;
 
             this.Things.AddRange(packagesRow.OfType<ModelRowViewModel>());
         }
