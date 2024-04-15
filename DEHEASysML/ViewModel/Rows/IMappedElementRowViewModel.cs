@@ -24,6 +24,7 @@
 
 namespace DEHEASysML.ViewModel.Rows
 {
+    using System;
     using System.Collections.Generic;
 
     using CDP4Common.EngineeringModelData;
@@ -37,7 +38,7 @@ namespace DEHEASysML.ViewModel.Rows
     /// <summary>
     /// Interface definition for <see cref="MappedElementRowViewModel{TThing}"/>
     /// </summary>
-    public interface IMappedElementRowViewModel
+    public interface IMappedElementRowViewModel: IDisposable
     {
         /// <summary>
         /// Gets or sets the <see cref="MappedRowStatus"/>

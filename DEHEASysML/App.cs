@@ -482,7 +482,7 @@ namespace DEHEASysML
             containerBuilder.RegisterType<HubPanelViewModel>().As<IHubPanelViewModel>().SingleInstance();
             containerBuilder.RegisterType<EnterpriseArchitectStatusBarControlViewModel>().As<IStatusBarControlViewModel>().SingleInstance();
             containerBuilder.RegisterType<RequirementsBrowserViewModel>().As<IRequirementsBrowserViewModel>();
-            containerBuilder.RegisterType<DstMappingConfigurationDialogViewModel>().As<IDstMappingConfigurationDialogViewModel>();
+            containerBuilder.RegisterType<DstMappingConfigurationDialogViewModel>().As<IDstMappingConfigurationDialogViewModel>().SingleInstance();
             containerBuilder.RegisterType<EnterpriseArchitectObjectBrowserViewModel>().As<IEnterpriseArchitectObjectBrowserViewModel>();
             containerBuilder.RegisterType<ImpactPanelViewModel>().As<IImpactPanelViewModel>().SingleInstance();
             containerBuilder.RegisterType<DstNetChangePreviewViewModel>().As<IDstNetChangePreviewViewModel>().SingleInstance();

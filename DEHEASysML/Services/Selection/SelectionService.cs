@@ -42,8 +42,9 @@ namespace DEHEASysML.Services.Selection
         /// Gets all <see cref="Element" /> that have been selected or that is contained in selected <see cref="Package" />
         /// </summary>
         /// <param name="repository">The <see cref="Repository" /></param>
+        /// <param name="isPackageSelection">Value asserting that we should select <see cref="Element"/> based on the package</param>
         /// <returns>A collection of retrieved <see cref="Element" /></returns>
-        public IReadOnlyCollection<Element> GetSelectedElements(Repository repository)
+        public IReadOnlyCollection<Element> GetSelectedElements(Repository repository, bool isPackageSelection)
         {
             var selectedPackagesId = QuerySelectedPackagesId(repository);
             var stereotypes = new []{ "block", "requirement"};
@@ -51,6 +52,12 @@ namespace DEHEASysML.Services.Selection
             var selectedElements = repository.CurrentSelection.ElementSet
                 .OfType<Element>()
                 .Where(x => Array.Exists(stereotypes, x.HasStereotype)).ToList();
+
+            if (isPackageSelection && selectedElements.Any())
+            {
+                selectedPackagesId.Add(selectedElements[0].PackageID);
+                selectedElements.Clear();
+            }
 
             if (selectedPackagesId.Count == 0)
             {

@@ -221,6 +221,9 @@ namespace DEHEASysML.Tests.MappingRules
             this.cacheService.Setup(x => x.GetElementsOfStereotype(StereotypeKind.ValueProperty))
                 .Returns(this.allElements.Where(x => x.Stereotype.AreEquals(StereotypeKind.ValueProperty)).ToList());
 
+            this.cacheService.Setup(x => x.GetElementsOfMetaType(StereotypeKind.Port))
+                .Returns(this.allElements.Where(x => x.MetaType.AreEquals(StereotypeKind.PartProperty)).ToList());
+
             var containerBuilder = new ContainerBuilder();
             containerBuilder.RegisterInstance(this.hubController.Object).As<IHubController>();
             containerBuilder.RegisterInstance(this.dstController.Object).As<IDstController>();
@@ -450,7 +453,6 @@ namespace DEHEASysML.Tests.MappingRules
         public void VerifyMapPorts()
         {
             this.rule.DstController = this.dstController.Object;
-
 
             var port = new Mock<Element>();
             port.Setup(x => x.MetaType).Returns(StereotypeKind.Port.ToString());

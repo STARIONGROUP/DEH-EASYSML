@@ -38,6 +38,7 @@ namespace DEHEASysML.MappingRules
     using DEHEASysML.DstController;
     using DEHEASysML.Enumerators;
     using DEHEASysML.Extensions;
+    using DEHEASysML.Services.Cache;
     using DEHEASysML.Utils.Stereotypes;
 
     using DEHPCommon;
@@ -65,7 +66,7 @@ namespace DEHEASysML.MappingRules
         /// <summary>
         /// A collection of <see cref="BinaryRelationship" /> created during the mapping
         /// </summary>
-        private readonly List<BinaryRelationship> result = new();
+        private readonly List<BinaryRelationship> result = [];
 
         /// <summary>
         /// Transforms a collection of <see cref="EnterpriseArchitectTracableMappedElement" /> to a
@@ -85,10 +86,11 @@ namespace DEHEASysML.MappingRules
                 this.Owner = this.HubController.CurrentDomainOfExpertise;
 
                 this.DstController = AppContainer.Container.Resolve<IDstController>();
+                this.CacheService = AppContainer.Container.Resolve<ICacheService>();
 
                 this.Map(input);
 
-                return new List<BinaryRelationship>(this.result);
+                return [..this.result];
             }
             catch (Exception exception)
             {
@@ -107,11 +109,13 @@ namespace DEHEASysML.MappingRules
         {
             foreach (var element in elements)
             {
-                foreach (var connector in element.DstElement.GetAllConnectorsOfElement()
+                var connectors = this.CacheService.GetConnectorsOfElement(element.DstElement.ElementID);
+
+                foreach (var connector in connectors
                              .Where(x => x.ClientID == element.DstElement.ElementID &&
                                          (x.Stereotype.AreEquals(StereotypeKind.Trace) || x.Stereotype.AreEquals(StereotypeKind.Satisfy))))
                 {
-                    var existingSupplierMappedElement = elements.FirstOrDefault(x =>
+                    var existingSupplierMappedElement = elements.Find(x =>
                         x.DstElement.ElementID == connector.SupplierID);
 
                     if (existingSupplierMappedElement == null)
@@ -152,17 +156,17 @@ namespace DEHEASysML.MappingRules
         /// </returns>
         private bool DoesRelationshipAlreadyExists((string shortname, string name) categoryNames, Thing source, Thing target)
         {
+            return this.result.Exists(Predicate)
+                   || this.HubController.OpenIteration.Relationship.OfType<BinaryRelationship>().Any(Predicate)
+                   || this.DstController.MappedConnectorsToBinaryRelationships.Exists(Predicate);
+
             bool Predicate(BinaryRelationship relationship)
             {
                 return relationship.Source.Iid == source.Iid
                        && relationship.Target.Iid == target.Iid
                        && relationship.Category
-                           .Any(x => string.Equals(x.Name, categoryNames.name, StringComparison.InvariantCultureIgnoreCase));
+                           .Exists(x => string.Equals(x.Name, categoryNames.name, StringComparison.InvariantCultureIgnoreCase));
             }
-
-            return this.result.Any(Predicate)
-                   || this.HubController.OpenIteration.Relationship.OfType<BinaryRelationship>().Any(Predicate)
-                   || this.DstController.MappedConnectorsToBinaryRelationships.Any(Predicate);
         }
     }
 }

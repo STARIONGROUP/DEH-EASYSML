@@ -91,6 +91,11 @@ namespace DEHEASysML.ViewModel.Rows
         private bool shouldDisplayArrowAndIcons;
 
         /// <summary>
+        /// A collection of <see cref="IDisposable"/>
+        /// </summary>
+        protected List<IDisposable> Disposables = [];
+
+        /// <summary>
         /// Initializes a new <see cref="MappedElementRowViewModel{TThing}" />
         /// </summary>
         /// <param name="thing">The <see cref="TThing" /></param>
@@ -103,8 +108,8 @@ namespace DEHEASysML.ViewModel.Rows
             this.MappingDirection = mappingDirection;
             this.ShouldDisplayArrowAndIcons = true;
 
-            this.WhenAnyValue(x => x.DstElement, x => x.HubElement)
-                .Subscribe(_ => this.UpdateProperties());
+            this.Disposables.Add(this.WhenAnyValue(x => x.DstElement, x => x.HubElement)
+                .Subscribe(_ => this.UpdateProperties()));
         }
 
         /// <summary>
@@ -223,6 +228,30 @@ namespace DEHEASysML.ViewModel.Rows
 
             this.SourceElementName = this.MappingDirection == MappingDirection.FromDstToHub ? dstElementDisplay : hubElementDisplay;
             this.TargetElementName = this.MappingDirection == MappingDirection.FromDstToHub ? hubElementDisplay : dstElementDisplay;
+        }
+
+        /// <summary>
+        /// Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.
+        /// </summary>
+        public void Dispose()
+        {
+            this.Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.
+        /// </summary>
+        /// <param name="disposing">If the object have to dispose or not</param>
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposing)
+            {
+                return;
+            }
+
+            this.Disposables.ForEach(x => x.Dispose());
+            this.Disposables.Clear();
         }
     }
 }

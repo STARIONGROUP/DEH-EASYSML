@@ -181,12 +181,12 @@ namespace DEHEASysML.Tests.Services.Dispatcher
         [Test]
         public void VerifyMapCommands()
         {
-            this.selectionService.Setup(x => x.GetSelectedElements(this.repository.Object)).Returns(new List<Element>());
+            this.selectionService.Setup(x => x.GetSelectedElements(this.repository.Object, It.IsAny<bool>())).Returns(new List<Element>());
             Assert.DoesNotThrow(() => this.dispatcher.MapSelectedElementsCommand(this.repository.Object));
             Assert.DoesNotThrow(() => this.dispatcher.MapSelectedPackageCommand(this.repository.Object));
 
             var element = new Mock<Element>();
-            this.selectionService.Setup(x => x.GetSelectedElements(this.repository.Object)).Returns(new List<Element>(){element.Object});
+            this.selectionService.Setup(x => x.GetSelectedElements(this.repository.Object,It.IsAny<bool>())).Returns(new List<Element>(){element.Object});
 
             Assert.DoesNotThrow(() => this.dispatcher.MapSelectedElementsCommand(this.repository.Object));
             Assert.DoesNotThrow(() => this.dispatcher.MapSelectedPackageCommand(this.repository.Object));

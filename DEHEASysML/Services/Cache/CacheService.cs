@@ -42,7 +42,17 @@ namespace DEHEASysML.Services.Cache
         /// <summary>
         /// Gets the <see cref="Dictionary{TKey,TValue}"/> that contains cached <see cref="Element"/>
         /// </summary>
-        private Dictionary<int, Element> cache;
+        private Dictionary<int, Element> elementCache;
+
+        /// <summary>
+        /// Gets the <see cref="Dictionary{TKey,TValue}"/> that contains cached <see cref="Connector"/>
+        /// </summary>
+        private List<Connector> connectorCache;
+
+        /// <summary>
+        /// Gets the cached <see cref="Repository"/>
+        /// </summary>
+        private Repository currentRepository;
 
         /// <summary>
         /// Gets all id of all <see cref="Package"/> contained in the project
@@ -55,18 +65,19 @@ namespace DEHEASysML.Services.Cache
         /// <param name="repository">The <see cref="Repository"/></param>
         public void InitializeCache(Repository repository)
         {
-            this.QueryAllElements(repository);
-            this.QueryAllPackagesId(repository);
+            this.currentRepository = repository;
+            this.connectorCache = [];
+            this.QueryAllElements();
+            this.QueryAllPackagesId();
         }
 
         /// <summary>
         /// Query all <see cref="Package"/> id
         /// </summary>
-        /// <param name="repository"></param>
-        private void QueryAllPackagesId(IDualRepository repository)
+        private void QueryAllPackagesId()
         {
             const string sqlQuery = "SELECT Package_ID FROM t_package";
-            var sqlResult = repository.SQLQuery(sqlQuery);
+            var sqlResult = this.currentRepository.SQLQuery(sqlQuery);
 
             var xmlElement = XElement.Parse(sqlResult);
             var rows = xmlElement.Descendants("Row");
@@ -75,19 +86,36 @@ namespace DEHEASysML.Services.Cache
         }
 
         /// <summary>
-        /// Retrieves all <see cref="Element"/> contained in the <paramref name="repository"/>
+        /// Retrieves all <see cref="Element"/> contained in the <see cref="IRepository"/>
         /// </summary>
-        /// <param name="repository">The <see cref="IDualRepository"/></param>
-        private void QueryAllElements(IDualRepository repository)
+        private void QueryAllElements()
         {
             const string sqlQuery = "SELECT Object_ID FROM t_object WHERE NOT Object_Type = \"Package\"";
-            var sqlResult = repository.SQLQuery(sqlQuery);
+            var sqlResult = this.currentRepository.SQLQuery(sqlQuery);
 
             var xmlElement = XElement.Parse(sqlResult);
             var rows = xmlElement.Descendants("Row");
 
             var elementIds = rows.Select(row => int.Parse(row.Element("Object_ID")!.Value));
-            this.cache = repository.GetElementSet(string.Join(",", elementIds), 0).OfType<Element>().ToDictionary(x => x.ElementID, x => x);
+            this.elementCache = this.currentRepository.GetElementSet(string.Join(",", elementIds), 0).OfType<Element>().ToDictionary(x => x.ElementID, x => x);
+        }
+
+        /// <summary>
+        /// Retrieves all <see cref="Connector"/> linked to an <see cref="Element"/> 
+        /// </summary>
+        /// <param name="elementId">The <see cref="Element"/> id</param>
+        private IReadOnlyCollection<Connector> QueryAllConnectorsOfElement(int elementId)
+        {
+            var sqlQuery = $"SELECT Connector_ID FROM t_connector WHERE Start_Object_ID={elementId} OR End_Object_ID={elementId}";
+            var sqlResult = this.currentRepository.SQLQuery(sqlQuery);
+
+            var xmlElement = XElement.Parse(sqlResult);
+            var rows = xmlElement.Descendants("Row");
+
+            var connectorIds = rows.Select(row => int.Parse(row.Element("Connector_ID")!.Value));
+            var newConnectors = connectorIds.Select(this.currentRepository.GetConnectorByID).ToList();
+            this.connectorCache.AddRange(newConnectors);
+            return newConnectors;
         }
 
         /// <summary>
@@ -97,7 +125,7 @@ namespace DEHEASysML.Services.Cache
         /// <returns>A collection of <see cref="Element"/></returns>
         public IReadOnlyCollection<Element> GetElementsOfStereotype(StereotypeKind stereotype)
         {
-            return this.cache == null ? Array.Empty<Element>() :  this.GetAllElements().Where(x => x.HasStereotype(stereotype)).ToList();
+            return this.elementCache == null ? Array.Empty<Element>() :  this.GetAllElements().Where(x => x.HasStereotype(stereotype)).ToList();
         }
 
         /// <summary>
@@ -107,7 +135,7 @@ namespace DEHEASysML.Services.Cache
         /// <returns>A collection of <see cref="Element"/></returns>
         public IReadOnlyCollection<Element> GetElementsOfMetaType(StereotypeKind stereotype)
         {
-            return this.cache == null ? Array.Empty<Element>() : this.GetAllElements().Where(x =>x.MetaType.AreEquals(stereotype)).ToList();
+            return this.elementCache == null ? Array.Empty<Element>() : this.GetAllElements().Where(x =>x.MetaType.AreEquals(stereotype)).ToList();
         }
 
         /// <summary>
@@ -117,7 +145,7 @@ namespace DEHEASysML.Services.Cache
         /// <returns>The <see cref="Element"/> if found, null otherwise</returns>
         public Element GetElementById(int id)
         {
-            return this.cache.TryGetValue(id, out var element) ? element : null;
+            return this.elementCache.TryGetValue(id, out var element) ? element : null;
         }
 
         /// <summary>
@@ -126,7 +154,18 @@ namespace DEHEASysML.Services.Cache
         /// <returns>The collection of all cached <see cref="Element"/></returns>
         public IReadOnlyCollection<Element> GetAllElements()
         {
-            return this.cache.Values;
+            return this.elementCache.Values;
+        }
+
+        /// <summary>
+        /// Gets all <see cref="Connector"/> associated to an <see cref="Element"/>
+        /// </summary>
+        /// <param name="elementId">The <see cref="Element"/> Id</param>
+        /// <returns>A collection of <see cref="Connector"/></returns>
+        public IReadOnlyCollection<Connector> GetConnectorsOfElement(int elementId)
+        {
+            var cachedConnectors = this.connectorCache.Where(x => x.ClientID == elementId || x.SupplierID == elementId).ToList();
+            return cachedConnectors.Count == 0 ? this.QueryAllConnectorsOfElement(elementId) : cachedConnectors;
         }
     }
 }

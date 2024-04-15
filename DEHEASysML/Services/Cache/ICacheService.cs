@@ -73,5 +73,12 @@ namespace DEHEASysML.Services.Cache
         /// <param name="id">The <see cref="Element"/> Id</param>
         /// <returns>The <see cref="Element"/> if found, null otherwise</returns>
         Element GetElementById(int id);
+
+        /// <summary>
+        /// Gets all <see cref="Connector"/> associated to an <see cref="Element"/>
+        /// </summary>
+        /// <param name="elementId">The <see cref="Element"/> Id</param>
+        /// <returns>A collection of <see cref="Connector"/></returns>
+        IReadOnlyCollection<Connector> GetConnectorsOfElement(int elementId);
     }
 }

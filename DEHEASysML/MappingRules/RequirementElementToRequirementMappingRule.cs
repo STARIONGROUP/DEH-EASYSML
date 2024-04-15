@@ -26,6 +26,7 @@ namespace DEHEASysML.MappingRules
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Linq;
     using System.Runtime.ExceptionServices;
 
@@ -36,7 +37,9 @@ namespace DEHEASysML.MappingRules
     using CDP4Common.SiteDirectoryData;
 
     using DEHEASysML.DstController;
+    using DEHEASysML.Enumerators;
     using DEHEASysML.Extensions;
+    using DEHEASysML.Services.Cache;
     using DEHEASysML.Services.MappingConfiguration;
     using DEHEASysML.Utils.Stereotypes;
     using DEHEASysML.ViewModel.Rows;
@@ -82,7 +85,7 @@ namespace DEHEASysML.MappingRules
         /// <summary>
         /// Stores the mapping between the id of a <see cref="Package"/> to a <see cref="RequirementsContainer"/>
         /// </summary>
-        private Dictionary<int, RequirementsContainer> packageMapping = [];
+        private readonly Dictionary<int, RequirementsContainer> packageMapping = [];
 
         /// <summary>
         /// Transform a <see cref="List{T}" /> of <see cref="EnterpriseArchitectRequirementElement" /> into a
@@ -104,11 +107,11 @@ namespace DEHEASysML.MappingRules
                 }
 
                 this.Owner = this.HubController.CurrentDomainOfExpertise;
-                this.MappingConfiguration = AppContainer.Container.Resolve<IMappingConfigurationService>();
-                this.DstController = AppContainer.Container.Resolve<IDstController>();
+                this.MappingConfiguration ??= AppContainer.Container.Resolve<IMappingConfigurationService>();
+                this.CacheService ??= AppContainer.Container.Resolve<ICacheService>();
+                this.DstController ??= AppContainer.Container.Resolve<IDstController>();
                 var (completeMapping, elements) = input;
 
-                this.packageMapping.Clear();
                 this.requirementsSpecifications.Clear();
                 this.requirementsGroups.Clear();
 
@@ -120,7 +123,10 @@ namespace DEHEASysML.MappingRules
                     this.PopulateRequirementsGroupCollection(requirementsSpecificationsClone);
                 }
 
+                var mappingStopWatch = Stopwatch.StartNew();
+
                 this.mappedElements = [..elements];
+                this.packageMapping.Clear();
 
                 if (!this.ComputeMappingToRequirementsContainer(this.mappedElements))
                 {
@@ -138,6 +144,9 @@ namespace DEHEASysML.MappingRules
                     this.CreateRelationShips();
                     this.SaveMappingConfiguration([..this.mappedElements]);
                 }
+
+                mappingStopWatch.Stop();
+                this.Logger.Info("{0} for Requirements done in {1}[ms]", completeMapping? "Mapping" : "Premapping", mappingStopWatch.ElapsedMilliseconds);
 
                 return [..this.mappedElements];
             }
@@ -209,10 +218,8 @@ namespace DEHEASysML.MappingRules
 
                             this.packageMapping[currentPackage.PackageID] = parentRequirementsGroup;
 
-                            if (!parentRequirementsGroup.Group.Exists(x => x.Iid == requirementsGroup.Iid))
-                            {
-                                parentRequirementsGroup.Group.Add(requirementsGroup);
-                            }
+                            parentRequirementsGroup.Group.RemoveAll(x => x.Iid == requirementsGroup.Iid);
+                            parentRequirementsGroup.Group.Add(requirementsGroup);
 
                             requirementsGroup = parentRequirementsGroup;
                         }
@@ -230,10 +237,8 @@ namespace DEHEASysML.MappingRules
                         this.packageMapping[parentPackage.PackageID] = requirementsSpecification;
                     }
 
-                    if (!requirementsContainer.Group.Exists(x => x.Iid == requirementsGroup.Iid))
-                    {
-                        requirementsContainer.Group.Add(requirementsGroup);
-                    }
+                    requirementsGroup.Group.RemoveAll(x => x.Iid == requirementsGroup.Iid);
+                    requirementsContainer.Group.Add(requirementsGroup);
                 }
             }
 
@@ -289,7 +294,10 @@ namespace DEHEASysML.MappingRules
                 return;
             }
 
-            foreach (var connector in mappedElement.DstElement.GetRequirementsRelationShipConnectors())
+            var requirementsConnectors = this.CacheService.GetConnectorsOfElement(mappedElement.DstElement.ElementID)
+                .Where(x => x.Stereotype.AreEquals(StereotypeKind.DeriveReqt));
+
+            foreach (var connector in requirementsConnectors)
             {
                 var (source, target) = this.DstController.ResolveConnector(connector);
 
@@ -341,7 +349,7 @@ namespace DEHEASysML.MappingRules
             if (!mappedElement.ShouldCreateNewTargetElement && mappedElement.HubElement != null)
             {
                 this.UpdateRequirementProperties(mappedElement.DstElement, mappedElement.HubElement);
-                var requirementSpecification = (mappedElement.HubElement.Container as RequirementsSpecification).Clone(true);
+                var requirementSpecification = (mappedElement.HubElement.Container as RequirementsSpecification)!.Clone(true);
                 requirementSpecification.Requirement.RemoveAll(x => x.Iid == mappedElement.HubElement.Iid);
                 requirementSpecification.Requirement.Add(mappedElement.HubElement);
                 return;
@@ -370,10 +378,8 @@ namespace DEHEASysML.MappingRules
                     throw new InvalidOperationException("Container is neither a RequirementsSpecification or a RequirementsGroup");
             }
 
-            if (!requirementsSpecification.Requirement.Exists(x => x.Iid == requirement.Iid))
-            {
-                requirementsSpecification.Requirement.Add(requirement);
-            }
+            requirementsSpecification.Requirement.RemoveAll(x => x.Iid == requirement.Iid);
+            requirementsSpecification.Requirement.Add(requirement);
 
             mappedElement.HubElement = requirement;
             mappedElement.ShouldCreateNewTargetElement = mappedElement.HubElement.Original == null;
@@ -385,29 +391,9 @@ namespace DEHEASysML.MappingRules
         /// <param name="package">The <see cref="Package" /></param>
         /// <param name="requirementsSpecification">The <see cref="RequirementsSpecification" /></param>
         /// <returns>A value indicating whether the <see cref="RequirementsSpecification" /> has been created or retrieved</returns>
-        private bool TryGetOrCreateRequirementsSpecification(Package package, out RequirementsSpecification requirementsSpecification)
+        private bool TryGetOrCreateRequirementsSpecification(IDualPackage package, out RequirementsSpecification requirementsSpecification)
         {
             return this.TryGetOrCreateRequirementsSpecification(package.Name, out requirementsSpecification);
-        }
-
-        /// <summary>
-        /// Tries to get a existing <see cref="Requirement" /> or created one based on the <see cref="Element" />
-        /// It also creates the <see cref="Requirement" /> corresponding to the <see cref="Element" />
-        /// </summary>
-        /// <param name="requirementElement">The <see cref="Element" /></param>
-        /// <param name="requirement">The <see cref="Requirement" /></param>
-        /// <returns>A value indicating whether the <see cref="RequirementsSpecification" /> has been created or retrieved</returns>
-        private bool TryGetOrCreateRequirementsSpecificationAndRequirement(Element requirementElement, out Requirement requirement)
-        {
-            if (!this.TryGetOrCreateRequirement(requirementElement, out requirement) ||
-                !this.TryGetOrCreateRequirementsSpecification(requirementElement.Name, out var requirementsSpecification))
-            {
-                return false;
-            }
-
-            requirementsSpecification.Requirement.Add(requirement);
-
-            return true;
         }
 
         /// <summary>
@@ -420,23 +406,18 @@ namespace DEHEASysML.MappingRules
         {
             var shortName = requirementsSpecificationName.GetShortName();
 
-            var alreadyCreated = this.requirementsSpecifications
-                                     .FirstOrDefault(x => string.Equals(x.ShortName, shortName, StringComparison.InvariantCultureIgnoreCase))
-                                 ?? this.HubController.OpenIteration.RequirementsSpecification
-                                     .FirstOrDefault(x => !x.IsDeprecated
-                                                          && string.Equals(x.ShortName, shortName, StringComparison.InvariantCultureIgnoreCase))
-                                     ?.Clone(true);
-
-            if (alreadyCreated == null)
+            var alreadyCreated = (this.requirementsSpecifications
+                                      .Find(x => string.Equals(x.ShortName, shortName, StringComparison.InvariantCultureIgnoreCase))
+                                  ?? this.HubController.OpenIteration.RequirementsSpecification
+                                      .Find(x => !x.IsDeprecated
+                                                 && string.Equals(x.ShortName, shortName, StringComparison.InvariantCultureIgnoreCase))
+                                      ?.Clone(true)) ?? new RequirementsSpecification
             {
-                alreadyCreated = new RequirementsSpecification
-                {
-                    Iid = Guid.NewGuid(),
-                    Name = requirementsSpecificationName,
-                    ShortName = shortName,
-                    Owner = this.Owner
-                };
-            }
+                Iid = Guid.NewGuid(),
+                Name = requirementsSpecificationName,
+                ShortName = shortName,
+                Owner = this.Owner
+            };
 
             this.requirementsSpecifications.RemoveAll(x => string.Equals(x.ShortName, shortName, StringComparison.InvariantCultureIgnoreCase));
             this.requirementsSpecifications.Add(alreadyCreated);
@@ -453,9 +434,9 @@ namespace DEHEASysML.MappingRules
         /// <param name="package">The <see cref="Package" /></param>
         /// <param name="requirementsGroup">The <see cref="RequirementsGroup" /></param>
         /// <returns>A value indicating whether the <see cref="RequirementsGroup" /> has been created or retrieved</returns>
-        private bool TryGetOrCreateRequirementsGroup(Package package, out RequirementsGroup requirementsGroup)
+        private bool TryGetOrCreateRequirementsGroup(IDualPackage package, out RequirementsGroup requirementsGroup)
         {
-            var createdRequirementsGroup = this.requirementsGroups.FirstOrDefault(x =>
+            var createdRequirementsGroup = this.requirementsGroups.Find(x =>
                 string.Equals(x.ShortName, package.Name.GetShortName(), StringComparison.InvariantCultureIgnoreCase));
 
             if (createdRequirementsGroup != null)
@@ -534,7 +515,7 @@ namespace DEHEASysML.MappingRules
                 return;
             }
 
-            var definition = requirement.Definition.FirstOrDefault(x => string.Equals(x.LanguageCode, "en", StringComparison.InvariantCultureIgnoreCase))
+            var definition = requirement.Definition.Find(x => string.Equals(x.LanguageCode, "en", StringComparison.InvariantCultureIgnoreCase))
                 ?.Clone(true) ?? this.CreateDefinition();
 
             definition.Content = requirementElement.GetRequirementText();
