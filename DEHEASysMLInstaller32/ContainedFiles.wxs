@@ -57,28 +57,28 @@
 				<File Id="fil6F9F480E0389A32E3CCA841AF30A0C3A" Name="DEHEASysML.dll"  KeyPath="yes" Source="$(var.DEHEASysML.TargetPath)" />
 				<ProgId Id="Record" />
 				<RegistryValue Root="HKCR" Key="CLSID\{EC884B3C-DE35-31C3-8C05-7CD3AAB4C3C7}\Implemented Categories\{62C8FE65-4EBB-45e7-B440-6E39B2CDBF29}" Value="" Type="string" Action="write" />
-				<RegistryValue Root="HKCR" Key="CLSID\{EC884B3C-DE35-31C3-8C05-7CD3AAB4C3C7}\InprocServer32\1.7.1.0" Name="Class" Value="DEHEASysML.Forms.HubPanelControl" Type="string" Action="write" />
-				<RegistryValue Root="HKCR" Key="CLSID\{EC884B3C-DE35-31C3-8C05-7CD3AAB4C3C7}\InprocServer32\1.7.1.0" Name="Assembly" Value="DEHEASysML, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" Type="string" Action="write" />
-				<RegistryValue Root="HKCR" Key="CLSID\{EC884B3C-DE35-31C3-8C05-7CD3AAB4C3C7}\InprocServer32\1.7.1.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
-				<RegistryValue Root="HKCR" Key="CLSID\{EC884B3C-DE35-31C3-8C05-7CD3AAB4C3C7}\InprocServer32\1.7.1.0" Name="CodeBase" Value="file:///[#fil6F9F480E0389A32E3CCA841AF30A0C3A]" Type="string" Action="write" />
+				<RegistryValue Root="HKCR" Key="CLSID\{EC884B3C-DE35-31C3-8C05-7CD3AAB4C3C7}\InprocServer32\1.7.2.0" Name="Class" Value="DEHEASysML.Forms.HubPanelControl" Type="string" Action="write" />
+				<RegistryValue Root="HKCR" Key="CLSID\{EC884B3C-DE35-31C3-8C05-7CD3AAB4C3C7}\InprocServer32\1.7.2.0" Name="Assembly" Value="DEHEASysML, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" Type="string" Action="write" />
+				<RegistryValue Root="HKCR" Key="CLSID\{EC884B3C-DE35-31C3-8C05-7CD3AAB4C3C7}\InprocServer32\1.7.2.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+				<RegistryValue Root="HKCR" Key="CLSID\{EC884B3C-DE35-31C3-8C05-7CD3AAB4C3C7}\InprocServer32\1.7.2.0" Name="CodeBase" Value="file:///[#fil6F9F480E0389A32E3CCA841AF30A0C3A]" Type="string" Action="write" />
 				<RegistryValue Root="HKCR" Key="CLSID\{EC884B3C-DE35-31C3-8C05-7CD3AAB4C3C7}\InprocServer32" Name="Class" Value="DEHEASysML.Forms.HubPanelControl" Type="string" Action="write" />
 				<RegistryValue Root="HKCR" Key="CLSID\{EC884B3C-DE35-31C3-8C05-7CD3AAB4C3C7}\InprocServer32" Name="Assembly" Value="DEHEASysML, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" Type="string" Action="write" />
 				<RegistryValue Root="HKCR" Key="CLSID\{EC884B3C-DE35-31C3-8C05-7CD3AAB4C3C7}\InprocServer32" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
 				<RegistryValue Root="HKCR" Key="CLSID\{EC884B3C-DE35-31C3-8C05-7CD3AAB4C3C7}\InprocServer32" Name="CodeBase" Value="file:///[#fil6F9F480E0389A32E3CCA841AF30A0C3A]" Type="string" Action="write" />
 				<RegistryValue Root="HKCR" Key="CLSID\{9FA962D5-42B3-3D4E-A2D8-D7082E24E031}\Implemented Categories\{62C8FE65-4EBB-45e7-B440-6E39B2CDBF29}" Value="" Type="string" Action="write" />
-				<RegistryValue Root="HKCR" Key="CLSID\{9FA962D5-42B3-3D4E-A2D8-D7082E24E031}\InprocServer32\1.7.1.0" Name="Class" Value="DEHEASysML.Forms.ImpactPanelControl" Type="string" Action="write" />
-				<RegistryValue Root="HKCR" Key="CLSID\{9FA962D5-42B3-3D4E-A2D8-D7082E24E031}\InprocServer32\1.7.1.0" Name="Assembly" Value="DEHEASysML, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" Type="string" Action="write" />
-				<RegistryValue Root="HKCR" Key="CLSID\{9FA962D5-42B3-3D4E-A2D8-D7082E24E031}\InprocServer32\1.7.1.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
-				<RegistryValue Root="HKCR" Key="CLSID\{9FA962D5-42B3-3D4E-A2D8-D7082E24E031}\InprocServer32\1.7.1.0" Name="CodeBase" Value="file:///[#fil6F9F480E0389A32E3CCA841AF30A0C3A]" Type="string" Action="write" />
+				<RegistryValue Root="HKCR" Key="CLSID\{9FA962D5-42B3-3D4E-A2D8-D7082E24E031}\InprocServer32\1.7.2.0" Name="Class" Value="DEHEASysML.Forms.ImpactPanelControl" Type="string" Action="write" />
+				<RegistryValue Root="HKCR" Key="CLSID\{9FA962D5-42B3-3D4E-A2D8-D7082E24E031}\InprocServer32\1.7.2.0" Name="Assembly" Value="DEHEASysML, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" Type="string" Action="write" />
+				<RegistryValue Root="HKCR" Key="CLSID\{9FA962D5-42B3-3D4E-A2D8-D7082E24E031}\InprocServer32\1.7.2.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+				<RegistryValue Root="HKCR" Key="CLSID\{9FA962D5-42B3-3D4E-A2D8-D7082E24E031}\InprocServer32\1.7.2.0" Name="CodeBase" Value="file:///[#fil6F9F480E0389A32E3CCA841AF30A0C3A]" Type="string" Action="write" />
 				<RegistryValue Root="HKCR" Key="CLSID\{9FA962D5-42B3-3D4E-A2D8-D7082E24E031}\InprocServer32" Name="Class" Value="DEHEASysML.Forms.ImpactPanelControl" Type="string" Action="write" />
 				<RegistryValue Root="HKCR" Key="CLSID\{9FA962D5-42B3-3D4E-A2D8-D7082E24E031}\InprocServer32" Name="Assembly" Value="DEHEASysML, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" Type="string" Action="write" />
 				<RegistryValue Root="HKCR" Key="CLSID\{9FA962D5-42B3-3D4E-A2D8-D7082E24E031}\InprocServer32" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
 				<RegistryValue Root="HKCR" Key="CLSID\{9FA962D5-42B3-3D4E-A2D8-D7082E24E031}\InprocServer32" Name="CodeBase" Value="file:///[#fil6F9F480E0389A32E3CCA841AF30A0C3A]" Type="string" Action="write" />
 				<RegistryValue Root="HKCR" Key="CLSID\{F8F393B6-194A-3511-867E-E51955739159}\Implemented Categories\{62C8FE65-4EBB-45e7-B440-6E39B2CDBF29}" Value="" Type="string" Action="write" />
-				<RegistryValue Root="HKCR" Key="CLSID\{F8F393B6-194A-3511-867E-E51955739159}\InprocServer32\1.7.1.0" Name="Class" Value="DEHEASysML.App" Type="string" Action="write" />
-				<RegistryValue Root="HKCR" Key="CLSID\{F8F393B6-194A-3511-867E-E51955739159}\InprocServer32\1.7.1.0" Name="Assembly" Value="DEHEASysML, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" Type="string" Action="write" />
-				<RegistryValue Root="HKCR" Key="CLSID\{F8F393B6-194A-3511-867E-E51955739159}\InprocServer32\1.7.1.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
-				<RegistryValue Root="HKCR" Key="CLSID\{F8F393B6-194A-3511-867E-E51955739159}\InprocServer32\1.7.1.0" Name="CodeBase" Value="file:///[#fil6F9F480E0389A32E3CCA841AF30A0C3A]" Type="string" Action="write" />
+				<RegistryValue Root="HKCR" Key="CLSID\{F8F393B6-194A-3511-867E-E51955739159}\InprocServer32\1.7.2.0" Name="Class" Value="DEHEASysML.App" Type="string" Action="write" />
+				<RegistryValue Root="HKCR" Key="CLSID\{F8F393B6-194A-3511-867E-E51955739159}\InprocServer32\1.7.2.0" Name="Assembly" Value="DEHEASysML, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" Type="string" Action="write" />
+				<RegistryValue Root="HKCR" Key="CLSID\{F8F393B6-194A-3511-867E-E51955739159}\InprocServer32\1.7.2.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+				<RegistryValue Root="HKCR" Key="CLSID\{F8F393B6-194A-3511-867E-E51955739159}\InprocServer32\1.7.2.0" Name="CodeBase" Value="file:///[#fil6F9F480E0389A32E3CCA841AF30A0C3A]" Type="string" Action="write" />
 				<RegistryValue Root="HKCR" Key="CLSID\{F8F393B6-194A-3511-867E-E51955739159}\InprocServer32" Name="Class" Value="DEHEASysML.App" Type="string" Action="write" />
 				<RegistryValue Root="HKCR" Key="CLSID\{F8F393B6-194A-3511-867E-E51955739159}\InprocServer32" Name="Assembly" Value="DEHEASysML, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" Type="string" Action="write" />
 				<RegistryValue Root="HKCR" Key="CLSID\{F8F393B6-194A-3511-867E-E51955739159}\InprocServer32" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
