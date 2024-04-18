@@ -59,6 +59,7 @@ namespace DEHEASysML.DstController
     using DEHPCommon.UserInterfaces.Views;
 
     using DevExpress.Mvvm.Native;
+
     using EA;
 
     using NLog;
@@ -385,21 +386,7 @@ namespace DEHEASysML.DstController
         /// <returns>A value asserting if the Element has been found</returns>
         public bool TryGetElement(string name, StereotypeKind stereotype, out Element element)
         {
-            var sqlQuery = $"SELECT Object_ID FROM t_object WHERE Name = \"{name}\"";
-            var sqlResult = this.CurrentRepository.SQLQuery(sqlQuery);
-
-            var xmlElement = XElement.Parse(sqlResult);
-            var rows = xmlElement.Descendants("Row");
-
-            var elementIds = rows.Select(row => int.Parse(row.Element("Object_ID")!.Value)).ToList();
-
-            if (!elementIds.Any())
-            {
-                element = null;
-                return false;
-            }
-
-            var elements = this.CurrentRepository.GetElementSet(string.Join(",", elementIds), 0).OfType<Element>();
+            var elements = this.QueryElementsByName(name);
             element = elements.FirstOrDefault(x => x.HasStereotype(stereotype));
 
             return element != null;
@@ -414,21 +401,7 @@ namespace DEHEASysML.DstController
         /// <returns>A value asserting if the Element has been found</returns>
         public bool TryGetElementByType(string name, StereotypeKind type, out Element element)
         {
-            var sqlQuery = $"SELECT Object_ID FROM t_object WHERE Name = \"{name}\"";
-            var sqlResult = this.CurrentRepository.SQLQuery(sqlQuery);
-
-            var xmlElement = XElement.Parse(sqlResult);
-            var rows = xmlElement.Descendants("Row");
-
-            var elementIds = rows.Select(row => int.Parse(row.Element("Object_ID")!.Value)).ToList();
-
-            if (!elementIds.Any())
-            {
-                element = null;
-                return false;
-            }
-
-            var elements = this.CurrentRepository.GetElementSet(string.Join(",", elementIds), 0).OfType<Element>();
+            var elements = this.QueryElementsByName(name);
             element = elements.FirstOrDefault(x => x.MetaType.AreEquals(type));
 
             return element != null;
@@ -514,9 +487,9 @@ namespace DEHEASysML.DstController
         {
             elementRequirement = null;
 
-            var elements = this.cacheService.GetElementsOfStereotype(StereotypeKind.Requirement);
+            var elements = this.QueryElementsByName(name);
 
-            foreach (var element in elements)
+            foreach (var element in elements.Where(x => x.HasStereotype(StereotypeKind.Requirement)))
             {
                 var retrieveId = element.GetRequirementId();
 
@@ -987,6 +960,29 @@ namespace DEHEASysML.DstController
         public void ResetConfigurationMapping()
         {
             this.mappingConfigurationService.ExternalIdentifierMap = new ExternalIdentifierMap();
+        }
+
+        /// <summary>
+        /// Queries all <see cref="Element"/> where the <see cref="Element.Name"/> matches the provided <paramref name="name"/>
+        /// </summary>
+        /// <param name="name">The name to search for</param>
+        /// <returns>A collection of retrieved <see cref="Element"/></returns>
+        private IReadOnlyCollection<Element> QueryElementsByName(string name)
+        {
+            var sqlQuery = $"SELECT Object_ID FROM t_object WHERE Name = \"{name}\"";
+            var sqlResult = this.CurrentRepository.SQLQuery(sqlQuery);
+
+            var xmlElement = XElement.Parse(sqlResult);
+            var rows = xmlElement.Descendants("Row");
+
+            var elementIds = rows.Select(row => int.Parse(row.Element("Object_ID")!.Value)).ToList();
+
+            if (!elementIds.Any())
+            {
+                return [];
+            }
+
+            return [..this.CurrentRepository.GetElementSet(string.Join(",", elementIds), 0).OfType<Element>()];
         }
 
         /// <summary>

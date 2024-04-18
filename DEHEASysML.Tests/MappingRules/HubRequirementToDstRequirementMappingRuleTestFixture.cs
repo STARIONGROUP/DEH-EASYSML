@@ -36,6 +36,7 @@ namespace DEHEASysML.Tests.MappingRules
     using DEHEASysML.DstController;
     using DEHEASysML.Enumerators;
     using DEHEASysML.MappingRules;
+    using DEHEASysML.Services.Cache;
     using DEHEASysML.Services.MappingConfiguration;
     using DEHEASysML.Tests.Utils.Stereotypes;
     using DEHEASysML.Utils.Stereotypes;
@@ -61,6 +62,7 @@ namespace DEHEASysML.Tests.MappingRules
         private Mock<IMappingConfigurationService> mappingConfiguration;
         private Dictionary<string, (string, string)> requirementValues;
         private Dictionary<string, string> updatedStereotypes;
+        private Mock<ICacheService> cacheService;
 
         [SetUp]
         public void Setup()
@@ -76,11 +78,13 @@ namespace DEHEASysML.Tests.MappingRules
             this.dstController.Setup(x => x.UpdatedStereotypes).Returns(this.updatedStereotypes);
             this.dstController.Setup(x => x.GetDefaultPackage(It.IsAny<StereotypeKind>())).Returns(defaultPackage.Object);
             this.mappingConfiguration = new Mock<IMappingConfigurationService>();
+            this.cacheService = new Mock<ICacheService>();
 
             var containerBuilder = new ContainerBuilder();
             containerBuilder.RegisterInstance(this.hubController.Object).As<IHubController>();
             containerBuilder.RegisterInstance(this.dstController.Object).As<IDstController>();
             containerBuilder.RegisterInstance(this.mappingConfiguration.Object).As<IMappingConfigurationService>();
+            containerBuilder.RegisterInstance(this.cacheService.Object).As<ICacheService>();
             AppContainer.Container = containerBuilder.Build();
 
             this.rule = new HubRequirementToDstRequirementMappingRule();
