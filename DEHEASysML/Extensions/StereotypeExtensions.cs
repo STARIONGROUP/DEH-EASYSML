@@ -70,11 +70,9 @@ namespace DEHEASysML.Extensions
         /// <param name="newValue">The new value</param>
         public static void SetValueOfPropertyValue(this Element valueProperty, string newValue)
         {
-            var customProperties = valueProperty.CustomProperties.OfType<CustomProperty>().FirstOrDefault(x => x.Name == "default");
-
-            if (customProperties != null)
+            if (valueProperty.CustomProperties.OfType<CustomProperty>().FirstOrDefault(x => x.Name == "default") is { } customProperty)
             {
-                customProperties.Value = newValue;
+                customProperty.Value = newValue;
             }
         }
 
@@ -187,8 +185,7 @@ namespace DEHEASysML.Extensions
         /// <returns>The text of the Requirement</returns>
         public static string GetRequirementText(this Element requirement)
         {
-            return requirement.TaggedValuesEx.OfType<TaggedValue>()
-                .FirstOrDefault(x => x.Name.Equals("text", StringComparison.InvariantCultureIgnoreCase))?.Notes;
+            return (requirement.TaggedValuesEx.GetByName("text") as TaggedValue)?.Notes;
         }
 
         /// <summary>
@@ -198,10 +195,7 @@ namespace DEHEASysML.Extensions
         /// <param name="text">The new text</param>
         public static void SetRequirementText(this Element requirement, string text)
         {
-            var taggedValue = requirement.TaggedValuesEx.OfType<TaggedValue>()
-                .FirstOrDefault(x => x.Name.Equals("text", StringComparison.InvariantCultureIgnoreCase));
-
-            if (taggedValue != null)
+            if (requirement.TaggedValuesEx.GetByName("text") is TaggedValue taggedValue)
             {
                 taggedValue.Notes = text;
                 taggedValue.Update();
@@ -225,8 +219,7 @@ namespace DEHEASysML.Extensions
         /// <returns>The Id of the Requirement</returns>
         public static string GetRequirementId(this Element requirement)
         {
-            var requirementId = requirement.TaggedValuesEx.OfType<TaggedValue>()
-                .FirstOrDefault(x => x.Name.Equals("id", StringComparison.InvariantCultureIgnoreCase))?.Value;
+            var requirementId = (requirement.TaggedValuesEx.GetByName("id") as TaggedValue)?.Value;
 
             return string.IsNullOrEmpty(requirementId) ? "ID NOT SET" : requirementId;
         }
@@ -238,10 +231,7 @@ namespace DEHEASysML.Extensions
         /// <param name="id">The new id</param>
         public static void SetRequirementId(this Element requirement, string id)
         {
-            var taggedValue = requirement.TaggedValuesEx.OfType<TaggedValue>()
-                .FirstOrDefault(x => x.Name.Equals("id", StringComparison.InvariantCultureIgnoreCase));
-
-            if (taggedValue != null)
+            if (requirement.TaggedValuesEx.GetByName("id") is TaggedValue taggedValue)
             {
                 taggedValue.Value = id;
                 taggedValue.Update();

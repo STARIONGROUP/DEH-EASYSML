@@ -107,6 +107,14 @@ namespace DEHEASysML.Tests.Utils.Stereotypes
         /// <returns>null</returns>
         public object GetByName(string Name)
         {
+            foreach (var containedObject in this.containedObjects)
+            {
+                if (containedObject is TaggedValue tagged && tagged.Name == Name)
+                {
+                    return containedObject;
+                }
+            }
+
             return null;
         }
 

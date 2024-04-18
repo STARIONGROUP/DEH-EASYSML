@@ -37,6 +37,7 @@ namespace DEHEASysML.Tests.MappingRules
     using DEHEASysML.DstController;
     using DEHEASysML.Enumerators;
     using DEHEASysML.MappingRules;
+    using DEHEASysML.Services.Cache;
     using DEHEASysML.Services.MappingConfiguration;
     using DEHEASysML.Tests.Utils.Stereotypes;
     using DEHEASysML.Utils.Stereotypes;
@@ -64,6 +65,7 @@ namespace DEHEASysML.Tests.MappingRules
         private Dictionary<Element, List<(Partition, ChangeKind)>> modifiedPartitions;
         private Dictionary<string, int> updatedPropertyTypes;
         private List<Connector> createrConnectors;
+        private Mock<ICacheService> cacheService;
 
         [SetUp]
         public void Setup()
@@ -82,12 +84,18 @@ namespace DEHEASysML.Tests.MappingRules
             this.dstController.Setup(x => x.ModifiedPartitions).Returns(this.modifiedPartitions);
             this.dstController.Setup(x => x.CreatedConnectors).Returns(this.createrConnectors);
             this.dstController.Setup(x => x.UpdatePropertyTypes).Returns(this.updatedPropertyTypes);
+            this.dstController.Setup(x => x.CreatedElements).Returns([]);
             this.mappingConfiguration = new Mock<IMappingConfigurationService>();
+            this.cacheService = new Mock<ICacheService>();
+            this.cacheService.Setup(x => x.GetElementsOfStereotype(It.IsAny<StereotypeKind>())).Returns([]);
+            this.cacheService.Setup(x => x.GetElementsOfMetaType(It.IsAny<StereotypeKind>())).Returns([]);
+            this.cacheService.Setup(x => x.GetConnectorsOfElement(It.IsAny<int>())).Returns([]);
 
             var containerBuilder = new ContainerBuilder();
             containerBuilder.RegisterInstance(this.hubController.Object).As<IHubController>();
             containerBuilder.RegisterInstance(this.dstController.Object).As<IDstController>();
             containerBuilder.RegisterInstance(this.mappingConfiguration.Object).As<IMappingConfigurationService>();
+            containerBuilder.RegisterInstance(this.cacheService.Object).As<ICacheService>();
             AppContainer.Container = containerBuilder.Build();
 
             this.rule = new ElementDefinitionToBlockMappingRule();

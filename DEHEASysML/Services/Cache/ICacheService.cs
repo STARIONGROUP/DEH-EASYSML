@@ -24,7 +24,6 @@
 
 namespace DEHEASysML.Services.Cache
 {
-    using System;
     using System.Collections.Generic;
 
     using DEHEASysML.Enumerators;
@@ -80,5 +79,11 @@ namespace DEHEASysML.Services.Cache
         /// <param name="elementId">The <see cref="Element"/> Id</param>
         /// <returns>A collection of <see cref="Connector"/></returns>
         IReadOnlyCollection<Connector> GetConnectorsOfElement(int elementId);
+
+        /// <summary>
+        /// Adds a new <see cref="Package"/> in the cached package id
+        /// </summary>
+        /// <param name="packageId">The new package id</param>
+        void AddNewPackage(int packageId);
     }
 }

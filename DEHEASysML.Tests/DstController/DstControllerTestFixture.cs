@@ -602,12 +602,18 @@ namespace DEHEASysML.Tests.DstController
         {
             this.dstController.CurrentRepository = this.repository.Object;
             var element = new Mock<Element>();
+            element.Setup(x => x.ElementID).Returns(42);
             element.Setup(x => x.Name).Returns("element");
             element.Setup(x => x.Stereotype).Returns("block");
             element.Setup(x => x.HasStereotype(StereotypeKind.Block.ToString().ToLower())).Returns(true);
 
-            this.cacheService.Setup(x => x.GetElementsOfStereotype(StereotypeKind.Requirement)).Returns([]);
-            this.cacheService.Setup(x => x.GetElementsOfStereotype(StereotypeKind.Block)).Returns([element.Object]);
+            this.repository.Setup(x => x.GetElementSet("42", 0)).Returns(new EnterpriseArchitectCollection() { element.Object });
+
+            this.repository.Setup(x => x.SQLQuery(It.Is<string>(s => s.Contains(element.Object.Name))))
+                .Returns("<Data><Row><Object_ID>42</Object_ID></Row></Data>");
+
+            this.repository.Setup(x => x.SQLQuery(It.Is<string>(s => !s.Contains(element.Object.Name))))
+                .Returns("<Data></Data>");
 
             Assert.IsFalse(this.dstController.TryGetElement("element", StereotypeKind.Requirement, out var retrievedElement));
             Assert.IsFalse(this.dstController.TryGetElement("req", StereotypeKind.Requirement, out  retrievedElement));
@@ -617,9 +623,14 @@ namespace DEHEASysML.Tests.DstController
             packageElement.Setup(x => x.Name).Returns("pack");
             packageElement.Setup(x => x.ElementGUID).Returns(Guid.NewGuid().ToString());
             packageElement.Setup(x => x.Type).Returns("Package");
-            this.repository.Setup(x => x.GetPackageByGuid(packageElement.Object.ElementGUID)).Returns(this.package.Object);
 
-            this.cacheService.Setup(x => x.GetElementsOfMetaType(StereotypeKind.Package)).Returns([packageElement.Object]);
+            this.repository.Setup(x => x.GetPackageByGuid(packageElement.Object.ElementGUID)).Returns(this.package.Object);
+            
+            this.repository.Setup(x => x.SQLQuery(It.Is<string>(s => s.EndsWith($"\"{packageElement.Object.Name}\""))))
+                .Returns($"<Data><Row><ea_guid>{packageElement.Object.ElementGUID}</ea_guid></Row></Data>");
+
+            this.repository.Setup(x => x.SQLQuery(It.Is<string>(s => !s.EndsWith($"\"{packageElement.Object.Name}\""))))
+                .Returns("<Data></Data>");
 
             Assert.IsFalse(this.dstController.TryGetPackage("req", out var retrievedPackage));
             Assert.IsTrue(this.dstController.TryGetPackage("pack", out  retrievedPackage));
@@ -745,6 +756,12 @@ namespace DEHEASysML.Tests.DstController
             var existingPackage = new Mock<Package>();
 
             this.cacheService.Setup(x => x.GetElementsOfMetaType(StereotypeKind.Package)).Returns([existingPackageElement.Object]);
+
+            this.repository.Setup(x => x.SQLQuery(It.Is<string>(s => s.Contains(existingPackageElement.Object.Name))))
+                .Returns($"<Data><Row><ea_guid>{existingPackageElement.Object.ElementGUID}</ea_guid></Row></Data>");
+
+            this.repository.Setup(x => x.SQLQuery(It.Is<string>(s => !s.Contains(existingPackageElement.Object.Name))))
+                .Returns($"<Data></Data>");
 
             this.repository.Setup(x => x.GetPackageByGuid(existingPackageElement.Object.ElementGUID)).Returns(existingPackage.Object);
             var defaultBlockPackage = this.dstController.GetDefaultPackage(StereotypeKind.Block);

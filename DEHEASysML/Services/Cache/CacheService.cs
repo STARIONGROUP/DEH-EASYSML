@@ -167,5 +167,14 @@ namespace DEHEASysML.Services.Cache
             var cachedConnectors = this.connectorCache.Where(x => x.ClientID == elementId || x.SupplierID == elementId).ToList();
             return cachedConnectors.Count == 0 ? this.QueryAllConnectorsOfElement(elementId) : cachedConnectors;
         }
+
+        /// <summary>
+        /// Adds a new <see cref="Package"/> in the cached package id
+        /// </summary>
+        /// <param name="packageId">The new package id</param>
+        public void AddNewPackage(int packageId)
+        {
+            this.PackageIds = [..this.PackageIds, packageId];
+        }
     }
 }
