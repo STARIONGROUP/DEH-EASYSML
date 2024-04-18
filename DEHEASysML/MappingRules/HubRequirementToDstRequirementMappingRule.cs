@@ -38,6 +38,7 @@ namespace DEHEASysML.MappingRules
     using DEHEASysML.DstController;
     using DEHEASysML.Enumerators;
     using DEHEASysML.Extensions;
+    using DEHEASysML.Services.Cache;
     using DEHEASysML.Services.MappingConfiguration;
     using DEHEASysML.Utils.Stereotypes;
     using DEHEASysML.ViewModel.Rows;
@@ -59,6 +60,11 @@ namespace DEHEASysML.MappingRules
     public class HubRequirementToDstRequirementMappingRule : HubToDstBaseMappingRule<(bool completeMapping, List<RequirementMappedElement> elements), List<MappedRequirementRowViewModel>>
     {
         /// <summary>
+        /// Gets the default package where to publish requirements
+        /// </summary>
+        private Package defaultPackage;
+
+        /// <summary>
         /// The collection of <see cref="RequirementMappedElement" />
         /// </summary>
         public List<RequirementMappedElement> Elements { get; private set; } = new();
@@ -79,6 +85,7 @@ namespace DEHEASysML.MappingRules
             {
                 this.MappingConfiguration = AppContainer.Container.Resolve<IMappingConfigurationService>();
                 this.DstController = AppContainer.Container.Resolve<IDstController>();
+                this.CacheService = AppContainer.Container.Resolve<ICacheService>();
 
                 if (!this.HubController.IsSessionOpen || !this.DstController.IsFileOpen)
                 {
@@ -87,6 +94,9 @@ namespace DEHEASysML.MappingRules
 
                 var (complete, elements) = input;
                 this.Elements = [..elements];
+                this.defaultPackage = this.DstController.GetDefaultPackage(StereotypeKind.Requirement);
+
+                var fullMappingRuleStopWatch = Stopwatch.StartNew();
 
                 foreach (var mappedElement in this.Elements.ToList())
                 {
@@ -120,6 +130,8 @@ namespace DEHEASysML.MappingRules
                     this.SaveMappingConfiguration([..this.Elements]);
                 }
 
+                fullMappingRuleStopWatch.Stop();
+                this.Logger.Info("{0} of {1} Requirements done in {2}[ms]", complete? "Mapping" : "Premapping", this.Elements.Count, fullMappingRuleStopWatch.ElapsedMilliseconds);
                 return [..this.Elements];
             }
             catch (Exception exception)
@@ -146,7 +158,7 @@ namespace DEHEASysML.MappingRules
                     if (this.DstController.TryGetRequirement(source.Name, source.ShortName, out var sourceElement)
                         && this.DstController.TryGetRequirement(target.Name, target.ShortName, out var targetElement))
                     {
-                        CreateOrUpdateConnector(requirementMappedElement.DstElement, sourceElement, targetElement);
+                        this.CreateOrUpdateConnector(requirementMappedElement.DstElement, sourceElement, targetElement);
                     }
                 }
             }
@@ -158,11 +170,16 @@ namespace DEHEASysML.MappingRules
         /// <param name="dstElement">The current <see cref="Element"/></param>
         /// <param name="sourceElement">The source <see cref="Element"/></param>
         /// <param name="targetElement">The target <see cref="Element"/></param>
-        private static void CreateOrUpdateConnector(Element dstElement, Element sourceElement, Element targetElement)
+        private void CreateOrUpdateConnector(Element dstElement, Element sourceElement, Element targetElement)
         {
-            var connector = dstElement.Connectors.OfType<Connector>()
-                .FirstOrDefault(x => x.Stereotype.AreEquals(StereotypeKind.DeriveReqt) && x.ClientID == sourceElement.ElementID
-                                                                                       && x.SupplierID == targetElement.ElementID);
+            var connectors = this.DstController.CreatedConnectors.Where(x => x.ClientID == sourceElement.ElementID
+                                                                             && x.SupplierID == targetElement.ElementID)
+                .ToList();
+
+            connectors.AddRange(this.CacheService.GetConnectorsOfElement(dstElement.ElementID));
+
+            var connector = connectors.Find(x => x.Stereotype.AreEquals(StereotypeKind.DeriveReqt) && x.ClientID == sourceElement.ElementID
+                                                                                                             && x.SupplierID == targetElement.ElementID);
 
             if (connector != null)
             {
@@ -290,7 +307,7 @@ namespace DEHEASysML.MappingRules
             if (!this.DstController.TryGetElement(requirement.Name, StereotypeKind.Requirement, out requirementElement)
                 || requirement.ShortName != requirementElement.GetRequirementId())
             {
-                requirementElement = this.DstController.AddNewElement(this.DstController.GetDefaultPackage(StereotypeKind.Requirement).Elements,
+                requirementElement = this.DstController.AddNewElement(this.defaultPackage.Elements,
                     requirement.Name, "requirement", StereotypeKind.Requirement);
 
                 requirementElement.Update();
