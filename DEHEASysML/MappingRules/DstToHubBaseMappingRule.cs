@@ -34,7 +34,6 @@ namespace DEHEASysML.MappingRules
     using CDP4Dal.Operations;
 
     using DEHEASysML.Extensions;
-    using DEHEASysML.Services.Cache;
 
     using EA;
 
@@ -50,11 +49,6 @@ namespace DEHEASysML.MappingRules
         /// The current <see cref="DomainOfExpertise" />
         /// </summary>
         protected DomainOfExpertise Owner;
-
-        /// <summary>
-        /// Gets the <see cref="ICacheService"/>
-        /// </summary>
-        protected ICacheService CacheService;
 
         /// <summary>
         /// Tries to create the category with the specified <paramref name="categoryNames" />

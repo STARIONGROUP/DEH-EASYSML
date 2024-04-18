@@ -31,6 +31,7 @@ namespace DEHEASysML.MappingRules
     using CDP4Common.CommonData;
 
     using DEHEASysML.DstController;
+    using DEHEASysML.Services.Cache;
     using DEHEASysML.Services.MappingConfiguration;
     using DEHEASysML.ViewModel.Rows;
 
@@ -55,6 +56,11 @@ namespace DEHEASysML.MappingRules
         /// The <see cref="IHubController" />
         /// </summary>
         protected readonly IHubController HubController = AppContainer.Container.Resolve<IHubController>();
+
+        /// <summary>
+        /// Gets the <see cref="ICacheService"/>
+        /// </summary>
+        protected ICacheService CacheService;
 
         /// <summary>
         /// The <see cref="IMappingConfigurationService" />

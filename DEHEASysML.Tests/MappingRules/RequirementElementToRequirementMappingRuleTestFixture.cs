@@ -197,11 +197,11 @@ namespace DEHEASysML.Tests.MappingRules
             requirement.Setup(x => x.ElementID).Returns(elementId);
 
             var idValue = new Mock<TaggedValue>();
-            idValue.Setup(x => x.Name).Returns("Id");
+            idValue.Setup(x => x.Name).Returns("id");
             idValue.Setup(x => x.Value).Returns(id);
 
             var textValue = new Mock<TaggedValue>();
-            textValue.Setup(x => x.Name).Returns("Text");
+            textValue.Setup(x => x.Name).Returns("text");
             textValue.Setup(x => x.Value).Returns(description);
 
             requirement.Setup(x => x.TaggedValuesEx).Returns(new EnterpriseArchitectCollection()

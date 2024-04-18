@@ -29,6 +29,7 @@ namespace DEHEASysML.DstController
     using System.Diagnostics;
     using System.Linq;
     using System.Reactive.Linq;
+    using System.Xml.Linq;
 
     using CDP4Common;
     using CDP4Common.CommonData;
@@ -58,7 +59,6 @@ namespace DEHEASysML.DstController
     using DEHPCommon.UserInterfaces.Views;
 
     using DevExpress.Mvvm.Native;
-
     using EA;
 
     using NLog;
@@ -385,8 +385,22 @@ namespace DEHEASysML.DstController
         /// <returns>A value asserting if the Element has been found</returns>
         public bool TryGetElement(string name, StereotypeKind stereotype, out Element element)
         {
-            var elements = this.cacheService.GetElementsOfStereotype(stereotype);
-            element = elements.FirstOrDefault(x => x.Name == name );
+            var sqlQuery = $"SELECT Object_ID FROM t_object WHERE Name = \"{name}\"";
+            var sqlResult = this.CurrentRepository.SQLQuery(sqlQuery);
+
+            var xmlElement = XElement.Parse(sqlResult);
+            var rows = xmlElement.Descendants("Row");
+
+            var elementIds = rows.Select(row => int.Parse(row.Element("Object_ID")!.Value)).ToList();
+
+            if (!elementIds.Any())
+            {
+                element = null;
+                return false;
+            }
+
+            var elements = this.CurrentRepository.GetElementSet(string.Join(",", elementIds), 0).OfType<Element>();
+            element = elements.FirstOrDefault(x => x.HasStereotype(stereotype));
 
             return element != null;
         }
@@ -400,8 +414,22 @@ namespace DEHEASysML.DstController
         /// <returns>A value asserting if the Element has been found</returns>
         public bool TryGetElementByType(string name, StereotypeKind type, out Element element)
         {
-            var elements = this.cacheService.GetElementsOfMetaType(type);
-            element = elements.FirstOrDefault(x => x.Name == name);
+            var sqlQuery = $"SELECT Object_ID FROM t_object WHERE Name = \"{name}\"";
+            var sqlResult = this.CurrentRepository.SQLQuery(sqlQuery);
+
+            var xmlElement = XElement.Parse(sqlResult);
+            var rows = xmlElement.Descendants("Row");
+
+            var elementIds = rows.Select(row => int.Parse(row.Element("Object_ID")!.Value)).ToList();
+
+            if (!elementIds.Any())
+            {
+                element = null;
+                return false;
+            }
+
+            var elements = this.CurrentRepository.GetElementSet(string.Join(",", elementIds), 0).OfType<Element>();
+            element = elements.FirstOrDefault(x => x.MetaType.AreEquals(type));
 
             return element != null;
         }
@@ -416,13 +444,21 @@ namespace DEHEASysML.DstController
         {
             package = null;
 
-            var elementPackage = this.cacheService.GetElementsOfMetaType(StereotypeKind.Package).FirstOrDefault(x => x.Name == name);
+            var sqlQuery = $"SELECT ea_guid FROM t_package WHERE Name = \"{name}\"";
+            var sqlResult = this.CurrentRepository.SQLQuery(sqlQuery);
 
-            if (elementPackage != null)
+            var xmlElement = XElement.Parse(sqlResult);
+            var rows = xmlElement.Descendants("Row");
+
+            var packageGuids = rows.Select(row => row.Element("ea_guid")!.Value).ToList();
+
+            if (!packageGuids.Any())
             {
-                package = this.CurrentRepository.GetPackageByGuid(elementPackage.ElementGUID);
+                package = null;
+                return false;
             }
 
+            package = this.CurrentRepository.GetPackageByGuid(packageGuids[0]);
             return package != null;
         }
 
@@ -510,6 +546,7 @@ namespace DEHEASysML.DstController
             this.shouldIgnoreEvents = true;
             var newPackage = parentPackage.Packages.AddNew(name, "Package") as Package;
             this.CreatedPackages.Add(newPackage);
+            this.cacheService.AddNewPackage(newPackage.PackageID);
             newPackage.Update();
             return newPackage;
         }

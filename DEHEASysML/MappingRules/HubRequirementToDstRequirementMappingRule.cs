@@ -26,6 +26,7 @@ namespace DEHEASysML.MappingRules
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Linq;
     using System.Runtime.ExceptionServices;
 
@@ -85,10 +86,12 @@ namespace DEHEASysML.MappingRules
                 }
 
                 var (complete, elements) = input;
-                this.Elements = new List<RequirementMappedElement>(elements);
+                this.Elements = [..elements];
 
                 foreach (var mappedElement in this.Elements.ToList())
                 {
+                    var stopwatch = Stopwatch.StartNew();
+
                     if (mappedElement.DstElement == null)
                     {
                         var alreadyExist = this.GetOrCreateRequirement(mappedElement.HubElement, out var requirementElement);
@@ -101,6 +104,9 @@ namespace DEHEASysML.MappingRules
                         this.UpdateProperties(mappedElement.HubElement, mappedElement.DstElement);
                         this.UpdateOrCreateRequirementPackages(mappedElement.HubElement, mappedElement.DstElement);
                     }
+
+                    stopwatch.Stop();
+                    this.Logger.Info("{0} done in {1}[ms] for Requirement {2}", complete? "Mapping" : "Premapping", stopwatch.ElapsedMilliseconds, mappedElement.HubElement.Name);
                 }
 
                 if (complete)
@@ -111,10 +117,10 @@ namespace DEHEASysML.MappingRules
                         this.MapCategoriesToStereotype(requirementMappedElement.DstElement, requirementMappedElement.HubElement);
                     }
 
-                    this.SaveMappingConfiguration(new List<MappedElementRowViewModel<Requirement>>(this.Elements));
+                    this.SaveMappingConfiguration([..this.Elements]);
                 }
 
-                return new List<MappedRequirementRowViewModel>(this.Elements);
+                return [..this.Elements];
             }
             catch (Exception exception)
             {
@@ -140,7 +146,7 @@ namespace DEHEASysML.MappingRules
                     if (this.DstController.TryGetRequirement(source.Name, source.ShortName, out var sourceElement)
                         && this.DstController.TryGetRequirement(target.Name, target.ShortName, out var targetElement))
                     {
-                        this.CreateOrUpdateConnector(requirementMappedElement.DstElement, sourceElement, targetElement);
+                        CreateOrUpdateConnector(requirementMappedElement.DstElement, sourceElement, targetElement);
                     }
                 }
             }
@@ -152,21 +158,23 @@ namespace DEHEASysML.MappingRules
         /// <param name="dstElement">The current <see cref="Element"/></param>
         /// <param name="sourceElement">The source <see cref="Element"/></param>
         /// <param name="targetElement">The target <see cref="Element"/></param>
-        private void CreateOrUpdateConnector(Element dstElement, Element sourceElement, Element targetElement)
+        private static void CreateOrUpdateConnector(Element dstElement, Element sourceElement, Element targetElement)
         {
             var connector = dstElement.Connectors.OfType<Connector>()
                 .FirstOrDefault(x => x.Stereotype.AreEquals(StereotypeKind.DeriveReqt) && x.ClientID == sourceElement.ElementID
                                                                                        && x.SupplierID == targetElement.ElementID);
 
-            if (connector == null)
+            if (connector != null)
             {
-                connector = dstElement.Connectors.AddNew("", "Abstraction") as Connector;
-                connector.StereotypeEx = StereotypeKind.DeriveReqt.GetFQStereotype();
-                connector.ClientID = sourceElement.ElementID;
-                connector.SupplierID = targetElement.ElementID;
-                connector.Update();
-                dstElement.Connectors.Refresh();
+                return;
             }
+
+            connector = (Connector)dstElement.Connectors.AddNew("", "Abstraction");
+            connector.StereotypeEx = StereotypeKind.DeriveReqt.GetFQStereotype();
+            connector.ClientID = sourceElement.ElementID;
+            connector.SupplierID = targetElement.ElementID;
+            connector.Update();
+            dstElement.Connectors.Refresh();
         }
 
         /// <summary>
@@ -195,10 +203,7 @@ namespace DEHEASysML.MappingRules
 
             var package = this.GetOrCreateRequirementsContainerPackage(requirementsSpecification);
 
-            foreach (var packageNames in treeNodesNames)
-            {
-                package = this.GetOrCreatePackage(package, packageNames);
-            }
+            package = treeNodesNames.Aggregate(package, this.GetOrCreatePackage);
 
             element.PackageID = package.PackageID;
             element.Update();
@@ -265,7 +270,7 @@ namespace DEHEASysML.MappingRules
         {
             if (requirement.Definition.Any())
             {
-                var definition = requirement.Definition.FirstOrDefault(x =>
+                var definition = requirement.Definition.Find(x =>
                     string.Equals(x.LanguageCode, "en", StringComparison.InvariantCultureIgnoreCase)) ?? requirement.Definition[0];
 
                 return definition.Content;
