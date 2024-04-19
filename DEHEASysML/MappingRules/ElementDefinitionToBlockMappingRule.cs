@@ -728,9 +728,10 @@ namespace DEHEASysML.MappingRules
                     usageDefinitionMappedElement = new ElementDefinitionMappedElement(elementUsage.ElementDefinition, elementUsageElement, MappingDirection.FromHubToDst);
                     this.Elements.Add(usageDefinitionMappedElement);
                     this.MapProperties(elementUsage, usageDefinitionMappedElement.DstElement);
-                    this.UpdateContainement(mappedElement.DstElement, usageDefinitionMappedElement.DstElement);
                     this.MapContainedElement(usageDefinitionMappedElement);
                 }
+
+                this.UpdateContainement(mappedElement.DstElement, usageDefinitionMappedElement.DstElement);
             }
         }
 
@@ -742,7 +743,7 @@ namespace DEHEASysML.MappingRules
         private void UpdateContainement(IDualElement parent, IDualElement element)
         {
             var partProperties = this.DstController.CreatedElements.Where(x => x.ParentID == parent.PackageID && x.HasStereotype(StereotypeKind.PartProperty))
-                .ToList();
+                .ToList(); 
 
             if (this.allPartPropertiesPerElement.TryGetValue(parent.ElementID, out var existingPartProperties))
             {
