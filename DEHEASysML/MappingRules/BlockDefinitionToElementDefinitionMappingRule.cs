@@ -220,8 +220,9 @@ namespace DEHEASysML.MappingRules
             this.elementsById = this.Elements.ToDictionary(x => x.DstElement.ElementID, x => x);
 
             this.CacheService ??= AppContainer.Container.Resolve<ICacheService>();
-            this.allPartPropertiesPerElement = this.CacheService.GetElementsOfStereotype(StereotypeKind.PartProperty).GroupBy(x => x.ParentID).ToDictionary(x => x.Key, x => x.ToList());
-            this.allValuePropertiesPerElement = this.CacheService.GetElementsOfStereotype(StereotypeKind.ValueProperty).GroupBy(x => x.ParentID).ToDictionary(x => x.Key, x => x.ToList());
+            this.DstController ??= AppContainer.Container.Resolve<IDstController>();
+            this.allPartPropertiesPerElement = this.CacheService.GetAllElements().Where(this.DstController.IsPartProperty).GroupBy(x => x.ParentID).ToDictionary(x => x.Key, x => x.ToList());
+            this.allValuePropertiesPerElement = this.CacheService.GetAllElements().Where(this.DstController.IsValueProperty).GroupBy(x => x.ParentID).ToDictionary(x => x.Key, x => x.ToList());
         }
 
         /// <summary>

@@ -90,6 +90,7 @@ namespace DEHEASysML.Tests.MappingRules
             this.cacheService.Setup(x => x.GetElementsOfStereotype(It.IsAny<StereotypeKind>())).Returns([]);
             this.cacheService.Setup(x => x.GetElementsOfMetaType(It.IsAny<StereotypeKind>())).Returns([]);
             this.cacheService.Setup(x => x.GetConnectorsOfElement(It.IsAny<int>())).Returns([]);
+            this.cacheService.Setup(x => x.GetAllElements()).Returns([]);
 
             var containerBuilder = new ContainerBuilder();
             containerBuilder.RegisterInstance(this.hubController.Object).As<IHubController>();
@@ -211,7 +212,7 @@ namespace DEHEASysML.Tests.MappingRules
             this.dstController.Setup(x => x.AddNewElement(It.IsAny<Collection>(), "mass", "DataType", StereotypeKind.ValueType))
                 .Returns(valueType.Object);
 
-            this.dstController.Setup(x => x.AddNewElement(It.IsAny<Collection>(), "mass", "Property", StereotypeKind.ValueProperty))
+            this.dstController.Setup(x => x.AddNewElement(It.IsAny<Collection>(), "mass", "Property"))
                 .Returns(property.Object);
 
             this.dstController.Setup(x => x.AddNewElement(It.IsAny<Collection>(), It.IsAny<string>(), StereotypeKind.State.ToString(),

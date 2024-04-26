@@ -28,6 +28,8 @@ namespace DEHEASysML.Tests.ViewModel.Dialogs
     using System.Collections.Generic;
     using System.Linq;
 
+    using Autofac;
+
     using CDP4Common.EngineeringModelData;
     using CDP4Common.SiteDirectoryData;
 
@@ -43,6 +45,7 @@ namespace DEHEASysML.Tests.ViewModel.Dialogs
     using DEHEASysML.ViewModel.RequirementsBrowser;
     using DEHEASysML.ViewModel.Rows;
 
+    using DEHPCommon;
     using DEHPCommon.Enumerators;
     using DEHPCommon.HubController.Interfaces;
     using DEHPCommon.UserInterfaces.Behaviors;
@@ -115,6 +118,10 @@ namespace DEHEASysML.Tests.ViewModel.Dialogs
             {
                 CloseWindowBehavior = this.closeWindow.Object
             };
+
+            var containerBuilder = new ContainerBuilder();
+            containerBuilder.RegisterInstance(this.dstController.Object).As<IDstController>();
+            AppContainer.Container = containerBuilder.Build();
         }
 
         private Mock<Element> CreateElement(StereotypeKind stereotype)

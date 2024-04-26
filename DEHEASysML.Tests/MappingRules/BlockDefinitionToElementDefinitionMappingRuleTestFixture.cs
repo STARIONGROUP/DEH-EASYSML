@@ -124,7 +124,6 @@ namespace DEHEASysML.Tests.MappingRules
             massValueProperty.Setup(x => x.Stereotype).Returns(StereotypeKind.ValueProperty.ToString());
             massValueProperty.Setup(x => x.Name).Returns("mass");
             massValueProperty.Setup(x => x.ElementID).Returns(11245);
-            this.allElements.Add(massValueProperty.Object);
 
             var dependencyConnector = new Mock<Connector>();
             dependencyConnector.Setup(x => x.Type).Returns(StereotypeKind.Dependency.ToString());
@@ -230,6 +229,21 @@ namespace DEHEASysML.Tests.MappingRules
             containerBuilder.RegisterInstance(this.mappingConfiguration.Object).As<IMappingConfigurationService>();
             containerBuilder.RegisterInstance(this.cacheService.Object).As<ICacheService>();
             AppContainer.Container = containerBuilder.Build();
+
+            foreach (var element in this.allElements)
+            {
+                if (element.Stereotype.AreEquals(StereotypeKind.ValueProperty))
+                {
+                    this.dstController.Setup(x => x.IsValueProperty(element)).Returns(true);
+                }
+
+                if (element.Stereotype.AreEquals(StereotypeKind.PartProperty))
+                {
+                    this.dstController.Setup(x => x.IsPartProperty(element)).Returns(true);
+                }
+            }
+
+            this.cacheService.Setup(x => x.GetAllElements()).Returns(this.allElements);
 
             this.rule = new BlockDefinitionToElementDefinitionMappingRule();
             this.rule.InitializeCachingProperties();
@@ -430,8 +444,8 @@ namespace DEHEASysML.Tests.MappingRules
 
             this.allElements.Add(partProperty.Object);
 
-            this.cacheService.Setup(x => x.GetElementsOfStereotype(StereotypeKind.PartProperty))
-                .Returns(this.allElements.Where(x => x.Stereotype.AreEquals(StereotypeKind.PartProperty)).ToList());
+            this.dstController.Setup(x => x.IsPartProperty(partProperty.Object)).Returns(true);
+            this.cacheService.Setup(x => x.GetAllElements()).Returns(this.allElements);
 
             this.rule.InitializeCachingProperties();
 

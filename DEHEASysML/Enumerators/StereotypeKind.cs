@@ -132,6 +132,11 @@ namespace DEHEASysML.Enumerators
         /// <summary>
         /// Used To represent the Abstraction MetaType
         /// </summary>
-        Abstraction
+        Abstraction,
+
+        /// <summary>
+        /// Used to represents the Aggregation Connector stereotype
+        /// </summary>
+        Aggregation
     }
 }

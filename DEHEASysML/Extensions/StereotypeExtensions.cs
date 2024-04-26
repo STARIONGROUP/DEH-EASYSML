@@ -41,19 +41,6 @@ namespace DEHEASysML.Extensions
     public static class StereotypeExtensions
     {
         /// <summary>
-        /// Gets the the value of the ValueProperty of an Element
-        /// </summary>
-        /// <param name="element">The <see cref="Element" /></param>
-        /// <param name="propertyName">The name of the ValueProperty</param>
-        /// <returns>The value</returns>
-        public static string GetValueOfPropertyValueOfElement(this Element element, string propertyName)
-        {
-            var valueProperty = element.GetValuePropertyOfElement(propertyName);
-
-            return valueProperty?.GetValueOfPropertyValue();
-        }
-
-        /// <summary>
         /// Gets the value of the given ValueProperty
         /// </summary>
         /// <param name="valueProperty">The value property</param>
@@ -77,28 +64,6 @@ namespace DEHEASysML.Extensions
         }
 
         /// <summary>
-        /// Retrieve an <see cref="Element" /> representing a ValueProperty where the name corresponds
-        /// </summary>
-        /// <param name="element">The <see cref="Element" /> that may contains the ValueProperty</param>
-        /// <param name="propertyName">The name of the property</param>
-        /// <returns>The <see cref="Element" /> if exists</returns>
-        public static Element GetValuePropertyOfElement(this Element element, string propertyName)
-        {
-            return element.EmbeddedElements.GetValuePropertyOfElement(propertyName);
-        }
-
-        /// <summary>
-        /// Retrieve an <see cref="Element" /> representing a ValueProperty where the name corresponds
-        /// </summary>
-        /// <param name="collection">The <see cref="Collection" /> that may contains the ValueProperty</param>
-        /// <param name="propertyName">The name of the property</param>
-        /// <returns>The <see cref="Element" /> if exists</returns>
-        public static Element GetValuePropertyOfElement(this Collection collection, string propertyName)
-        {
-            return collection.OfType<Element>().FirstOrDefault(x => x.Stereotype.AreEquals(StereotypeKind.ValueProperty) && x.Name == propertyName);
-        }
-
-        /// <summary>
         /// Get the <see cref="TaggedValue" /> corresponding to the unit of the given ValueProperty
         /// </summary>
         /// <param name="valueProperty">The ValueProperty</param>
@@ -109,46 +74,6 @@ namespace DEHEASysML.Extensions
         }
 
         /// <summary>
-        /// Gets all ValueProperty elements of an <see cref="Element" />
-        /// </summary>
-        /// <param name="element">The <see cref="Element"/></param>
-        /// <returns>A collection of <see cref="Element" /> containing ValueProperty</returns>
-        public static IEnumerable<Element> GetAllValuePropertiesOfElement(this Element element)
-        {
-            return element.EmbeddedElements.OfType<Element>().Where(x => x.Stereotype.AreEquals(StereotypeKind.ValueProperty));
-        }
-
-        /// <summary>
-        /// Gets all ValueProperty elements of an <see cref="Element" />
-        /// </summary>
-        /// <param name="collection">The <see cref="Collection"/> of an Element</param>
-        /// <returns>A collection of <see cref="Element" /> containing ValueProperty</returns>
-        public static IEnumerable<Element> GetAllValuePropertiesOfElement(this Collection collection)
-        {
-            return collection.OfType<Element>().Where(x => x.Stereotype.AreEquals(StereotypeKind.ValueProperty));
-        }
-
-        /// <summary>
-        /// Gets all PartPoperty elements of an <see cref="Element" />
-        /// </summary>
-        /// <param name="element">The <see cref="Element"/></param>
-        /// <returns>A collection of <see cref="Element" /> containing PartPoperty</returns>
-        public static IEnumerable<Element> GetAllPartPropertiesOfElement(this Element element)
-        {
-            return element.EmbeddedElements.OfType<Element>().Where(x => x.Stereotype.AreEquals(StereotypeKind.PartProperty));
-        }
-
-        /// <summary>
-        /// Gets all PartPoperty elements of an <see cref="Element" />
-        /// </summary>
-        /// <param name="collection">The <see cref="Collection"/> of an Element</param>
-        /// <returns>A collection of <see cref="Element" /> containing PartPoperty</returns>
-        public static IEnumerable<Element> GetAllPartPropertiesOfElement(this Collection collection)
-        {
-            return collection.OfType<Element>().Where(x => x.Stereotype.AreEquals(StereotypeKind.PartProperty));
-        }
-
-        /// <summary>
         /// Gets all Blocks that defines Ports of an <see cref="Element"/>
         /// </summary>
         /// <param name="element">The <see cref="Element"/></param>
@@ -156,26 +81,6 @@ namespace DEHEASysML.Extensions
         public static IEnumerable<Element> GetAllPortsDefinitionOfElement(this Element element)
         {
             return element.Elements.OfType<Element>().Where(x => x.HasStereotype(StereotypeKind.Block));
-        }
-
-        /// <summary>
-        /// Gets all Ports elements of an <see cref="Element" />
-        /// </summary>
-        /// <param name="element">The <see cref="Element"/></param>
-        /// <returns>A collection of <see cref="Element" /> containing Port</returns>
-        public static IEnumerable<Element> GetAllPortsOfElement(this Element element)
-        {
-            return element.EmbeddedElements.OfType<Element>().Where(x => x.MetaType.AreEquals(StereotypeKind.Port));
-        }
-
-        /// <summary>
-        /// Gets all Ports elements of an <see cref="Element" />
-        /// </summary>
-        /// <param name="collection">The <see cref="Collection"/> of an Element</param>
-        /// <returns>A collection of <see cref="Element" /> containing PartPoperty</returns>
-        public static IEnumerable<Element> GetAllPortsOfElement(this Collection collection)
-        {
-            return collection.OfType<Element>().Where(x => x.MetaType.AreEquals(StereotypeKind.Port));
         }
 
         /// <summary>
@@ -353,6 +258,16 @@ namespace DEHEASysML.Extensions
         {
             var regex = new Regex("[^a-zA-Z0-9]");
             return regex.Replace(elementName, "");
+        }
+
+        /// <summary>
+        /// Asserts that an <see cref="Element"/> is a Part or not
+        /// </summary>
+        /// <param name="element">The <see cref="Element"/> to check</param>
+        /// <returns>The assert</returns>
+        public static bool IsPart(this Element element)
+        {
+            return element.ParentID != 0 && element.MetaType == "Part";
         }
     }
 }

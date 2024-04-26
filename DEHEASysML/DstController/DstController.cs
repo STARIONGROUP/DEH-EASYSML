@@ -1,6 +1,6 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
 // <copyright file="DstController.cs" company="RHEA System S.A.">
-// Copyright (c) 2020-2022 RHEA System S.A.
+// Copyright (c) 2020-2024 RHEA System S.A.
 // 
 // Author: Sam Gerené, Alex Vorobiev, Alexander van Delft, Nathanael Smiechowski, Antoine Théate.
 // 
@@ -81,14 +81,9 @@ namespace DEHEASysML.DstController
         public static readonly string ThisToolName = typeof(DstController).Assembly.GetName().Name;
 
         /// <summary>
-        /// The <see cref="IHubController" />
+        /// Gets the injected <see cref="ICacheService" />
         /// </summary>
-        private readonly IHubController hubController;
-
-        /// <summary>
-        /// The <see cref="IMappingEngine" />
-        /// </summary>
-        private readonly IMappingEngine mappingEngine;
+        private readonly ICacheService cacheService;
 
         /// <summary>
         /// The <see cref="IExchangeHistoryService" />
@@ -96,14 +91,24 @@ namespace DEHEASysML.DstController
         private readonly IExchangeHistoryService exchangeHistory;
 
         /// <summary>
+        /// The <see cref="IHubController" />
+        /// </summary>
+        private readonly IHubController hubController;
+
+        /// <summary>
         /// Gets the current class logger
         /// </summary>
         private readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         /// <summary>
-        /// The <see cref="IStatusBarControlViewModel" />
+        /// The <see cref="IMappingConfigurationService" />
         /// </summary>
-        private readonly IStatusBarControlViewModel statusBar;
+        private readonly IMappingConfigurationService mappingConfigurationService;
+
+        /// <summary>
+        /// The <see cref="IMappingEngine" />
+        /// </summary>
+        private readonly IMappingEngine mappingEngine;
 
         /// <summary>
         /// The <see cref="INavigationService" />
@@ -111,19 +116,9 @@ namespace DEHEASysML.DstController
         private readonly INavigationService navigationService;
 
         /// <summary>
-        /// The <see cref="IMappingConfigurationService" />
+        /// The <see cref="IStatusBarControlViewModel" />
         /// </summary>
-        private readonly IMappingConfigurationService mappingConfigurationService;
-        
-        /// <summary>
-        /// Gets the injected <see cref="ICacheService"/>
-        /// </summary>
-        private readonly ICacheService cacheService;
-
-        /// <summary>
-        /// Backing field for <see cref="CurrentRepository" />
-        /// </summary>
-        private Repository currentRepository;
+        private readonly IStatusBarControlViewModel statusBar;
 
         /// <summary>
         /// Backing field for <see cref="CanMap" />
@@ -131,9 +126,14 @@ namespace DEHEASysML.DstController
         private bool canMap;
 
         /// <summary>
-        /// Backing field for <see cref="MappingDirection" />
+        /// Backing field for <see cref="CurrentRepository" />
         /// </summary>
-        private MappingDirection mappingDirection;
+        private Repository currentRepository;
+
+        /// <summary>
+        /// Backing field for <see cref="IsBusy" />
+        /// </summary>
+        private bool? isBusy;
 
         /// <summary>
         /// Backing field for <see cref="IsFileOpen" />
@@ -141,14 +141,14 @@ namespace DEHEASysML.DstController
         private bool isFileOpen;
 
         /// <summary>
+        /// Backing field for <see cref="MappingDirection" />
+        /// </summary>
+        private MappingDirection mappingDirection;
+
+        /// <summary>
         /// A value indicating if the next notifyContext event should be ignore
         /// </summary>
         private bool shouldIgnoreEvents;
-
-        /// <summary>
-        /// Backing field for <see cref="IsBusy" />
-        /// </summary>
-        private bool? isBusy;
 
         /// <summary>
         /// A value indicating if a changes has been applied and a remap has to be reapplied
@@ -164,7 +164,7 @@ namespace DEHEASysML.DstController
         /// <param name="exchangeHistory">The <see cref="IExchangeHistoryService" /></param>
         /// <param name="navigationService">The <see cref="INavigationService" /></param>
         /// <param name="mappingConfigurationService">The <see cref="IMappingConfigurationService" /></param>
-        /// <param name="cacheService">The <see cref="ICacheService"/></param>
+        /// <param name="cacheService">The <see cref="ICacheService" /></param>
         public DstController(IHubController hubController, IMappingEngine mappingEngine, IStatusBarControlViewModel statusBar,
             IExchangeHistoryService exchangeHistory, INavigationService navigationService, IMappingConfigurationService mappingConfigurationService,
             ICacheService cacheService)
@@ -179,6 +179,16 @@ namespace DEHEASysML.DstController
 
             this.InitializesObservables();
         }
+
+        /// <summary>
+        /// A collection of <see cref="Element" /> that has been created
+        /// </summary>
+        public List<Package> CreatedPackages { get; } = new();
+
+        /// <summary>
+        /// A collection of <see cref="Collection" /> that has beeen updated
+        /// </summary>
+        public HashSet<Collection> UpdatedCollections { get; } = new();
 
         /// <summary>
         /// Gets or sets the <see cref="MappingDirection" />
@@ -259,22 +269,13 @@ namespace DEHEASysML.DstController
         public List<Element> CreatedElements { get; } = new();
 
         /// <summary>
-        /// A collection of <see cref="Element" /> that has been created
-        /// </summary>
-        public List<Package> CreatedPackages { get; } = new();
-
-        /// <summary>
-        /// A collection of <see cref="Collection" /> that has beeen updated
-        /// </summary>
-        public HashSet<Collection> UpdatedCollections { get; } = new();
-
-        /// <summary>
         /// Gets the correspondence to the new value of a ValueProperty
         /// </summary>
         public Dictionary<string, string> UpdatedValuePropretyValues { get; } = new();
 
         /// <summary>
-        /// Gets the correspondence between an <see cref="IDualElement.ElementGUID"/> and the mapped <see cref="IDualElement.StereotypeEx"/>
+        /// Gets the correspondence between an <see cref="IDualElement.ElementGUID" /> and the mapped
+        /// <see cref="IDualElement.StereotypeEx" />
         /// </summary>
         public Dictionary<string, string> UpdatedStereotypes { get; } = new();
 
@@ -467,8 +468,21 @@ namespace DEHEASysML.DstController
         /// <returns>The added <see cref="Element" /></returns>
         public Element AddNewElement(Collection collection, string name, string type, StereotypeKind stereotypeKind)
         {
-            var element = collection.AddNew(name, type) as Element;
+            var element = this.AddNewElement(collection, name, type);
             element.StereotypeEx = stereotypeKind.GetFQStereotype();
+            return element;
+        }
+
+        /// <summary>
+        /// Adds a new <see cref="Element" /> to the given <see cref="Collection" />
+        /// </summary>
+        /// <param name="collection">The collection where to add the element</param>
+        /// <param name="name">The <see cref="name" /> of the <see cref="Element" /></param>
+        /// <param name="type">The type of the <see cref="Element" /></param>
+        /// <returns>The added <see cref="Element" /></returns>
+        public Element AddNewElement(Collection collection, string name, string type)
+        {
+            var element = collection.AddNew(name, type) as Element;
 
             this.UpdatedCollections.Add(collection);
             this.CreatedElements.Add(element);
@@ -571,7 +585,7 @@ namespace DEHEASysML.DstController
                 .GroupBy(x => x.ElementGUID)
                 .Select(x => x.First()).ToList();
 
-            elements.AddRange( this.cacheService.GetElementsOfStereotype(StereotypeKind.Requirement)
+            elements.AddRange(this.cacheService.GetElementsOfStereotype(StereotypeKind.Requirement)
                 .GroupBy(x => x.ElementGUID)
                 .Select(x => x.First()).ToList());
 
@@ -707,8 +721,8 @@ namespace DEHEASysML.DstController
                 var mappedConnector = this.MapToConnectors(hubMappedElement);
 
                 this.CreatedConnectors.RemoveAll(x => mappedConnector.Exists(mapped => mapped.Stereotype == x.Stereotype &&
-                                                                                    mapped.ClientID == x.ClientID
-                                                                                    && mapped.SupplierID == x.SupplierID));
+                                                                                       mapped.ClientID == x.ClientID
+                                                                                       && mapped.SupplierID == x.SupplierID));
 
                 this.CreatedConnectors.AddRange(mappedConnector);
                 this.HubMapResult.AddRange(hubMappedElement);
@@ -843,33 +857,6 @@ namespace DEHEASysML.DstController
         }
 
         /// <summary>
-        /// Update the <see cref="IDualElement.StereotypeEx"/> if applicable
-        /// </summary>
-        /// <param name="element">The <see cref="Element"/></param>
-        private void UpdateStereotype(Element element)
-        {
-            if (this.UpdatedStereotypes.ContainsKey(element.ElementGUID))
-            {
-                var previousStereotype = element.StereotypeEx;
-                var stereotypeToUpdate = this.UpdatedStereotypes[element.ElementGUID];
-                element.StereotypeEx = stereotypeToUpdate;
-                element.Update();
-
-                if (!element.HasStereotype(StereotypeKind.Requirement) && !element.HasStereotype(StereotypeKind.Block))
-                {
-                    element.StereotypeEx = previousStereotype;
-                    element.Update();
-
-                    var logMessage = $"Element {element.Name} : the stereotype {stereotypeToUpdate} cannot be applied" +
-                                      $" because any is recognised as block/requirement. Settings it back to {previousStereotype}";
-
-                    this.statusBar.Append(logMessage);
-                    this.logger.Warn(logMessage);
-                }
-            }
-        }
-
-        /// <summary>
         /// Loads the saved mapping and applies the mapping rule
         /// </summary>
         /// <returns>The number of mapped things loaded</returns>
@@ -955,6 +942,82 @@ namespace DEHEASysML.DstController
         }
 
         /// <summary>
+        /// Asserts that an <see cref="Element"/> is represents a ValueProperty
+        /// </summary>
+        /// <param name="element">The <see cref="Element"/> to check</param>
+        /// <returns>The asserts</returns>
+        public bool IsValueProperty(Element element)
+        {
+            if (!element.IsPart())
+            {
+                return false;
+            }
+
+            if (!this.UpdatePropertyTypes.TryGetValue(element.ElementGUID, out var valueTypeId))
+            {
+                valueTypeId = element.PropertyType;
+            }
+
+            if (valueTypeId == 0)
+            {
+                return false;
+            }
+
+            var propertyElement = this.CurrentRepository.GetElementByID(valueTypeId);
+            return propertyElement.HasStereotype(StereotypeKind.ValueType);
+        }
+
+        /// <summary>
+        /// Asserts that an <see cref="Element"/> is represents a PartProperty
+        /// </summary>
+        /// <param name="element">The <see cref="Element"/> to check</param>
+        /// <returns>The asserts</returns>
+        public bool IsPartProperty(Element element)
+        {
+            if (!element.IsPart() || element.PropertyType == 0)
+            {
+                return false;
+            }
+
+            var propertyElement = this.CurrentRepository.GetElementByID(element.PropertyType);
+
+            if (!propertyElement.HasStereotype(StereotypeKind.Block))
+            {
+                return false;
+            }
+
+            var connectors = this.CreatedConnectors.Where(x => x.ClientID == propertyElement.ElementID || x.SupplierID == propertyElement.ElementID).ToList();
+            connectors.AddRange(this.cacheService.GetConnectorsOfElement(propertyElement.ElementID));
+            return connectors.Exists(x => x.MetaType.AreEquals(StereotypeKind.Aggregation) && x.ClientID == propertyElement.ElementID && x.SupplierID == element.ParentID && x.SupplierEnd.Aggregation == 2);
+        }
+
+        /// <summary>
+        /// Update the <see cref="IDualElement.StereotypeEx" /> if applicable
+        /// </summary>
+        /// <param name="element">The <see cref="Element" /></param>
+        private void UpdateStereotype(Element element)
+        {
+            if (this.UpdatedStereotypes.TryGetValue(element.ElementGUID, out var stereotypeToUpdate))
+            {
+                var previousStereotype = element.StereotypeEx;
+                element.StereotypeEx = stereotypeToUpdate;
+                element.Update();
+
+                if (!element.HasStereotype(StereotypeKind.Requirement) && !element.HasStereotype(StereotypeKind.Block))
+                {
+                    element.StereotypeEx = previousStereotype;
+                    element.Update();
+
+                    var logMessage = $"Element {element.Name} : the stereotype {stereotypeToUpdate} cannot be applied" +
+                                     $" because any is recognised as block/requirement. Settings it back to {previousStereotype}";
+
+                    this.statusBar.Append(logMessage);
+                    this.logger.Warn(logMessage);
+                }
+            }
+        }
+
+        /// <summary>
         /// Resets the current <see cref="IMappingConfigurationService.ExternalIdentifierMap" />
         /// </summary>
         public void ResetConfigurationMapping()
@@ -963,10 +1026,10 @@ namespace DEHEASysML.DstController
         }
 
         /// <summary>
-        /// Queries all <see cref="Element"/> where the <see cref="Element.Name"/> matches the provided <paramref name="name"/>
+        /// Queries all <see cref="Element" /> where the <see cref="Element.Name" /> matches the provided <paramref name="name" />
         /// </summary>
         /// <param name="name">The name to search for</param>
-        /// <returns>A collection of retrieved <see cref="Element"/></returns>
+        /// <returns>A collection of retrieved <see cref="Element" /></returns>
         private IReadOnlyCollection<Element> QueryElementsByName(string name)
         {
             var sqlQuery = $"SELECT Object_ID FROM t_object WHERE Name = \"{name}\"";
@@ -1156,9 +1219,9 @@ namespace DEHEASysML.DstController
         /// <returns>A value indicating if the <see cref="PossibleFiniteStateList" /> has changed</returns>
         private bool HasPossibleFiniteStateListChanged(PossibleFiniteStateList possibleFiniteStateList)
         {
-            var originalPossibleStates = (PossibleFiniteStateList)possibleFiniteStateList.Original == null 
+            var originalPossibleStates = (PossibleFiniteStateList)possibleFiniteStateList.Original == null
                 ? possibleFiniteStateList.PossibleState
-                : ((PossibleFiniteStateList)possibleFiniteStateList.Original).PossibleState; 
+                : ((PossibleFiniteStateList)possibleFiniteStateList.Original).PossibleState;
 
             if (originalPossibleStates.Count != possibleFiniteStateList.PossibleState.Count)
             {
@@ -1186,12 +1249,14 @@ namespace DEHEASysML.DstController
                 ? $"Block {element.Name} has been created"
                 : $"Block {element.Name} has been updated");
 
-            foreach (var port in element.Elements.GetAllPortsOfElement().ToList())
+            var containedElements = element.Elements.OfType<Element>().ToList();
+
+            foreach (var port in containedElements.Where(x => x.MetaType.AreEquals(StereotypeKind.Port)).ToList())
             {
                 this.CreatedElements.RemoveAll(x => x.ElementGUID == port.ElementGUID);
             }
 
-            foreach (var blockDefinition in element.GetAllPortsDefinitionOfElement().ToList())
+            foreach (var blockDefinition in containedElements.Where(x => x.HasStereotype(StereotypeKind.Block)).ToList())
             {
                 if (this.CreatedElements.RemoveAll(x => x.ElementGUID == blockDefinition.ElementGUID) > 0)
                 {
@@ -1205,12 +1270,12 @@ namespace DEHEASysML.DstController
                 }
             }
 
-            foreach (var partProperty in element.Elements.GetAllPartPropertiesOfElement().ToList())
+            foreach (var partProperty in containedElements.Where(this.IsPartProperty).ToList())
             {
                 this.CreatedElements.RemoveAll(x => x.ElementGUID == partProperty.ElementGUID);
             }
 
-            foreach (var property in element.Elements.GetAllValuePropertiesOfElement().ToList())
+            foreach (var property in containedElements.Where(this.IsValueProperty).ToList())
             {
                 if (this.UpdatedValuePropretyValues.TryGetValue(property.ElementGUID, out var newValue))
                 {
@@ -1466,8 +1531,9 @@ namespace DEHEASysML.DstController
                     {
                         collection = this.CurrentRepository.GetPackageByID(createdElement.PackageID).Elements;
                     }
-                    else if (createdElement.Stereotype.AreEquals(StereotypeKind.ValueProperty)
-                             || createdElement.Stereotype.AreEquals(StereotypeKind.PartProperty) || createdElement.MetaType.AreEquals(StereotypeKind.Port)
+                    else if (this.IsValueProperty(createdElement)
+                             || this.IsPartProperty(createdElement)
+                             || createdElement.MetaType.AreEquals(StereotypeKind.Port)
                              || (createdElement.HasStereotype(StereotypeKind.Block) && createdElement.ParentID != 0))
                     {
                         collection = this.cacheService.GetElementById(createdElement.ParentID).Elements;
@@ -1682,7 +1748,7 @@ namespace DEHEASysML.DstController
 
             var mappedElements = this.SelectedDstMapResultForTransfer
                 .Select(thing => this.DstMapResult.OfType<EnterpriseArchitectBlockElement>()
-                                     .FirstOrDefault(x => x.HubElement.Iid == thing.Container.Iid 
+                                     .FirstOrDefault(x => x.HubElement.Iid == thing.Container.Iid
                                                           || (thing is ElementDefinition && x.HubElement.Iid == thing.Iid)) ??
                                  (IMappedElementRowViewModel)this.DstMapResult.OfType<EnterpriseArchitectRequirementElement>()
                                      .FirstOrDefault(x => x.HubElement.Iid == thing.Iid))

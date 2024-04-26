@@ -55,6 +55,7 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
         /// </summary>
         public override void ComputeRow()
         {
+            this.Name = this.RepresentedObject.PropertyTypeName as string;
         }
     }
 }

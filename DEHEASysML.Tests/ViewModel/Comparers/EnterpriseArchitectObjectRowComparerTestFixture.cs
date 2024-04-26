@@ -26,10 +26,18 @@ namespace DEHEASysML.Tests.ViewModel.Comparers
 {
     using System;
 
+    using Autofac;
+
+    using DEHEASysML.DstController;
     using DEHEASysML.Enumerators;
+    using DEHEASysML.Services.Cache;
+    using DEHEASysML.Services.MappingConfiguration;
     using DEHEASysML.Tests.Utils.Stereotypes;
     using DEHEASysML.ViewModel.Comparers;
     using DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows;
+
+    using DEHPCommon;
+    using DEHPCommon.HubController.Interfaces;
 
     using EA;
 
@@ -50,6 +58,10 @@ namespace DEHEASysML.Tests.ViewModel.Comparers
         [SetUp]
         public void Setup()
         {
+            var dstController = new Mock<IDstController>();
+            var containerBuilder = new ContainerBuilder();
+            containerBuilder.RegisterInstance(dstController.Object).As<IDstController>();
+            AppContainer.Container = containerBuilder.Build();
             this.comparer = new EnterpriseArchitectObjectRowComparer();
             
             var package = new Mock<Package>();

@@ -28,6 +28,8 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
     using System.Collections.Generic;
     using System.Linq;
 
+    using Autofac;
+
     using CDP4Common;
     using CDP4Common.EngineeringModelData;
 
@@ -43,6 +45,7 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
     using DEHEASysML.ViewModel.NetChangePreview;
     using DEHEASysML.ViewModel.Rows;
 
+    using DEHPCommon;
     using DEHPCommon.Enumerators;
 
     using EA;
@@ -184,6 +187,10 @@ namespace DEHEASysML.Tests.ViewModel.NetChangePreview
 
             this.cacheService.Setup(x => x.GetAllElements()).Returns(allElements);
             this.cacheService.Setup(x => x.PackageIds).Returns([1, 2,3]);
+
+            var containerBuilder = new ContainerBuilder();
+            containerBuilder.RegisterInstance(this.dstController.Object).As<IDstController>();
+            AppContainer.Container = containerBuilder.Build();
         }
 
         [TearDown]

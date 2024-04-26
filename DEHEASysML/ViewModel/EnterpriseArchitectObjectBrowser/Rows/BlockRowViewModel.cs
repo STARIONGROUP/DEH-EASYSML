@@ -26,8 +26,13 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
 {
     using System.Linq;
 
+    using Autofac;
+
+    using DEHEASysML.DstController;
     using DEHEASysML.Enumerators;
     using DEHEASysML.Extensions;
+
+    using DEHPCommon;
 
     using EA;
 
@@ -36,6 +41,11 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
     /// </summary>
     public class BlockRowViewModel : ElementRowViewModel
     {
+        /// <summary>
+        /// Gets the injected <see cref="IDstController" />
+        /// </summary>
+        private IDstController dstController;
+
         /// <summary>
         /// Initializes a new <see cref="BlockRowViewModel" />
         /// </summary>
@@ -63,9 +73,10 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
 
             using (this.ContainedRows.SuppressChangeNotifications())
             {
-                this.UpdateContainedRowsOfStereotype(StereotypeKind.ValueProperty, this.RepresentedObject.Elements.GetAllValuePropertiesOfElement().ToList());
-                this.UpdateContainedRowsOfStereotype(StereotypeKind.PartProperty, this.RepresentedObject.Elements.GetAllPartPropertiesOfElement().ToList());
-                this.UpdateContainedRowsOfStereotype(StereotypeKind.Port, this.RepresentedObject.Elements.GetAllPortsOfElement().ToList());
+                var containedElements = this.RepresentedObject.Elements.OfType<Element>().ToList();
+                this.UpdateContainedRowsOfStereotype(StereotypeKind.ValueProperty, containedElements.Where(this.dstController.IsValueProperty).ToList());
+                this.UpdateContainedRowsOfStereotype(StereotypeKind.PartProperty, containedElements.Where(this.dstController.IsPartProperty).ToList());
+                this.UpdateContainedRowsOfStereotype(StereotypeKind.Port, containedElements.Where(x => x.MetaType.AreEquals(StereotypeKind.Port)).ToList());
                 this.ContainedRows.Sort(ContainedRowsComparer);
             }
         }
@@ -75,6 +86,7 @@ namespace DEHEASysML.ViewModel.EnterpriseArchitectObjectBrowser.Rows
         /// </summary>
         private void Initialize()
         {
+            this.dstController = AppContainer.Container.Resolve<IDstController>();
             this.UpdateProperties();
         }
     }

@@ -183,7 +183,7 @@ namespace DEHEASysML.ViewModel.Rows
         {
             if (dstElement.HasStereotype(StereotypeKind.Block))
             {
-                foreach (var valueProperty in dstElement.GetAllValuePropertiesOfElement()
+                foreach (var valueProperty in dstElement.Elements.OfType<Element>().Where(x => this.dstController.IsValueProperty(x))
                              .Where(x => this.dstController.CreatedElements.All(created => created.ElementGUID != x.ElementGUID)))
                 {
                     var value = valueProperty.GetValueOfPropertyValue();

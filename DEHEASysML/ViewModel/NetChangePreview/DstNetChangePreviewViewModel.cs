@@ -375,8 +375,8 @@ namespace DEHEASysML.ViewModel.NetChangePreview
                     row.Parent.ContainedRows.Remove(row);
                 }
             }
-            else if ((element.Stereotype.AreEquals(StereotypeKind.Port) || element.Stereotype.AreEquals(StereotypeKind.PartProperty)
-                                                                       || element.Stereotype.AreEquals(StereotypeKind.ValueProperty))
+            else if ((element.Stereotype.AreEquals(StereotypeKind.Port) || this.dstController.IsPartProperty(element)
+                                                                       || this.dstController.IsValueProperty(element))
                      && element.ParentID != 0)
             {
                 var blockElement = this.dstController.CurrentRepository.GetElementByID(element.ParentID);

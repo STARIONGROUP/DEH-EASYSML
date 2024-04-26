@@ -268,6 +268,15 @@ namespace DEHEASysML.DstController
         Element AddNewElement(Collection collection, string name, string type, StereotypeKind stereotypeKind);
 
         /// <summary>
+        /// Adds a new <see cref="Element" /> to the given <see cref="Collection" />
+        /// </summary>
+        /// <param name="collection">The collection where to add the element</param>
+        /// <param name="name">The <see cref="name" /> of the <see cref="Element" /></param>
+        /// <param name="type">The type of the <see cref="Element" /></param>
+        /// <returns>The added <see cref="Element" /></returns>
+        Element AddNewElement(Collection collection, string name, string type);
+
+        /// <summary>
         /// Tries to get a <see cref="Package" />
         /// </summary>
         /// <param name="name">The name of the <see cref="Package" /></param>
@@ -345,5 +354,19 @@ namespace DEHEASysML.DstController
         /// <param name="guid">The guid of the Item</param>
         /// <param name="objectType">The <see cref="ObjectType" /> of the item</param>
         void OnContextItemChanged(Repository repository, string guid, ObjectType objectType);
+
+        /// <summary>
+        /// Asserts that an <see cref="Element"/> is represents a ValueProperty
+        /// </summary>
+        /// <param name="element">The <see cref="Element"/> to check</param>
+        /// <returns>The asserts</returns>
+        bool IsValueProperty(Element element);
+
+        /// <summary>
+        /// Asserts that an <see cref="Element"/> is represents a PartProperty
+        /// </summary>
+        /// <param name="element">The <see cref="Element"/> to check</param>
+        /// <returns>The asserts</returns>
+        bool IsPartProperty(Element element);
     }
 }

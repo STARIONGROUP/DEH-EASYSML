@@ -164,6 +164,8 @@ namespace DEHEASysML.MappingRules
                     }
 
                     this.SaveMappingConfiguration([..this.Elements]);
+                    this.temporaryUnits.Clear();
+                    this.temporaryValueTypes.Clear();
                 }
 
                 fullMappingRuleStopWatch.Stop();
@@ -184,8 +186,8 @@ namespace DEHEASysML.MappingRules
         public void InitializeCachingProperties()
         {
             this.CacheService ??= AppContainer.Container.Resolve<ICacheService>();
-            this.allPartPropertiesPerElement = this.CacheService.GetElementsOfStereotype(StereotypeKind.PartProperty).GroupBy(x => x.ParentID).ToDictionary(x => x.Key, x => x.ToList());
-            this.allValuePropertiesPerElement = this.CacheService.GetElementsOfStereotype(StereotypeKind.ValueProperty).GroupBy(x => x.ParentID).ToDictionary(x => x.Key, x => x.ToList());
+            this.allPartPropertiesPerElement = this.CacheService.GetAllElements().Where(this.DstController.IsPartProperty).GroupBy(x => x.ParentID).ToDictionary(x => x.Key, x => x.ToList());
+            this.allValuePropertiesPerElement = this.CacheService.GetAllElements().Where(this.DstController.IsValueProperty).GroupBy(x => x.ParentID).ToDictionary(x => x.Key, x => x.ToList());
             this.allPortPerElement = this.CacheService.GetElementsOfMetaType(StereotypeKind.Port).GroupBy(x => x.ParentID).ToDictionary(x => x.Key, x => x.ToList());
         }
 
@@ -588,7 +590,7 @@ namespace DEHEASysML.MappingRules
         /// <param name="property">The <see cref="Element" /> for the ValueProperty</param>
         private void CreateProperty(ParameterOrOverrideBase parameter, Element container, out Element property)
         {
-            property = this.DstController.AddNewElement(container.EmbeddedElements, parameter.ParameterType.Name, "Property", StereotypeKind.ValueProperty);
+            property = this.DstController.AddNewElement(container.EmbeddedElements, parameter.ParameterType.Name, "Property");
             property.Update();
         }
 
@@ -699,8 +701,8 @@ namespace DEHEASysML.MappingRules
         /// <returns>A value indicating whether the ValueProperty could be found</returns>
         private bool TryGetExistingProperty(Element element, ParameterOrOverrideBase parameter, out Element property)
         {
-            var properties = this.DstController.CreatedElements.Where(x => x.ParentID == element.ElementID && x.HasStereotype(StereotypeKind.ValueProperty))
-                .ToList();
+            var properties = this.DstController.CreatedElements.Where(x => x.ParentID == element.ElementID &&
+                                                                           this.DstController.IsValueProperty(x)).ToList();
 
             if (this.allValuePropertiesPerElement.TryGetValue(element.ElementID, out var existingProperties))
             {
@@ -742,7 +744,8 @@ namespace DEHEASysML.MappingRules
         /// <param name="element">The child <see cref="Element" /></param>
         private void UpdateContainement(IDualElement parent, IDualElement element)
         {
-            var partProperties = this.DstController.CreatedElements.Where(x => x.ParentID == parent.PackageID && x.HasStereotype(StereotypeKind.PartProperty))
+            var partProperties = this.DstController.CreatedElements.Where(x => x.ParentID == parent.ElementID
+                                                                               && this.DstController.IsPartProperty(x))
                 .ToList(); 
 
             if (this.allPartPropertiesPerElement.TryGetValue(parent.ElementID, out var existingPartProperties))
@@ -751,9 +754,15 @@ namespace DEHEASysML.MappingRules
             }
 
             var partProperty = partProperties.Find(x => x.PropertyType == element.ElementID)
-                               ?? this.DstController.AddNewElement(parent.Elements, element.Name, "Property", StereotypeKind.PartProperty);
+                               ?? this.DstController.AddNewElement(parent.Elements, "", "Property");
 
             partProperty.PropertyType = element.ElementID;
+            var connector = (Connector)element.Connectors.AddNew("", StereotypeKind.Aggregation.ToString());
+            connector.ClientID = element.ElementID;
+            connector.SupplierID = parent.ElementID;
+            connector.SupplierEnd.Aggregation = 2;
+            connector.Update();
+            this.DstController.CreatedConnectors.Add(connector);
             partProperty.Update();
             parent.Elements.Refresh();
         }

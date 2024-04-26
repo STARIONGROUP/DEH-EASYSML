@@ -94,6 +94,12 @@ namespace DEHEASysML.MappingRules
 
                 var (complete, elements) = input;
                 this.Elements = [..elements];
+
+                if (this.Elements.Count == 0)
+                {
+                    return [..this.Elements];
+                }
+
                 this.defaultPackage = this.DstController.GetDefaultPackage(StereotypeKind.Requirement);
 
                 var fullMappingRuleStopWatch = Stopwatch.StartNew();
