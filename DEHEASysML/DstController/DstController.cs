@@ -1536,7 +1536,14 @@ namespace DEHEASysML.DstController
                              || createdElement.MetaType.AreEquals(StereotypeKind.Port)
                              || (createdElement.HasStereotype(StereotypeKind.Block) && createdElement.ParentID != 0))
                     {
-                        collection = this.cacheService.GetElementById(createdElement.ParentID).Elements;
+                        if (this.CreatedElements.Find(x => x.ElementID == createdElement.ParentID) is { } newParent)
+                        {
+                            collection = newParent.Elements;
+                        }
+                        else
+                        {
+                            collection = this.cacheService.GetElementById(createdElement.ParentID).Elements;
+                        }
                     }
 
                     if (collection == null)

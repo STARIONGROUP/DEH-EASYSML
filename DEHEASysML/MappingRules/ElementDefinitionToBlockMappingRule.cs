@@ -1,6 +1,6 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
 // <copyright file="ElementDefinitionToBlockMappingRule.cs" company="RHEA System S.A.">
-// Copyright (c) 2020-2022 RHEA System S.A.
+// Copyright (c) 2020-2024 RHEA System S.A.
 // 
 // Author: Sam Gerené, Alex Vorobiev, Alexander van Delft, Nathanael Smiechowski, Antoine Théate.
 // 
@@ -61,14 +61,9 @@ namespace DEHEASysML.MappingRules
     public class ElementDefinitionToBlockMappingRule : HubToDstBaseMappingRule<(bool complete, List<ElementDefinitionMappedElement> elements), List<MappedElementDefinitionRowViewModel>>
     {
         /// <summary>
-        /// A collection of <see cref="Element" /> representing ValueType that has been created during this mapping
+        /// The category for allocation/BinaryRelationship names where Item1 is the short name
         /// </summary>
-        private readonly List<Element> temporaryValueTypes = new();
-
-        /// <summary>
-        /// A collection of <see cref="Element" /> representing Unit that has been created during this mapping
-        /// </summary>
-        private readonly List<Element> temporaryUnits = new();
+        private readonly (string shortname, string name) allocationCategoryNames = ("ALLOC", "Allocation");
 
         /// <summary>
         /// A collection of correspondances between an <see cref="ElementUsage" /> and a Port and its definition to create links
@@ -76,19 +71,34 @@ namespace DEHEASysML.MappingRules
         private readonly List<(ElementUsage elementUsage, Element port, Element portDefinition)> portsToLink = new();
 
         /// <summary>
+        /// A collection of <see cref="Element" /> representing Unit that has been created during this mapping
+        /// </summary>
+        private readonly List<Element> temporaryUnits = new();
+
+        /// <summary>
+        /// A collection of <see cref="Element" /> representing ValueType that has been created during this mapping
+        /// </summary>
+        private readonly List<Element> temporaryValueTypes = new();
+
+        /// <summary>
+        /// Gets or sets the <see cref="Category" /> used for the allocation
+        /// </summary>
+        private IReadOnlyCollection<Category> allocationCategories = [];
+
+        /// <summary>
         /// Gets the collection of part properties
         /// </summary>
         private Dictionary<int, List<Element>> allPartPropertiesPerElement;
 
         /// <summary>
-        /// Gets the collection of value properties
-        /// </summary>
-        private Dictionary<int, List<Element>> allValuePropertiesPerElement;
-
-        /// <summary>
         /// Gets the collection of ports
         /// </summary>
         private Dictionary<int, List<Element>> allPortPerElement;
+
+        /// <summary>
+        /// Gets the collection of value properties
+        /// </summary>
+        private Dictionary<int, List<Element>> allValuePropertiesPerElement;
 
         /// <summary>
         /// The collection of <see cref="EnterpriseArchitectBlockElement" />
@@ -147,15 +157,30 @@ namespace DEHEASysML.MappingRules
                     }
 
                     stopwatch.Stop();
-                    this.Logger.Info("{0} done in {1}[ms] for ElementDefinition {2}", complete? "Mapping" : "Premapping", stopwatch.ElapsedMilliseconds, mappedElement.HubElement.Name);
+                    this.Logger.Info("{0} done in {1}[ms] for ElementDefinition {2}", complete ? "Mapping" : "Premapping", stopwatch.ElapsedMilliseconds, mappedElement.HubElement.Name);
                 }
 
                 if (complete)
                 {
+                    if (this.HubController.TryGetThingBy(x => (string.Equals(x.Name, this.allocationCategoryNames.name, StringComparison.InvariantCultureIgnoreCase) ||
+                                                               string.Equals(x.ShortName, this.allocationCategoryNames.shortname, StringComparison.InvariantCultureIgnoreCase))
+                                                              && !x.IsDeprecated, ClassKind.Category, out Category category))
+                    {
+                        var allAllocationCategories = this.HubController.GetSiteDirectory().AvailableReferenceDataLibraries()
+                            .SelectMany(x => x.DefinedCategory).Where(x => x.AllSuperCategories().Contains(category));
+
+                        this.allocationCategories = [category, ..allAllocationCategories];
+                    }
+                    else
+                    {
+                        this.allocationCategories = [];
+                    }
+
                     foreach (var mappedElement in this.Elements.ToList())
                     {
                         this.MapPorts(mappedElement);
                         this.MapCategoriesToStereotype(mappedElement.DstElement, mappedElement.HubElement);
+                        this.MapAllocation(mappedElement);
                     }
 
                     foreach (var portToLink in this.portsToLink)
@@ -169,7 +194,7 @@ namespace DEHEASysML.MappingRules
                 }
 
                 fullMappingRuleStopWatch.Stop();
-                this.Logger.Info("{0} of {1} ElementDefinitions done in {2}[ms]", complete? "Mapping" : "Premapping", this.Elements.Count, fullMappingRuleStopWatch.ElapsedMilliseconds);
+                this.Logger.Info("{0} of {1} ElementDefinitions done in {2}[ms]", complete ? "Mapping" : "Premapping", this.Elements.Count, fullMappingRuleStopWatch.ElapsedMilliseconds);
                 return [..this.Elements];
             }
             catch (Exception exception)
@@ -181,7 +206,39 @@ namespace DEHEASysML.MappingRules
         }
 
         /// <summary>
-        /// Initialize all caching dictionaries based on the content of the <see cref="ICacheService"/>
+        /// Maps all <see cref="BinaryRelationship"/> that represents an allocation to a <see cref="Connector" />
+        /// </summary>
+        /// <param name="mappedElement">The <see cref="ElementDefinitionMappedElement"/></param>
+        private void MapAllocation(ElementDefinitionMappedElement mappedElement)
+        {
+            if (this.allocationCategories.Count == 0)
+            {
+                return;
+            }
+
+            var allocations = mappedElement.HubElement.QueryRelationships.OfType<BinaryRelationship>()
+                .Where(x => x.Source == mappedElement.HubElement && x.Target is ElementDefinition && x.Category.Exists(c => this.allocationCategories.Contains(c)))
+                .ToList();
+
+            foreach (var allocation in allocations)
+            {
+                var allocatedDefinition = (ElementDefinition)allocation.Target;
+
+                var oppositeElement =  this.Elements.Find(x =>
+                    string.Equals(x.DstElement.Name, allocatedDefinition.Name, StringComparison.InvariantCultureIgnoreCase))?.DstElement;
+
+                if (oppositeElement == null && !this.DstController.TryGetElement(allocatedDefinition.Name, StereotypeKind.Block, out oppositeElement))
+                {
+                    continue;
+                }
+
+                this.CreateOrUpdateConnector(mappedElement.DstElement, oppositeElement
+                    , StereotypeKind.Abstraction, StereotypeKind.Allocation);
+            }
+        }
+
+        /// <summary>
+        /// Initialize all caching dictionaries based on the content of the <see cref="ICacheService" />
         /// </summary>
         public void InitializeCachingProperties()
         {
@@ -205,40 +262,39 @@ namespace DEHEASysML.MappingRules
                 return;
             }
 
-            {
-                var targetType = relationsShip.Source.Iid == elementUsage.Iid ? StereotypeKind.RequiredInterface : StereotypeKind.ProvidedInterface;
+            var targetType = relationsShip.Source.Iid == elementUsage.Iid ? StereotypeKind.RequiredInterface : StereotypeKind.ProvidedInterface;
 
-                var interfaceElement = this.GetOrCreateInterface(relationsShip.Name);
+            var interfaceElement = this.GetOrCreateInterface(relationsShip.Name);
 
-                this.CreateOrUpdateConnector(portDefinition, interfaceElement
-                    , targetType == StereotypeKind.RequiredInterface ? StereotypeKind.Usage : StereotypeKind.Realisation);
+            this.CreateOrUpdateConnector(portDefinition, interfaceElement
+                , targetType == StereotypeKind.RequiredInterface ? StereotypeKind.Usage : StereotypeKind.Realisation);
 
-                var embeddedElements = this.DstController.CreatedElements.Where(x => x.ParentID == port.ElementID)
-                    .ToList();
+            var embeddedElements = this.DstController.CreatedElements.Where(x => x.ParentID == port.ElementID)
+                .ToList();
 
-                embeddedElements.AddRange(this.CacheService.GetAllElements().Where(x => x.ParentID == port.ElementID));
+            embeddedElements.AddRange(this.CacheService.GetAllElements().Where(x => x.ParentID == port.ElementID));
 
-                var embeddedInterface = embeddedElements.Find(x => x.MetaType.AreEquals(targetType))
-                                        ?? this.DstController.AddNewElement(port.Elements, interfaceElement.Name, targetType.ToString(), targetType);
+            var embeddedInterface = embeddedElements.Find(x => x.MetaType.AreEquals(targetType))
+                                    ?? this.DstController.AddNewElement(port.Elements, interfaceElement.Name, targetType.ToString(), targetType);
 
-                embeddedInterface.Name = interfaceElement.Name;
-                embeddedInterface.Update();
-                port.Elements.Refresh();
-            }
+            embeddedInterface.Name = interfaceElement.Name;
+            embeddedInterface.Update();
+            port.Elements.Refresh();
         }
 
         /// <summary>
         /// Create or update the connector representing the relation between port and interface
         /// </summary>
-        /// <param name="portDefinition">The port <see cref="Element" /> definition</param>
-        /// <param name="interfaceElement">The interface <see cref="Element" /></param>
+        /// <param name="source">The source <see cref="Element" /> definition</param>
+        /// <param name="target">The interface <see cref="Element" /></param>
         /// <param name="connectorType">The type of the connector</param>
-        private void CreateOrUpdateConnector(Element portDefinition, Element interfaceElement, StereotypeKind connectorType)
+        /// <param name="appliedStereotype">The <see cref="StereotypeKind"/> that should be applied</param>
+        private void CreateOrUpdateConnector(Element source, Element target, StereotypeKind connectorType, StereotypeKind? appliedStereotype = null)
         {
-            var connectors = this.DstController.CreatedConnectors.Where(x => x.ClientID == portDefinition.ElementID && x.SupplierID == interfaceElement.ElementID)
+            var connectors = this.DstController.CreatedConnectors.Where(x => x.ClientID == source.ElementID && x.SupplierID == target.ElementID)
                 .ToList();
 
-            connectors.AddRange(this.CacheService.GetConnectorsOfElement(portDefinition.ElementID).Where(x => x.SupplierID == interfaceElement.ElementID));
+            connectors.AddRange(this.CacheService.GetConnectorsOfElement(source.ElementID).Where(x => x.SupplierID == target.ElementID));
 
             var connector = connectors.FirstOrDefault();
 
@@ -247,12 +303,18 @@ namespace DEHEASysML.MappingRules
                 return;
             }
 
-            connector = portDefinition.Connectors.AddNew("", connectorType.ToString()) as Connector;
+            connector = source.Connectors.AddNew("", connectorType.ToString()) as Connector;
+
+            if (appliedStereotype.HasValue)
+            {
+                connector.StereotypeEx = appliedStereotype.Value.GetFQStereotype();
+            }
+
             this.DstController.CreatedConnectors.Add(connector);
-            connector.ClientID = portDefinition.ElementID;
-            connector.SupplierID = interfaceElement.ElementID;
+            connector.ClientID = source.ElementID;
+            connector.SupplierID = target.ElementID;
             connector.Update();
-            portDefinition.Connectors.Refresh();
+            source.Connectors.Refresh();
         }
 
         /// <summary>
@@ -412,7 +474,7 @@ namespace DEHEASysML.MappingRules
             connectors.AddRange(this.CacheService.GetConnectorsOfElement(property.ElementID));
 
             var dependyConnectors = connectors.Where(x => x.Type.AreEquals(StereotypeKind.Dependency)
-                                                         && x.ClientID == property.ElementID).ToList();
+                                                          && x.ClientID == property.ElementID).ToList();
 
             var connectorTargets = dependyConnectors.Select(dependyConnector => this.DstController.CurrentRepository
                 .GetElementByID(dependyConnector.SupplierID)).ToList();
@@ -641,7 +703,7 @@ namespace DEHEASysML.MappingRules
         /// <param name="element">The <see cref="Element" /></param>
         private void GetOrCreateValueType(ParameterType parameterType, MeasurementScale scale, out Element element)
         {
-            element = this.temporaryValueTypes.Find(x => x.Name == $"{parameterType.Name}[{scale.Unit.ShortName}]" 
+            element = this.temporaryValueTypes.Find(x => x.Name == $"{parameterType.Name}[{scale.Unit.ShortName}]"
                                                          || x.Name == $"{parameterType.ShortName}[{scale.Unit.ShortName}]");
 
             if (element == null && !this.DstController.TryGetValueType(parameterType, scale, out element))
@@ -709,7 +771,13 @@ namespace DEHEASysML.MappingRules
                 properties.AddRange(existingProperties);
             }
 
-            property = properties.Find(x => x.Name == parameter.ParameterType.Name || x.Name == parameter.ParameterType.ShortName);
+            property = null;
+
+            if (this.DstController.TryGetValueType(parameter.ParameterType, parameter.Scale, out var valueType))
+            {
+                property = properties.Find(x => x.PropertyType == valueType.ElementID);
+            }
+
             return property != null;
         }
 
@@ -746,7 +814,7 @@ namespace DEHEASysML.MappingRules
         {
             var partProperties = this.DstController.CreatedElements.Where(x => x.ParentID == parent.ElementID
                                                                                && this.DstController.IsPartProperty(x))
-                .ToList(); 
+                .ToList();
 
             if (this.allPartPropertiesPerElement.TryGetValue(parent.ElementID, out var existingPartProperties))
             {
@@ -754,7 +822,7 @@ namespace DEHEASysML.MappingRules
             }
 
             var partProperty = partProperties.Find(x => x.PropertyType == element.ElementID)
-                               ?? this.DstController.AddNewElement(parent.Elements, "", "Property");
+                               ?? this.DstController.AddNewElement(parent.Elements, element.Name, "Property");
 
             partProperty.PropertyType = element.ElementID;
             var connector = (Connector)element.Connectors.AddNew("", StereotypeKind.Aggregation.ToString());

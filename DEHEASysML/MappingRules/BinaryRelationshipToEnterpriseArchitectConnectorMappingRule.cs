@@ -103,7 +103,8 @@ namespace DEHEASysML.MappingRules
             {
                 var relationships = this.HubController.OpenIteration.Relationship
                     .OfType<BinaryRelationship>()
-                    .Where(x => x.Source.Iid == element.HubElement.Iid && x.Category.Any(category =>
+                    .Where(x => x.Source.Iid == element.HubElement.Iid && 
+                                x.Category.Any(category =>
                         string.Equals(category.Name, this.satisfyCategoryNames.name, StringComparison.InvariantCultureIgnoreCase)
                         || string.Equals(category.Name, this.traceCategoryNames.name, StringComparison.InvariantCultureIgnoreCase)));
 

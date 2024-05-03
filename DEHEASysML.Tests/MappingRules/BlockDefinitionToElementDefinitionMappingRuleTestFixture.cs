@@ -124,6 +124,7 @@ namespace DEHEASysML.Tests.MappingRules
             massValueProperty.Setup(x => x.Stereotype).Returns(StereotypeKind.ValueProperty.ToString());
             massValueProperty.Setup(x => x.Name).Returns("mass");
             massValueProperty.Setup(x => x.ElementID).Returns(11245);
+            massValueProperty.Setup(x => x.PropertyType).Returns(11245);
 
             var dependencyConnector = new Mock<Connector>();
             dependencyConnector.Setup(x => x.Type).Returns(StereotypeKind.Dependency.ToString());
@@ -153,6 +154,8 @@ namespace DEHEASysML.Tests.MappingRules
             var heightValueProperty = new Mock<Element>();
             heightValueProperty.Setup(x => x.Stereotype).Returns(StereotypeKind.ValueProperty.ToString());
             heightValueProperty.Setup(x => x.Name).Returns("height");
+            heightValueProperty.Setup(x => x.ElementID).Returns(651);
+            heightValueProperty.Setup(x => x.PropertyType).Returns(651);
             this.allElements.Add(heightValueProperty.Object);
 
             var heightCustomProperty = new Mock<CustomProperty>();
@@ -165,6 +168,8 @@ namespace DEHEASysML.Tests.MappingRules
             var boolValueProperty = new Mock<Element>();
             boolValueProperty.Setup(x => x.Stereotype).Returns(StereotypeKind.ValueProperty.ToString());
             boolValueProperty.Setup(x => x.Name).Returns("aBoolean");
+            boolValueProperty.Setup(x => x.ElementID).Returns(652);
+            boolValueProperty.Setup(x => x.PropertyType).Returns(652);
             this.allElements.Add(boolValueProperty.Object);
 
             var boolCustomProperty = new Mock<CustomProperty>();
@@ -177,6 +182,8 @@ namespace DEHEASysML.Tests.MappingRules
             var stringValueProperty = new Mock<Element>();
             stringValueProperty.Setup(x => x.Stereotype).Returns(StereotypeKind.ValueProperty.ToString());
             stringValueProperty.Setup(x => x.Name).Returns("aString");
+            stringValueProperty.Setup(x => x.ElementID).Returns(653);
+            stringValueProperty.Setup(x => x.PropertyType).Returns(653);
             this.allElements.Add(stringValueProperty.Object);
 
             var stringCustomProperty = new Mock<CustomProperty>();
@@ -205,6 +212,10 @@ namespace DEHEASysML.Tests.MappingRules
             this.repository= new Mock<Repository>();
             this.repository.Setup(x => x.GetElementByGuid("unitValue")).Returns(unitElement.Object);
             this.repository.Setup(x => x.GetElementByID(state.Object.ElementID)).Returns(state.Object);
+            this.repository.Setup(x => x.GetElementByID(heightValueProperty.Object.ElementID)).Returns(heightValueProperty.Object);
+            this.repository.Setup(x => x.GetElementByID(massValueProperty.Object.ElementID)).Returns(massValueProperty.Object);
+            this.repository.Setup(x => x.GetElementByID(stringValueProperty.Object.ElementID)).Returns(stringValueProperty.Object);
+            this.repository.Setup(x => x.GetElementByID(boolValueProperty.Object.ElementID)).Returns(boolValueProperty.Object);
 
             this.dstController = new Mock<IDstController>();
             this.dstController.Setup(x => x.CurrentRepository).Returns(this.repository.Object);

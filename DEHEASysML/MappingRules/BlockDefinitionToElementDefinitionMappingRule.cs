@@ -323,9 +323,11 @@ namespace DEHEASysML.MappingRules
             {
                 foreach (var property in valueProperties)
                 {
+                    var propertyType = this.DstController.CurrentRepository.GetElementByID(property.PropertyType);
+
                     var existingParameter = elementDefinition.Parameter.Find(x =>
-                        string.Equals(x.ParameterType.ShortName, property.GetShortName(), StringComparison.InvariantCultureIgnoreCase) ||
-                        string.Equals(x.ParameterType.Name, property.Name, StringComparison.InvariantCultureIgnoreCase));
+                        string.Equals(x.ParameterType.ShortName, propertyType.GetShortName(), StringComparison.InvariantCultureIgnoreCase) ||
+                        string.Equals(x.ParameterType.Name, propertyType.Name, StringComparison.InvariantCultureIgnoreCase));
 
                     var valueOfProperty = property.GetValueOfPropertyValue();
 

@@ -207,6 +207,8 @@ namespace DEHEASysML.Extensions
                 case StereotypeKind.ProvidedInterface:
                 case StereotypeKind.State:
                     return string.Empty;
+                case StereotypeKind.Allocation:
+                    return "allocate";
                 default: return stereotype.ToString();
             }
         }
