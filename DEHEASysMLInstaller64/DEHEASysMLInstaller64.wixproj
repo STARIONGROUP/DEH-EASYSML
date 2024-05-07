@@ -6,7 +6,7 @@
     <ProductVersion>3.10</ProductVersion>
     <ProjectGuid>{b83a7dca-6775-4e7d-941a-ae3a6342a792}</ProjectGuid>
     <SchemaVersion>2.0</SchemaVersion>
-    <OutputName>DEHEASysMLInstaller64_1.8.0</OutputName>
+    <OutputName>DEHEASysMLInstaller64_1.8.1</OutputName>
     <OutputType>Package</OutputType>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
