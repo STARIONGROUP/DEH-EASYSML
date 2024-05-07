@@ -137,6 +137,11 @@ namespace DEHEASysML.Enumerators
         /// <summary>
         /// Used to represents the Aggregation Connector stereotype
         /// </summary>
-        Aggregation
+        Aggregation,
+
+        /// <summary>
+        /// Used to represent an Allocation Connector Stereotype
+        /// </summary>
+        Allocation
     }
 }
