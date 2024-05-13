@@ -289,7 +289,8 @@ namespace DEHEASysML.MappingRules
         /// <param name="target">The interface <see cref="Element" /></param>
         /// <param name="connectorType">The type of the connector</param>
         /// <param name="appliedStereotype">The <see cref="StereotypeKind"/> that should be applied</param>
-        private void CreateOrUpdateConnector(Element source, Element target, StereotypeKind connectorType, StereotypeKind? appliedStereotype = null)
+        /// <returns>The <see cref="Connector"/></returns>
+        private Connector CreateOrUpdateConnector(IDualElement source, IDualElement target, StereotypeKind connectorType, StereotypeKind? appliedStereotype = null)
         {
             var connectors = this.DstController.CreatedConnectors.Where(x => x.ClientID == source.ElementID && x.SupplierID == target.ElementID)
                 .ToList();
@@ -300,7 +301,7 @@ namespace DEHEASysML.MappingRules
 
             if (connector != null)
             {
-                return;
+                return connector;
             }
 
             connector = source.Connectors.AddNew("", connectorType.ToString()) as Connector;
@@ -315,6 +316,7 @@ namespace DEHEASysML.MappingRules
             connector.SupplierID = target.ElementID;
             connector.Update();
             source.Connectors.Refresh();
+            return connector;
         }
 
         /// <summary>
@@ -825,12 +827,10 @@ namespace DEHEASysML.MappingRules
                                ?? this.DstController.AddNewElement(parent.Elements, element.Name, "Property");
 
             partProperty.PropertyType = element.ElementID;
-            var connector = (Connector)element.Connectors.AddNew("", StereotypeKind.Aggregation.ToString());
-            connector.ClientID = element.ElementID;
-            connector.SupplierID = parent.ElementID;
+
+            var connector = this.CreateOrUpdateConnector(element, parent, StereotypeKind.Aggregation);
             connector.SupplierEnd.Aggregation = 2;
             connector.Update();
-            this.DstController.CreatedConnectors.Add(connector);
             partProperty.Update();
             parent.Elements.Refresh();
         }
