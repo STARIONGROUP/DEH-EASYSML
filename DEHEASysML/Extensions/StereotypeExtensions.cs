@@ -90,7 +90,8 @@ namespace DEHEASysML.Extensions
         /// <returns>The text of the Requirement</returns>
         public static string GetRequirementText(this Element requirement)
         {
-            return (requirement.TaggedValuesEx.GetByName("text") as TaggedValue)?.Notes;
+            var textValue = (requirement.TaggedValuesEx.GetByName("text") as TaggedValue)?.Notes;
+            return string.IsNullOrEmpty(textValue) ? requirement.Notes : textValue;
         }
 
         /// <summary>
@@ -102,8 +103,15 @@ namespace DEHEASysML.Extensions
         {
             if (requirement.TaggedValuesEx.GetByName("text") is TaggedValue taggedValue)
             {
-                taggedValue.Notes = text;
-                taggedValue.Update();
+                if (string.IsNullOrEmpty(taggedValue.Notes))
+                {
+                    requirement.Notes = text;
+                }
+                else
+                {
+                    taggedValue.Notes = text;
+                    taggedValue.Update();
+                }
             }
         }
 
@@ -126,7 +134,7 @@ namespace DEHEASysML.Extensions
         {
             var requirementId = (requirement.TaggedValuesEx.GetByName("id") as TaggedValue)?.Value;
 
-            return string.IsNullOrEmpty(requirementId) ? "ID NOT SET" : requirementId;
+            return string.IsNullOrEmpty(requirementId) ? requirement.Name : requirementId;
         }
 
         /// <summary>
@@ -138,8 +146,15 @@ namespace DEHEASysML.Extensions
         {
             if (requirement.TaggedValuesEx.GetByName("id") is TaggedValue taggedValue)
             {
-                taggedValue.Value = id;
-                taggedValue.Update();
+                if (string.IsNullOrEmpty(taggedValue.Value))
+                {
+                    requirement.Name = id;
+                }
+                else
+                {
+                    taggedValue.Value = id;
+                    taggedValue.Update();
+                }
             }
         }
 
