@@ -34,6 +34,7 @@ namespace DEHEASysML.DstController
     using CDP4Common;
     using CDP4Common.CommonData;
     using CDP4Common.EngineeringModelData;
+    using CDP4Common.Extensions;
     using CDP4Common.SiteDirectoryData;
     using CDP4Common.Types;
 
@@ -1765,6 +1766,7 @@ namespace DEHEASysML.DstController
                 .Select(g => g.First()).ToList();
 
             relationships.AddRange(this.MappedConnectorsToBinaryRelationships);
+            relationships = relationships.DistinctBy(x => x.Iid).ToList();
 
             foreach (var relationship in relationships.ToList())
             {

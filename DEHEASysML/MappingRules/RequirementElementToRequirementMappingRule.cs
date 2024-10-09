@@ -189,39 +189,58 @@ namespace DEHEASysML.MappingRules
                 }
                 else
                 {
+                    RequirementsSpecification specification = null;
+                    RequirementsGroup requirementsGroup = null;
                     var grandParentPackage = this.DstController.CurrentRepository.GetPackageByID(parentPackage.ParentID);
-                   
-                    if (!this.TryGetOrCreateRequirementsGroup(currentPackage, out var requirementsGroup))
+
+                    if (this.TryGetRequirementsSpecification(currentPackage.Name) is { } existingRequirementsSpecification)
                     {
-                        this.Logger.Error($"Error during creation of the RequirementsGroup for {currentPackage.Name} package");
-                        return false;
+                        this.packageMapping[currentPackage.PackageID] = existingRequirementsSpecification;
+                        specification = existingRequirementsSpecification;
+                    }
+                    else
+                    {
+                        if (!this.TryGetOrCreateRequirementsGroup(currentPackage, out requirementsGroup))
+                        {
+                            this.Logger.Error($"Error during creation of the RequirementsGroup for {currentPackage.Name} package");
+                            return false;
+                        }
+
+                        this.packageMapping[currentPackage.PackageID] = requirementsGroup;
                     }
 
-                    this.packageMapping[currentPackage.PackageID] = requirementsGroup;
-
-                    if (grandParentPackage.ParentID != 0)
+                    if (grandParentPackage.ParentID != 0 && specification == null)
                     {
                         var greatGrandParentPackage = this.DstController.CurrentRepository.GetPackageByID(grandParentPackage.ParentID);
 
-                        while (greatGrandParentPackage.ParentID != 0 && !this.packageMapping.ContainsKey(parentPackage.PackageID))
+                        while (specification == null && greatGrandParentPackage.ParentID != 0 && !this.packageMapping.ContainsKey(parentPackage.PackageID))
                         {
                             currentPackage = parentPackage;
                             parentPackage = grandParentPackage;
                             grandParentPackage = greatGrandParentPackage;
                             greatGrandParentPackage = this.DstController.CurrentRepository.GetPackageByID(grandParentPackage.ParentID);
 
-                            if (!this.TryGetOrCreateRequirementsGroup(currentPackage, out var parentRequirementsGroup))
+                            if (this.TryGetRequirementsSpecification(currentPackage.Name) is { } requirementsSpecification)
                             {
-                                this.Logger.Error($"Error during creation of the RequirementsGroup for {currentPackage.Name} package");
-                                return false;
+                                this.packageMapping[currentPackage.PackageID] = requirementsSpecification;
+                                specification = requirementsSpecification;
                             }
 
-                            this.packageMapping[currentPackage.PackageID] = parentRequirementsGroup;
+                            else
+                            {
+                                if (!this.TryGetOrCreateRequirementsGroup(currentPackage, out var parentRequirementsGroup))
+                                {
+                                    this.Logger.Error($"Error during creation of the RequirementsGroup for {currentPackage.Name} package");
+                                    return false;
+                                }
 
-                            parentRequirementsGroup.Group.RemoveAll(x => x.Iid == requirementsGroup.Iid);
-                            parentRequirementsGroup.Group.Add(requirementsGroup);
+                                this.packageMapping[currentPackage.PackageID] = parentRequirementsGroup;
 
-                            requirementsGroup = parentRequirementsGroup;
+                                parentRequirementsGroup.Group.RemoveAll(x => x.Iid == requirementsGroup.Iid);
+                                parentRequirementsGroup.Group.Add(requirementsGroup);
+
+                                requirementsGroup = parentRequirementsGroup;
+                            }
                         }
                     }
 
@@ -237,8 +256,11 @@ namespace DEHEASysML.MappingRules
                         this.packageMapping[parentPackage.PackageID] = requirementsSpecification;
                     }
 
-                    requirementsGroup.Group.RemoveAll(x => x.Iid == requirementsGroup.Iid);
-                    requirementsContainer.Group.Add(requirementsGroup);
+                    if (requirementsGroup != null)
+                    {
+                        requirementsGroup.Group.RemoveAll(x => x.Iid == requirementsGroup.Iid);
+                        requirementsContainer.Group.Add(requirementsGroup);
+                    }
                 }
             }
 
@@ -348,7 +370,7 @@ namespace DEHEASysML.MappingRules
         {
             if (!mappedElement.ShouldCreateNewTargetElement && mappedElement.HubElement != null)
             {
-                this.UpdateRequirementProperties(mappedElement.DstElement, mappedElement.HubElement);
+                UpdateRequirementProperties(mappedElement.DstElement, mappedElement.HubElement);
                 var requirementSpecification = (mappedElement.HubElement.Container as RequirementsSpecification)!.Clone(true);
                 requirementSpecification.Requirement.RemoveAll(x => x.Iid == mappedElement.HubElement.Iid);
                 requirementSpecification.Requirement.Add(mappedElement.HubElement);
@@ -404,28 +426,33 @@ namespace DEHEASysML.MappingRules
         /// <returns>A value indicating whether the <see cref="RequirementsSpecification" /> has been created or retrieved</returns>
         private bool TryGetOrCreateRequirementsSpecification(string requirementsSpecificationName, out RequirementsSpecification requirementsSpecification)
         {
-            var shortName = requirementsSpecificationName.GetShortName();
-
-            var alreadyCreated = (this.requirementsSpecifications
-                                      .Find(x => string.Equals(x.ShortName, shortName, StringComparison.InvariantCultureIgnoreCase))
-                                  ?? this.HubController.OpenIteration.RequirementsSpecification
-                                      .Find(x => !x.IsDeprecated
-                                                 && string.Equals(x.ShortName, shortName, StringComparison.InvariantCultureIgnoreCase))
-                                      ?.Clone(true)) ?? new RequirementsSpecification
+            var alreadyCreated = this.TryGetRequirementsSpecification(requirementsSpecificationName) ?? new RequirementsSpecification
             {
                 Iid = Guid.NewGuid(),
                 Name = requirementsSpecificationName,
-                ShortName = shortName,
+                ShortName = requirementsSpecificationName.GetShortName(),
                 Owner = this.Owner
             };
 
-            this.requirementsSpecifications.RemoveAll(x => string.Equals(x.ShortName, shortName, StringComparison.InvariantCultureIgnoreCase));
+            this.requirementsSpecifications.RemoveAll(x => x.Iid == alreadyCreated.Iid);
             this.requirementsSpecifications.Add(alreadyCreated);
             this.requirementsGroups.AddRange(alreadyCreated.GetAllContainedGroups());
 
             requirementsSpecification = alreadyCreated;
 
             return requirementsSpecification != null;
+        }
+
+        /// <summary>
+        /// Tries to retrieve a <see cref="RequirementsSpecification" /> based on a name
+        /// </summary>
+        /// <param name="requirementsSpecificationName">The name of the <see cref="RequirementsSpecification"/></param>
+        /// <returns>The <see cref="RequirementsSpecification"/> if found</returns>
+        private RequirementsSpecification TryGetRequirementsSpecification(string requirementsSpecificationName)
+        {
+            var predicate = MatchingRequirementsSpecificationPredicate(requirementsSpecificationName);
+
+            return this.requirementsSpecifications.Find(predicate) ?? this.HubController.OpenIteration.RequirementsSpecification.Find(predicate)?.Clone(true);
         }
 
         /// <summary>
@@ -437,7 +464,8 @@ namespace DEHEASysML.MappingRules
         private bool TryGetOrCreateRequirementsGroup(IDualPackage package, out RequirementsGroup requirementsGroup)
         {
             var createdRequirementsGroup = this.requirementsGroups.Find(x =>
-                string.Equals(x.ShortName, package.Name.GetShortName(), StringComparison.InvariantCultureIgnoreCase));
+                string.Equals(x.ShortName, package.Name.GetShortName(), StringComparison.InvariantCultureIgnoreCase)
+                || string.Equals(x.Name, package.Name, StringComparison.InvariantCultureIgnoreCase));
 
             if (createdRequirementsGroup != null)
             {
@@ -489,7 +517,7 @@ namespace DEHEASysML.MappingRules
                 };
             }
 
-            this.UpdateRequirementProperties(requirementElement, requirement);
+            UpdateRequirementProperties(requirementElement, requirement);
             return requirement != null;
         }
 
@@ -498,9 +526,9 @@ namespace DEHEASysML.MappingRules
         /// </summary>
         /// <param name="requirementElement">The <see cref="Element" /></param>
         /// <param name="requirement">The <see cref="Requirement" /></param>
-        private void UpdateRequirementProperties(Element requirementElement, Requirement requirement)
+        private static void UpdateRequirementProperties(Element requirementElement, Requirement requirement)
         {
-            this.UpdateOrCreateDefinition(requirementElement, requirement);
+            UpdateOrCreateDefinition(requirementElement, requirement);
         }
 
         /// <summary>
@@ -508,7 +536,7 @@ namespace DEHEASysML.MappingRules
         /// </summary>
         /// <param name="requirementElement">The <see cref="Element" /></param>
         /// <param name="requirement">The <see cref="Requirement" /></param>
-        private void UpdateOrCreateDefinition(Element requirementElement, Requirement requirement)
+        private static void UpdateOrCreateDefinition(Element requirementElement, Requirement requirement)
         {
             if (requirement == null)
             {
@@ -516,7 +544,7 @@ namespace DEHEASysML.MappingRules
             }
 
             var definition = requirement.Definition.Find(x => string.Equals(x.LanguageCode, "en", StringComparison.InvariantCultureIgnoreCase))
-                ?.Clone(true) ?? this.CreateDefinition();
+                ?.Clone(true) ?? CreateDefinition();
 
             definition.Content = requirementElement.GetRequirementText();
 
@@ -533,13 +561,28 @@ namespace DEHEASysML.MappingRules
         /// Creates a new <see cref="Definition" />
         /// </summary>
         /// <returns>A <see cref="Definition" /></returns>
-        private Definition CreateDefinition()
+        private static Definition CreateDefinition()
         {
             return new Definition
             {
                 Iid = Guid.NewGuid(),
                 LanguageCode = "en"
             };
+        }
+        
+        /// <summary>
+        /// Predicate that is used to find a matching <see cref="RequirementsSpecification"/> based on its name
+        /// </summary>
+        /// <param name="requirementsSpecificationName">The name that should match</param>
+        /// <returns>A <see cref="Predicate{T}"/></returns>
+        private static Predicate<RequirementsSpecification> MatchingRequirementsSpecificationPredicate(string requirementsSpecificationName)
+        {
+            var shortName = requirementsSpecificationName.GetShortName();
+
+            var predicate = new Predicate<RequirementsSpecification>(x => !x.IsDeprecated && (string.Equals(x.Name, requirementsSpecificationName, StringComparison.InvariantCultureIgnoreCase)
+                                                                                              || string.Equals(x.ShortName, shortName, StringComparison.InvariantCultureIgnoreCase)));
+
+            return predicate;
         }
     }
 }
