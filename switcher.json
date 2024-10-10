@@ -1,5 +1,6 @@
 {
   "solution": "DEHEASysML.sln",
+  "solutionFolder": null,
   "mappings": {
     "DEHPCommon": "../DEH-Common/DEHPCommon/DEHPCommon.csproj"
   },
