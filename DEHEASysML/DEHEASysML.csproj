@@ -11,8 +11,8 @@
     <Product>DEHEASysML</Product>
     <Description>DEHEASysML AddIn</Description>
     <Copyright>Copyright © RHEA System S.A.</Copyright>
-    <AssemblyVersion>1.9.0</AssemblyVersion>
-    <FileVersion>1.9.0</FileVersion>
+    <AssemblyVersion>1.9.1</AssemblyVersion>
+    <FileVersion>1.9.1</FileVersion>
     <LangVersion>latest</LangVersion>
     <ApplicationIcon>icon.ico</ApplicationIcon>
     <RegisterForComInterop>true</RegisterForComInterop>
