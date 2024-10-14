@@ -258,7 +258,7 @@ namespace DEHEASysML.MappingRules
 
                     if (requirementsGroup != null)
                     {
-                        requirementsGroup.Group.RemoveAll(x => x.Iid == requirementsGroup.Iid);
+                        requirementsContainer.Group.RemoveAll(x => x.Iid == requirementsGroup.Iid);
                         requirementsContainer.Group.Add(requirementsGroup);
                     }
                 }
