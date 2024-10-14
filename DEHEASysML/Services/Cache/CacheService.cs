@@ -82,7 +82,7 @@ namespace DEHEASysML.Services.Cache
             var xmlElement = XElement.Parse(sqlResult);
             var rows = xmlElement.Descendants("Row");
 
-            this.PackageIds = rows.Select(row => int.Parse(row.Element("Package_ID")!.Value)).ToList();
+            this.PackageIds = rows.Select(row => int.Parse(row.Elements().First(XElementExtensions.MatchElementByName("Package_ID")).Value)).ToList();
         }
 
         /// <summary>
@@ -90,13 +90,13 @@ namespace DEHEASysML.Services.Cache
         /// </summary>
         private void QueryAllElements()
         {
-            const string sqlQuery = "SELECT Object_ID FROM t_object WHERE NOT Object_Type = \"Package\"";
+            const string sqlQuery = "SELECT Object_ID FROM t_object WHERE NOT Object_Type = 'Package'";
             var sqlResult = this.currentRepository.SQLQuery(sqlQuery);
 
             var xmlElement = XElement.Parse(sqlResult);
             var rows = xmlElement.Descendants("Row");
 
-            var elementIds = rows.Select(row => int.Parse(row.Element("Object_ID")!.Value));
+            var elementIds = rows.Select(row => int.Parse(row.Elements().First(XElementExtensions.MatchElementByName("Object_ID")).Value));
             this.elementCache = this.currentRepository.GetElementSet(string.Join(",", elementIds), 0).OfType<Element>().ToDictionary(x => x.ElementID, x => x);
         }
 
@@ -112,7 +112,7 @@ namespace DEHEASysML.Services.Cache
             var xmlElement = XElement.Parse(sqlResult);
             var rows = xmlElement.Descendants("Row");
 
-            var connectorIds = rows.Select(row => int.Parse(row.Element("Connector_ID")!.Value));
+            var connectorIds = rows.Select(row => int.Parse(row.Elements().First(XElementExtensions.MatchElementByName("Connector_ID")).Value));
             var newConnectors = connectorIds.Select(this.currentRepository.GetConnectorByID).ToList();
             this.connectorCache.AddRange(newConnectors);
             return newConnectors;

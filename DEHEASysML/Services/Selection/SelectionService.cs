@@ -29,6 +29,7 @@ namespace DEHEASysML.Services.Selection
     using System.Linq;
     using System.Xml.Linq;
 
+    using DEHEASysML.Extensions;
     using DEHEASysML.Utils;
 
     using EA;
@@ -77,7 +78,7 @@ namespace DEHEASysML.Services.Selection
             var xmlElement = XElement.Parse(sqlResult);
             var rows = xmlElement.Descendants("Row");
 
-            var elementId = rows.Select(row => int.Parse(row.Element("Object_ID")!.Value));
+            var elementId = rows.Select(row => int.Parse(row.Elements().First(XElementExtensions.MatchElementByName("Object_ID")).Value));
 
             selectedElements.AddRange(repository.GetElementSet(string.Join(",", elementId), 0).OfType<Element>()
                 .Where(x => Array.Exists(stereotypes, x.HasStereotype)));
@@ -121,8 +122,8 @@ namespace DEHEASysML.Services.Selection
 
             return rows.Select(row => new SimplifiedPackage
             {
-                PackageId = int.Parse(row.Element("Id")!.Value),
-                ParentId = int.Parse(row.Element("ParentId")!.Value)
+                PackageId = int.Parse(row.Elements().First(XElementExtensions.MatchElementByName("Id")).Value),
+                ParentId = int.Parse(row.Elements().First(XElementExtensions.MatchElementByName("ParentId")).Value)
             }).ToList();
         }
     }
